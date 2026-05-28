@@ -4,12 +4,12 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
@@ -17,6 +17,7 @@ import { CustomInput } from '../components/CustomInput';
 import { Divider } from '../components/Divider';
 import { SocialButton } from '../components/SocialButton';
 import { authApi } from '../api/authApi';
+import { setTokens } from '../../../lib/tokenStorage';
 
 export const LoginScreen = () => {
   const navigation = useNavigation<any>();
@@ -54,9 +55,10 @@ export const LoginScreen = () => {
 
     setLoading(true);
     try {
-      const result = await authApi.login({ email, password });
+    const result = await authApi.login({ email, password });
 
-      if (result.success) {
+      if (result.success && result.accessToken) {
+        await setTokens(result.accessToken, result.refreshToken);
         Alert.alert('Thành công', 'Đăng nhập thành công!', [
           { text: 'OK', onPress: () => navigation.navigate('MainTabs') },
         ]);

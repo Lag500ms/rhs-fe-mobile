@@ -4,16 +4,16 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
   TextInput as RNTextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-
+import { setTokens } from '../../../lib/tokenStorage';
 import { authApi } from '../api/authApi';
 
 interface VerifyOtpRouteParams {
@@ -65,7 +65,8 @@ export const VerifyOtpScreen = () => {
     try {
       const result = await authApi.verifyOtp({ email, otpCode });
 
-      if (result.success) {
+      if (result.success && result.accessToken) {
+        await setTokens(result.accessToken, result.refreshToken);
         Alert.alert('Thành công', 'Xác thực tài khoản thành công!', [
           { text: 'OK', onPress: () => navigation.navigate('MainTabs') },
         ]);

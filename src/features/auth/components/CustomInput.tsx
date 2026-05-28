@@ -8,7 +8,11 @@ interface CustomInputProps {
   secureTextEntry?: boolean;
   value: string;
   onChangeText: (text: string) => void;
-  errorMessage?: string; // Prop mới để báo lỗi
+  errorMessage?: string;
+  keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'numeric';
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  multiline?: boolean;
+  numberOfLines?: number;
 }
 
 export const CustomInput = ({ 
@@ -17,7 +21,11 @@ export const CustomInput = ({
   secureTextEntry = false, 
   value, 
   onChangeText,
-  errorMessage 
+  errorMessage,
+  keyboardType = 'default',
+  autoCapitalize = 'none',
+  multiline = false,
+  numberOfLines,
 }: CustomInputProps) => {
   return (
     <View style={styles.container}>
@@ -33,8 +41,10 @@ export const CustomInput = ({
           secureTextEntry={secureTextEntry}
           value={value}
           onChangeText={onChangeText}
-          autoCapitalize="none"
-          keyboardType={iconName === 'phone' ? 'phone-pad' : 'default'}
+          autoCapitalize={autoCapitalize}
+          keyboardType={keyboardType}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
         />
       </View>
      

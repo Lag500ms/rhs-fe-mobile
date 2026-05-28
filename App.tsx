@@ -2,8 +2,8 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import { AuthNavigator } from './features/auth/AuthNavigator';
-import { UserNavigator } from './features/user/UserNavigator';
+import { AuthNavigator } from './src/features/auth/AuthNavigator';
+import { UserNavigator } from './src/features/user/UserNavigator';
 
 export type RootStackParamList = {
   Auth: undefined;

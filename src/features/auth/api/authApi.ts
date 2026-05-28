@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { getToken } from '../../../lib/tokenStorage';
 
-const API_BASE_URL = 'http://localhost:5112/api';
+const API_BASE_URL = 'http://10.0.2.2:5112/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -16,10 +17,6 @@ apiClient.interceptors.request.use(async (config) => {
   }
   return config;
 });
-
-const getToken = async (): Promise<string | null> => {
-  return null;
-};
 
 export interface RegisterDto {
   email: string;
