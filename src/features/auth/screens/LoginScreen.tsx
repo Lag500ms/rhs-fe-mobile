@@ -63,7 +63,7 @@ export const LoginScreen = () => {
         setShowSuccess(true);
         setTimeout(() => {
           setShowSuccess(false);
-          navigation.navigate('MainTabs');
+          navigation.goBack();
         }, 1000);
       } else {
         setShowSuccess(false);

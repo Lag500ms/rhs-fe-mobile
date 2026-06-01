@@ -4,10 +4,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { AuthNavigator } from './src/features/auth/AuthNavigator';
 import { UserNavigator } from './src/features/user/UserNavigator';
+import { MainTabNavigator } from './src/features/main/MainTabNavigator';
 
 export type RootStackParamList = {
-  Auth: undefined;
   MainTabs: undefined;
+  Auth: undefined;
+  UserProfile: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -16,11 +18,12 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Auth"
+        initialRouteName="MainTabs"
         screenOptions={{ headerShown: false }}
       >
+        <Stack.Screen name="MainTabs" component={MainTabNavigator} />
         <Stack.Screen name="Auth" component={AuthNavigator} />
-        <Stack.Screen name="MainTabs" component={UserNavigator} />
+        <Stack.Screen name="UserProfile" component={UserNavigator} />
       </Stack.Navigator>
     </NavigationContainer>
   );
