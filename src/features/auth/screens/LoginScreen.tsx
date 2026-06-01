@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  Modal,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +26,7 @@ export const LoginScreen = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [hasInteracted, setHasInteracted] = useState<{ [key: string]: boolean }>({});
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const isLoginEnabled = email.length > 0 && password.length > 0;
 
@@ -55,18 +56,20 @@ export const LoginScreen = () => {
 
     setLoading(true);
     try {
-    const result = await authApi.login({ email, password });
+      const result = await authApi.login({ email, password });
 
       if (result.success && result.accessToken) {
         await setTokens(result.accessToken, result.refreshToken);
-        Alert.alert('Thành công', 'Đăng nhập thành công!', [
-          { text: 'OK', onPress: () => navigation.navigate('MainTabs') },
-        ]);
+        setShowSuccess(true);
+        setTimeout(() => {
+          setShowSuccess(false);
+          navigation.navigate('MainTabs');
+        }, 1000);
       } else {
-        Alert.alert('Lỗi', result.message || 'Đăng nhập thất bại');
+        setShowSuccess(false);
       }
     } catch (error: any) {
-      Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      setShowSuccess(false);
     } finally {
       setLoading(false);
     }
@@ -173,4 +176,22 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 30 },
   footerText: { fontSize: 14, color: '#333333' },
   registerText: { fontSize: 14, fontWeight: '600', color: '#D93843', textDecorationLine: 'underline' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    borderRadius: 12,
+    minWidth: 200,
+    alignItems: 'center',
+  },
+  modalText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+  },
 });
