@@ -33,7 +33,7 @@ export interface LoginDto {
 
 export interface GoogleLoginDto {
   idToken: string;
-  accessToken: string;
+  accessToken?: string;
 }
 
 export interface VerifyOtpDto {
