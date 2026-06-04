@@ -12,6 +12,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "scheme": "com.anonymous.femobile",
     "ios": {
       "supportsTablet": true
     },

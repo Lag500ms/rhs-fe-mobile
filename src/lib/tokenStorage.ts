@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ACCESS_TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
+const REMEMBERED_EMAIL_KEY = 'rememberedEmail';
 
 export const setTokens = async (accessToken: string, refreshToken?: string) => {
   await AsyncStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
@@ -20,4 +21,12 @@ export const getRefreshToken = async (): Promise<string | null> => {
 
 export const clearTokens = async () => {
   await AsyncStorage.multiRemove([ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY]);
+};
+
+export const saveRememberedEmail = async (email: string) => {
+  await AsyncStorage.setItem(REMEMBERED_EMAIL_KEY, email);
+};
+
+export const getRememberedEmail = async (): Promise<string | null> => {
+  return await AsyncStorage.getItem(REMEMBERED_EMAIL_KEY);
 };

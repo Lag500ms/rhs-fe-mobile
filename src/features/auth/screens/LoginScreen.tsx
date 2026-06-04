@@ -17,7 +17,7 @@ import { CustomInput } from '../components/CustomInput';
 import { Divider } from '../components/Divider';
 import { SocialButton } from '../components/SocialButton';
 import { authApi } from '../api/authApi';
-import { setTokens } from '../../../lib/tokenStorage';
+import { setTokens, getRememberedEmail, saveRememberedEmail } from '../../../lib/tokenStorage';
 
 export const LoginScreen = () => {
   const navigation = useNavigation<any>();
@@ -27,6 +27,17 @@ export const LoginScreen = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [hasInteracted, setHasInteracted] = useState<{ [key: string]: boolean }>({});
   const [showSuccess, setShowSuccess] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const savedEmail = await getRememberedEmail();
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    })();
+  }, []);
 
   const isLoginEnabled = email.length > 0 && password.length > 0;
 
@@ -60,6 +71,9 @@ export const LoginScreen = () => {
 
       if (result.success && result.accessToken) {
         await setTokens(result.accessToken, result.refreshToken);
+        if (rememberMe) {
+          await saveRememberedEmail(email);
+        }
         setShowSuccess(true);
         setTimeout(() => {
           setShowSuccess(false);
@@ -102,36 +116,46 @@ export const LoginScreen = () => {
             keyboardType="email-address"
             autoCapitalize="none"
           />
-          <CustomInput
-            iconName="lock"
-            placeholder="Nhập mật khẩu"
-            secureTextEntry
-            value={password}
-            onChangeText={(text) => {
-              setPassword(text);
-              setHasInteracted({ ...hasInteracted, password: false });
-            }}
-            errorMessage={hasInteracted.password ? errors.password : undefined}
-          />
+<CustomInput
+             iconName="lock"
+             placeholder="Nhập mật khẩu"
+             secureTextEntry
+             value={password}
+             onChangeText={(text) => {
+               setPassword(text);
+               setHasInteracted({ ...hasInteracted, password: false });
+             }}
+             errorMessage={hasInteracted.password ? errors.password : undefined}
+           />
 
-          <TouchableOpacity 
-            style={[styles.loginBtn, isLoginEnabled && styles.loginBtnActive]}
-            disabled={!isLoginEnabled || loading}
-            onPress={handleLogin}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={[styles.loginBtnText, isLoginEnabled && styles.loginBtnTextActive]}>
-                Đăng nhập
-              </Text>
-            )}
-          </TouchableOpacity>
+           <TouchableOpacity 
+             style={styles.rememberContainer}
+             onPress={() => setRememberMe(!rememberMe)}
+           >
+             <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
+               {rememberMe && <Feather name="check" color="#FFFFFF" size={16} />}
+             </View>
+             <Text style={styles.rememberText}>Lưu tài khoản</Text>
+           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-            <Text style={styles.forgotText}>Quên mật khẩu?</Text>
-          </TouchableOpacity>
-        </View>
+           <TouchableOpacity 
+             style={[styles.loginBtn, isLoginEnabled && styles.loginBtnActive]}
+             disabled={!isLoginEnabled || loading}
+             onPress={handleLogin}
+           >
+             {loading ? (
+               <ActivityIndicator color="#FFFFFF" />
+             ) : (
+               <Text style={[styles.loginBtnText, isLoginEnabled && styles.loginBtnTextActive]}>
+                 Đăng nhập
+               </Text>
+             )}
+           </TouchableOpacity>
+
+           <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+             <Text style={styles.forgotText}>Quên mật khẩu?</Text>
+           </TouchableOpacity>
+         </View>
 
         <Divider text="Hoặc đăng nhập với" />
         
@@ -168,6 +192,29 @@ const styles = StyleSheet.create({
   loginBtnActive: { backgroundColor: '#000000' },
   loginBtnText: { fontSize: 16, fontWeight: '600', color: '#8E8E93' },
   loginBtnTextActive: { color: '#FFFFFF' },
+  rememberContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#D93843',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  checkboxActive: {
+    backgroundColor: '#D93843',
+  },
+  rememberText: {
+    fontSize: 14,
+    color: '#333333',
+  },
   forgotText: {
     fontSize: 14, color: '#D93843', textAlign: 'center', marginTop: 16,
     textDecorationLine: 'underline'
