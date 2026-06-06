@@ -16,7 +16,7 @@ export const SocialButton = ({ onLoginSuccess }: SocialButtonProps) => {
   const navigation = useNavigation<any>();
   
   const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: '669202288774-8ceekboddkll5i8r6o00h76i1tru76gt.apps.googleusercontent.com',
+    clientId: '669202288774-8ceekboddkll5i8r6o00h76i1tru76gt.apps.googleusercontent.com',
     iosClientId: '669202288774-8ceekboddkll5i8r6o00h76i1tru76gt.apps.googleusercontent.com',
     androidClientId: '669202288774-8ceekboddkll5i8r6o00h76i1tru76gt.apps.googleusercontent.com',
   });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,122 @@ import {
   StyleSheet,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { housingApi, HousingProjectResponse } from '../api/housingApi';
 
 export const HomeScreen = () => {
   const [searchText, setSearchText] = useState('');
+  const [housingProjects, setHousingProjects] = useState<HousingProjectResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pageIndex, setPageIndex] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const fetchHousingProjects = useCallback(async (page: number = 1, isRefresh: boolean = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else if (page === 1) setLoading(true);
+      setError(null);
+
+      const result = await housingApi.getHousingProjects({
+        pageIndex: page,
+        pageSize: 10,
+        search: searchText || undefined,
+      });
+
+      if (page === 1) {
+        setHousingProjects(result.items);
+      } else {
+        setHousingProjects(prev => [...prev, ...result.items]);
+      }
+      setPageIndex(result.pageIndex);
+      setTotalPages(result.totalPages);
+    } catch (err: any) {
+      setError(err.message || 'Không thể tải danh sách nhà');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [searchText]);
+
+  useEffect(() => {
+    fetchHousingProjects(1);
+  }, [fetchHousingProjects]);
+
+  const handleSearch = () => {
+    fetchHousingProjects(1);
+  };
+
+  const handleLoadMore = () => {
+    if (pageIndex < totalPages && !loading) {
+      fetchHousingProjects(pageIndex + 1);
+    }
+  };
+
+  const formatPrice = (minPrice: number, maxPrice: number) => {
+    if (minPrice === 0 && maxPrice === 0) return 'Liên hệ';
+    if (minPrice >= 1000000000) {
+      const minB = minPrice / 1000000000;
+      const maxB = maxPrice / 1000000000;
+      if (minB === maxB) return `${minB} tỷ`;
+      return `${minB} - ${maxB} tỷ`;
+    }
+    if (minPrice >= 1000000) {
+      const minM = minPrice / 1000000;
+      const maxM = maxPrice / 1000000;
+      if (minM === maxM) return `${minM} triệu`;
+      return `${minM} - ${maxM} triệu`;
+    }
+    return `${minPrice.toLocaleString()} - ${maxPrice.toLocaleString()} VNĐ`;
+  };
+
+  const formatArea = (minArea: number, maxArea: number) => {
+    if (minArea === 0 && maxArea === 0) return '';
+    if (minArea === maxArea) return `${minArea} m²`;
+    return `${minArea} - ${maxArea} m²`;
+  };
+
+  const renderProjectCard = (project: HousingProjectResponse) => (
+    <TouchableOpacity key={project.id} style={styles.projectCard} activeOpacity={0.8}>
+      <View style={styles.projectThumbnail}>
+        {project.thumbnailUrl ? (
+          <Image source={{ uri: project.thumbnailUrl }} style={styles.projectImage} />
+        ) : (
+          <View style={styles.projectImagePlaceholder}>
+            <Feather name="home" size={40} color="#CCCCCC" />
+          </View>
+        )}
+        {project.status && (
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusText}>{project.status}</Text>
+          </View>
+        )}
+      </View>
+      <View style={styles.projectInfo}>
+        <Text style={styles.projectName} numberOfLines={2}>
+          {project.projectName}
+        </Text>
+        <View style={styles.projectMeta}>
+          <Text style={styles.projectPrice}>
+            {formatPrice(project.minPrice, project.maxPrice)}
+          </Text>
+          <Text style={styles.projectArea}>
+            {formatArea(project.minArea, project.maxArea)}
+          </Text>
+        </View>
+        <View style={styles.projectLocationRow}>
+          <Feather name="map-pin" size={12} color="#999" />
+          <Text style={styles.projectLocation} numberOfLines={1}>
+            {project.province}, {project.district}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -35,11 +145,18 @@ export const HomeScreen = () => {
           <Feather name="search" size={20} color="#999" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Chung cư Vinhomes 2 phòng ngủ"
+            placeholder="Tìm kiếm dự án nhà ở..."
             value={searchText}
             onChangeText={setSearchText}
+            onSubmitEditing={handleSearch}
             placeholderTextColor="#999"
+            returnKeyType="search"
           />
+          {searchText.length > 0 && (
+            <TouchableOpacity onPress={() => { setSearchText(''); fetchHousingProjects(1); }}>
+              <Feather name="x" size={20} color="#999" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Category Cards */}
@@ -66,39 +183,58 @@ export const HomeScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Video Section */}
-        <View style={styles.videoSection}>
-          <View style={styles.videoHeader}>
-            <Feather name="video" size={24} color="#000" />
-            <Text style={styles.videoTitle}>Xem nhà trực quan với video</Text>
+        {/* Housing Projects List */}
+        <View style={styles.projectsSection}>
+          <View style={styles.projectsHeader}>
+            <Feather name="home" size={24} color="#000" />
+            <Text style={styles.projectsTitle}>Danh sách nhà ở</Text>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.videoScroll}>
-            <View style={styles.videoCard}>
-              <View style={styles.videoThumbnail}>
-                <View style={styles.verifiedBadge}>
-                  <Feather name="check" size={12} color="#fff" />
-                  <Text style={styles.verifiedText}>XÁC THỰC</Text>
-                </View>
-              </View>
-              <Text style={styles.propertyTitle}>THE RIVER THỦ THIÊM 3PN 139M...</Text>
-              <View style={styles.propertyInfo}>
-                <Text style={styles.propertyPrice}>30 tỷ</Text>
-                <Text style={styles.propertyArea}>139 m²</Text>
-              </View>
-              <Text style={styles.propertyLocation}>Quận 2, Hồ Chí Mi...</Text>
+          {loading && pageIndex === 1 ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#D93843" />
+              <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
             </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Feather name="alert-circle" size={40} color="#D93843" />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => fetchHousingProjects(1)}>
+                <Text style={styles.retryText}>Thử lại</Text>
+              </TouchableOpacity>
+            </View>
+          ) : housingProjects.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Feather name="inbox" size={40} color="#CCCCCC" />
+              <Text style={styles.emptyText}>Không có dự án nào</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.projectsGrid}>
+                {housingProjects.map(renderProjectCard)}
+              </View>
 
-            <View style={styles.videoCard}>
-              <View style={styles.videoThumbnail} />
-              <Text style={styles.propertyTitle}>BIỆT THỰ SỐNG FO, HÒN 8...</Text>
-              <View style={styles.propertyInfo}>
-                <Text style={styles.propertyPrice}>18,56 tỷ</Text>
-                <Text style={styles.propertyArea}>225 m²</Text>
-              </View>
-              <Text style={styles.propertyLocation}>Từ Sơn, Bắc Ninh</Text>
-            </View>
-          </ScrollView>
+              {pageIndex < totalPages && (
+                <TouchableOpacity 
+                  style={styles.loadMoreButton} 
+                  onPress={handleLoadMore}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#D93843" />
+                  ) : (
+                    <Text style={styles.loadMoreText}>Xem thêm</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+
+              {refreshing && (
+                <View style={styles.refreshingContainer}>
+                  <ActivityIndicator size="small" color="#D93843" />
+                </View>
+              )}
+            </>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -252,77 +388,155 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
-  videoSection: {
+  projectsSection: {
     paddingHorizontal: 20,
     marginBottom: 20,
   },
-  videoHeader: {
+  projectsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 15,
   },
-  videoTitle: {
+  projectsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#000',
     marginLeft: 10,
   },
-  videoScroll: {
-    marginHorizontal: -20,
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#999',
+  },
+  errorContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  errorText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#D93843',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 15,
     paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#D93843',
+    borderRadius: 8,
   },
-  videoCard: {
-    width: 200,
-    marginRight: 15,
+  retryText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
-  videoThumbnail: {
-    width: 200,
-    height: 250,
-    backgroundColor: '#E0E0E0',
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#999',
+  },
+  projectsGrid: {
+    gap: 15,
+  },
+  projectCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  projectThumbnail: {
+    width: '100%',
+    height: 180,
+    backgroundColor: '#F0F0F0',
     position: 'relative',
   },
-  verifiedBadge: {
+  projectImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  projectImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+  },
+  statusBadge: {
     position: 'absolute',
-    bottom: 10,
+    top: 10,
     left: 10,
     backgroundColor: '#34C759',
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
-  verifiedText: {
+  statusText: {
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: 'bold',
-    marginLeft: 4,
   },
-  propertyTitle: {
-    fontSize: 14,
+  projectInfo: {
+    padding: 12,
+  },
+  projectName: {
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#000',
-    marginBottom: 5,
+    marginBottom: 6,
   },
-  propertyInfo: {
+  projectMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5,
+    marginBottom: 4,
   },
-  propertyPrice: {
+  projectPrice: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#D93843',
     marginRight: 10,
   },
-  propertyArea: {
+  projectArea: {
     fontSize: 14,
     color: '#666',
   },
-  propertyLocation: {
+  projectLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  projectLocation: {
     fontSize: 12,
     color: '#999',
+    marginLeft: 4,
+  },
+  loadMoreButton: {
+    marginTop: 15,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#D93843',
+    borderRadius: 8,
+  },
+  loadMoreText: {
+    color: '#D93843',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  refreshingContainer: {
+    padding: 10,
+    alignItems: 'center',
   },
 });
