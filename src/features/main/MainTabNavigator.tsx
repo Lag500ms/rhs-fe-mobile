@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
+import { RHSColors } from '../../lib/theme';
 
 import { HomeScreen } from '../home/screens/HomeScreen';
 import { SavedScreen } from '../saved/screens/SavedScreen';
@@ -19,14 +20,15 @@ export const MainTabNavigator = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#000000',
-        tabBarInactiveTintColor: '#999999',
+        tabBarActiveTintColor: RHSColors.govBlue,
+        tabBarInactiveTintColor: RHSColors.textMuted,
         tabBarStyle: {
           borderTopWidth: 1,
-          borderTopColor: '#E5E5EA',
+          borderTopColor: RHSColors.border,
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,
+          backgroundColor: RHSColors.surfaceCard,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -48,7 +50,7 @@ export const MainTabNavigator = () => {
         name="Saved"
         component={SavedScreen}
         options={{
-          tabBarLabel: 'Tin đã lưu',
+          tabBarLabel: 'Quan tâm',
           tabBarIcon: ({ color, size }) => (
             <Feather name="heart" size={size} color={color} />
           ),

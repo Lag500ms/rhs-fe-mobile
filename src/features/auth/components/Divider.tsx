@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { RHSColors } from '../../../lib/theme';
 
 export const Divider = ({ text = 'Hoặc đăng nhập với' }: { text?: string }) => {
   return (
@@ -20,11 +21,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: RHSColors.border,
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#8E8E93',
+    color: RHSColors.textMuted,
     fontSize: 14,
   },
 });

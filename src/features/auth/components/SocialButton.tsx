@@ -2,6 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { RHSColors } from '../../../lib/theme';
 import { authApi } from '../api/authApi';
 import { setTokens } from '../../../lib/tokenStorage';
 import { useNavigation } from '@react-navigation/native';
@@ -14,7 +15,7 @@ interface SocialButtonProps {
 
 export const SocialButton = ({ onLoginSuccess }: SocialButtonProps) => {
   const navigation = useNavigation<any>();
-  
+
   const [request, response, promptAsync] = Google.useAuthRequest({
     clientId: '669202288774-8ceekboddkll5i8r6o00h76i1tru76gt.apps.googleusercontent.com',
     iosClientId: '669202288774-8ceekboddkll5i8r6o00h76i1tru76gt.apps.googleusercontent.com',
@@ -43,7 +44,7 @@ export const SocialButton = ({ onLoginSuccess }: SocialButtonProps) => {
       if (result.success && result.accessToken) {
         await setTokens(result.accessToken, result.refreshToken);
         Alert.alert('Thành công', 'Đăng nhập Google thành công!');
-        
+
         if (onLoginSuccess) {
           onLoginSuccess();
         } else {
@@ -63,7 +64,7 @@ export const SocialButton = ({ onLoginSuccess }: SocialButtonProps) => {
   };
 
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.socialButton}
       onPress={handlePress}
       disabled={!request}
@@ -81,18 +82,19 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: RHSColors.surfaceCard,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: RHSColors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
   },
   socialIcon: {
     width: 24,
     height: 24,
   },
 });
-

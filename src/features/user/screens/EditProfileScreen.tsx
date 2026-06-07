@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { RHSColors } from '../../../lib/theme';
 
 import { CustomInput } from '../../auth/components/CustomInput';
 import { userApi, UpdateProfileDto } from '../api/userApi';
@@ -28,7 +29,7 @@ export const EditProfileScreen = () => {
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
-    
+
     if (!fullName) {
       newErrors.fullName = 'Họ tên là bắt buộc';
     } else if (fullName.length < 2) {
@@ -41,7 +42,7 @@ export const EditProfileScreen = () => {
 
   const handleSave = async () => {
     setHasInteracted({ fullName: true, phoneNumber: true });
-    
+
     if (!validateForm()) {
       return;
     }
@@ -71,13 +72,18 @@ export const EditProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
+        <View style={styles.brandBar}>
+          <View style={styles.brandBarStripeRed} />
+          <View style={styles.brandBarStripeGold} />
+          <View style={styles.brandBarStripeBlue} />
+        </View>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Feather name="x" color="#000000" size={24} />
+            <Feather name="x" color={RHSColors.text} size={24} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Chỉnh sửa hồ sơ</Text>
           <View style={{ width: 40 }} />
@@ -103,13 +109,13 @@ export const EditProfileScreen = () => {
             keyboardType="phone-pad"
           />
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.saveBtn, isSaveEnabled && styles.saveBtnActive]}
             disabled={!isSaveEnabled || loading}
             onPress={handleSave}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={RHSColors.white} />
             ) : (
               <Text style={[styles.saveBtnText, isSaveEnabled && styles.saveBtnTextActive]}>
                 Lưu thay đổi
@@ -123,7 +129,23 @@ export const EditProfileScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  safeArea: { flex: 1, backgroundColor: RHSColors.surfaceCard },
+  brandBar: {
+    flexDirection: 'row',
+    height: 4,
+  },
+  brandBarStripeRed: {
+    flex: 2,
+    backgroundColor: RHSColors.govRed,
+  },
+  brandBarStripeGold: {
+    flex: 0.4,
+    backgroundColor: RHSColors.govGold,
+  },
+  brandBarStripeBlue: {
+    flex: 2,
+    backgroundColor: RHSColors.govBlue,
+  },
   container: { flex: 1, paddingHorizontal: 24 },
   header: {
     flexDirection: 'row',
@@ -134,23 +156,23 @@ const styles = StyleSheet.create({
   },
   backButton: {
     width: 40, height: 40, borderRadius: 20, borderWidth: 1,
-    borderColor: '#E5E5EA', justifyContent: 'center', alignItems: 'center',
+    borderColor: RHSColors.border, justifyContent: 'center', alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: RHSColors.text,
   },
   formContainer: { flex: 1 },
   saveBtn: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: RHSColors.surface,
     height: 52,
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 30,
   },
-  saveBtnActive: { backgroundColor: '#000000' },
-  saveBtnText: { fontSize: 16, fontWeight: '600', color: '#8E8E93' },
-  saveBtnTextActive: { color: '#FFFFFF' },
+  saveBtnActive: { backgroundColor: RHSColors.govBlue },
+  saveBtnText: { fontSize: 16, fontWeight: '600', color: RHSColors.textMuted },
+  saveBtnTextActive: { color: RHSColors.white },
 });

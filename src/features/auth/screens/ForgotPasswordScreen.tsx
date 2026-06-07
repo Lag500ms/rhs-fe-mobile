@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { RHSColors } from '../../../lib/theme';
 
 import { CustomInput } from '../components/CustomInput';
 import { authApi } from '../api/authApi';
@@ -27,7 +28,7 @@ export const ForgotPasswordScreen = () => {
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
-    
+
     if (!email) {
       newErrors.email = 'Email là bắt buộc';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
@@ -40,7 +41,7 @@ export const ForgotPasswordScreen = () => {
 
   const handleForgotPassword = async () => {
     setHasInteracted(true);
-    
+
     if (!validateForm()) {
       return;
     }
@@ -54,7 +55,7 @@ export const ForgotPasswordScreen = () => {
           { text: 'OK', onPress: () => navigation.navigate('ResetPassword', { email }) },
         ]);
       } else {
-        Alert.alert('Lỗi', result.message || 'Không thể gửi mã OTP');
+        Alert.alert('Lỗi', result.message || 'Gửi yêu cầu thất bại');
       }
     } catch (error: any) {
       Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
@@ -65,18 +66,25 @@ export const ForgotPasswordScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
+      <View style={styles.brandBar}>
+        <View style={styles.brandBarStripeRed} />
+        <View style={styles.brandBarStripeGold} />
+        <View style={styles.brandBarStripeBlue} />
+      </View>
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Feather name="arrow-left" color="#000000" size={24} />
+            <Feather name="arrow-left" color={RHSColors.text} size={24} />
           </TouchableOpacity>
         </View>
 
         <Text style={styles.title}>Quên mật khẩu</Text>
-        <Text style={styles.subtitle}>Nhập email để nhận mã OTP đặt lại mật khẩu</Text>
+        <Text style={styles.subtitle}>
+          Nhập email của bạn để nhận mã OTP đặt lại mật khẩu
+        </Text>
 
         <View style={styles.formContainer}>
           <CustomInput
@@ -92,16 +100,16 @@ export const ForgotPasswordScreen = () => {
             autoCapitalize="none"
           />
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.submitBtn, isSubmitEnabled && styles.submitBtnActive]}
             disabled={!isSubmitEnabled || loading}
             onPress={handleForgotPassword}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={RHSColors.white} />
             ) : (
               <Text style={[styles.submitBtnText, isSubmitEnabled && styles.submitBtnTextActive]}>
-                Gửi mã OTP
+                Gửi yêu cầu
               </Text>
             )}
           </TouchableOpacity>
@@ -112,28 +120,45 @@ export const ForgotPasswordScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  safeArea: { flex: 1, backgroundColor: RHSColors.surfaceCard },
+  brandBar: {
+    flexDirection: 'row',
+    height: 4,
+  },
+  brandBarStripeRed: {
+    flex: 2,
+    backgroundColor: RHSColors.govRed,
+  },
+  brandBarStripeGold: {
+    flex: 0.4,
+    backgroundColor: RHSColors.govGold,
+  },
+  brandBarStripeBlue: {
+    flex: 2,
+    backgroundColor: RHSColors.govBlue,
+  },
   container: { flex: 1, paddingHorizontal: 24 },
   header: { marginTop: 16, marginBottom: 40 },
   backButton: {
     width: 40, height: 40, borderRadius: 20, borderWidth: 1,
-    borderColor: '#E5E5EA', justifyContent: 'center', alignItems: 'center',
+    borderColor: RHSColors.border, justifyContent: 'center', alignItems: 'center',
   },
   title: {
-    fontSize: 28, fontWeight: 'bold', color: '#000000', textAlign: 'center', marginBottom: 12,
+    fontSize: 28, fontWeight: 'bold', color: RHSColors.text, textAlign: 'center', marginBottom: 12,
   },
   subtitle: {
-    fontSize: 14, color: '#666666', textAlign: 'center', marginBottom: 40,
+    fontSize: 14, color: RHSColors.textMuted, textAlign: 'center', marginBottom: 40, lineHeight: 20,
   },
   formContainer: { marginBottom: 30 },
   submitBtn: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: RHSColors.surface,
     height: 52,
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 8,
   },
-  submitBtnActive: { backgroundColor: '#000000' },
-  submitBtnText: { fontSize: 16, fontWeight: '600', color: '#8E8E93' },
-  submitBtnTextActive: { color: '#FFFFFF' },
+  submitBtnActive: { backgroundColor: RHSColors.govBlue },
+  submitBtnText: { fontSize: 16, fontWeight: '600', color: RHSColors.textMuted },
+  submitBtnTextActive: { color: RHSColors.white },
 });

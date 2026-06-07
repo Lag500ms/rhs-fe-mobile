@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { RHSColors } from '../../../lib/theme';
+import { RHSLogo } from '../../../lib/Logo';
 import { housingApi, HousingProjectResponse } from '../api/housingApi';
 
 export const HomeScreen = () => {
@@ -93,30 +95,30 @@ export const HomeScreen = () => {
           <Image source={{ uri: project.thumbnailUrl }} style={styles.projectImage} />
         ) : (
           <View style={styles.projectImagePlaceholder}>
-            <Feather name="home" size={40} color="#CCCCCC" />
+            <Feather name="home" size={40} color={RHSColors.textMuted} />
           </View>
         )}
         {project.status && (
-          <View style={styles.statusBadge}>
+          <View style={[styles.statusBadge, { backgroundColor: RHSColors.govGreen }]}>
             <Text style={styles.statusText}>{project.status}</Text>
           </View>
         )}
       </View>
       <View style={styles.projectInfo}>
-        <Text style={styles.projectName} numberOfLines={2}>
+        <Text style={[styles.projectName, { color: RHSColors.govBlueDark }]} numberOfLines={2}>
           {project.projectName}
         </Text>
         <View style={styles.projectMeta}>
-          <Text style={styles.projectPrice}>
+          <Text style={[styles.projectPrice, { color: RHSColors.govRed }]}>
             {formatPrice(project.minPrice, project.maxPrice)}
           </Text>
-          <Text style={styles.projectArea}>
+          <Text style={[styles.projectArea, { color: RHSColors.textMuted }]}>
             {formatArea(project.minArea, project.maxArea)}
           </Text>
         </View>
         <View style={styles.projectLocationRow}>
-          <Feather name="map-pin" size={12} color="#999" />
-          <Text style={styles.projectLocation} numberOfLines={1}>
+          <Feather name="map-pin" size={12} color={RHSColors.textMuted} />
+          <Text style={[styles.projectLocation, { color: RHSColors.textMuted }]} numberOfLines={1}>
             {project.province}, {project.district}
           </Text>
         </View>
@@ -126,87 +128,70 @@ export const HomeScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* Brand header bar */}
+      <View style={styles.brandBar}>
+        <View style={styles.brandBarStripeRed} />
+        <View style={styles.brandBarStripeGold} />
+        <View style={styles.brandBarStripeBlue} />
+      </View>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header */}
+        {/* Header with brand logo */}
         <View style={styles.header}>
-          <Image 
-            source={require('../../../../assets/icon.png')} 
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <View style={styles.buildingIllustration}>
-            <View style={styles.buildingRed} />
-            <View style={styles.buildingGray} />
+          <View style={styles.headerBrand}>
+            <RHSLogo size={44} />
+            <View style={styles.headerTitles}>
+              <Text style={styles.orgLine}>Cổng thông tin điều phối & thẩm định</Text>
+              <Text style={styles.appName}>Hệ thống cung ứng nhà ở xã hội bền vững</Text>
+            </View>
           </View>
         </View>
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <Feather name="search" size={20} color="#999" style={styles.searchIcon} />
+          <Feather name="search" size={20} color={RHSColors.textMuted} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Tìm kiếm dự án nhà ở..."
             value={searchText}
             onChangeText={setSearchText}
             onSubmitEditing={handleSearch}
-            placeholderTextColor="#999"
+            placeholderTextColor={RHSColors.textMuted}
             returnKeyType="search"
           />
           {searchText.length > 0 && (
             <TouchableOpacity onPress={() => { setSearchText(''); fetchHousingProjects(1); }}>
-              <Feather name="x" size={20} color="#999" />
+              <Feather name="x" size={20} color={RHSColors.textMuted} />
             </TouchableOpacity>
           )}
-        </View>
-
-        {/* Category Cards */}
-        <View style={styles.categoryContainer}>
-          <TouchableOpacity style={styles.categoryCard}>
-            <View style={styles.categoryIconContainer}>
-              <View style={styles.houseIcon}>
-                <View style={styles.houseRoof} />
-                <View style={styles.houseBody} />
-              </View>
-            </View>
-            <Text style={styles.categoryText}>Mua bán</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.categoryCard}>
-            <View style={styles.categoryIconContainer}>
-              <View style={styles.rentIcon}>
-                <View style={styles.rentRoof} />
-                <View style={styles.rentBody} />
-                <Text style={styles.rentLabel}>THUÊ</Text>
-              </View>
-            </View>
-            <Text style={styles.categoryText}>Cho thuê</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Housing Projects List */}
         <View style={styles.projectsSection}>
           <View style={styles.projectsHeader}>
-            <Feather name="home" size={24} color="#000" />
-            <Text style={styles.projectsTitle}>Danh sách nhà ở</Text>
+            <Feather name="home" size={22} color={RHSColors.govBlueDark} />
+            <Text style={[styles.projectsTitle, { color: RHSColors.govBlueDark }]}>Danh sách nhà ở</Text>
           </View>
 
           {loading && pageIndex === 1 ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#D93843" />
-              <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+              <ActivityIndicator size="large" color={RHSColors.govRed} />
+              <Text style={[styles.loadingText, { color: RHSColors.textMuted }]}>Đang tải dữ liệu...</Text>
             </View>
           ) : error ? (
             <View style={styles.errorContainer}>
-              <Feather name="alert-circle" size={40} color="#D93843" />
-              <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={() => fetchHousingProjects(1)}>
+              <Feather name="alert-circle" size={40} color={RHSColors.govRed} />
+              <Text style={[styles.errorText, { color: RHSColors.govRed }]}>{error}</Text>
+              <TouchableOpacity
+                style={[styles.retryButton, { backgroundColor: RHSColors.govRed }]}
+                onPress={() => fetchHousingProjects(1)}
+              >
                 <Text style={styles.retryText}>Thử lại</Text>
               </TouchableOpacity>
             </View>
           ) : housingProjects.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Feather name="inbox" size={40} color="#CCCCCC" />
-              <Text style={styles.emptyText}>Không có dự án nào</Text>
+              <Feather name="inbox" size={40} color={RHSColors.textMuted} />
+              <Text style={[styles.emptyText, { color: RHSColors.textMuted }]}>Không có dự án nào</Text>
             </View>
           ) : (
             <>
@@ -215,22 +200,22 @@ export const HomeScreen = () => {
               </View>
 
               {pageIndex < totalPages && (
-                <TouchableOpacity 
-                  style={styles.loadMoreButton} 
+                <TouchableOpacity
+                  style={[styles.loadMoreButton, { borderColor: RHSColors.govBlue }]}
                   onPress={handleLoadMore}
                   disabled={loading}
                 >
                   {loading ? (
-                    <ActivityIndicator size="small" color="#D93843" />
+                    <ActivityIndicator size="small" color={RHSColors.govBlue} />
                   ) : (
-                    <Text style={styles.loadMoreText}>Xem thêm</Text>
+                    <Text style={[styles.loadMoreText, { color: RHSColors.govBlue }]}>Xem thêm</Text>
                   )}
                 </TouchableOpacity>
               )}
 
               {refreshing && (
                 <View style={styles.refreshingContainer}>
-                  <ActivityIndicator size="small" color="#D93843" />
+                  <ActivityIndicator size="small" color={RHSColors.govRed} />
                 </View>
               )}
             </>
@@ -244,49 +229,67 @@ export const HomeScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: RHSColors.surfaceCard,
   },
   container: {
     flex: 1,
   },
+  brandBar: {
+    flexDirection: 'row',
+    height: 4,
+  },
+  brandBarStripeRed: {
+    flex: 2,
+    backgroundColor: RHSColors.govRed,
+  },
+  brandBarStripeGold: {
+    flex: 0.4,
+    backgroundColor: RHSColors.govGold,
+  },
+  brandBarStripeBlue: {
+    flex: 2,
+    backgroundColor: RHSColors.govBlue,
+  },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
+    backgroundColor: RHSColors.surface,
   },
-  logo: {
-    width: 150,
-    height: 40,
-  },
-  buildingIllustration: {
+  headerBrand: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
+    gap: 12,
   },
-  buildingRed: {
-    width: 60,
-    height: 50,
-    backgroundColor: '#D93843',
-    marginRight: 2,
+  headerTitles: {
+    flex: 1,
   },
-  buildingGray: {
-    width: 60,
-    height: 40,
-    backgroundColor: '#CCCCCC',
+  orgLine: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: RHSColors.govGoldDark,
+    marginBottom: 2,
+  },
+  appName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: RHSColors.govBlueDark,
+    lineHeight: 20,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: RHSColors.surfaceCard,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
     borderRadius: 25,
     marginHorizontal: 20,
+    marginTop: 16,
     marginBottom: 20,
     paddingHorizontal: 15,
     height: 50,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
   },
   searchIcon: {
     marginRight: 10,
@@ -294,99 +297,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 30,
-    gap: 15,
-  },
-  categoryCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  categoryIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FFE5E7',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  houseIcon: {
-    width: 50,
-    height: 50,
-    position: 'relative',
-  },
-  houseRoof: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 25,
-    borderRightWidth: 25,
-    borderBottomWidth: 20,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#D93843',
-    position: 'absolute',
-    top: 0,
-  },
-  houseBody: {
-    width: 40,
-    height: 30,
-    backgroundColor: '#D93843',
-    position: 'absolute',
-    bottom: 0,
-    left: 5,
-  },
-  rentIcon: {
-    width: 50,
-    height: 50,
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  rentRoof: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 25,
-    borderRightWidth: 25,
-    borderBottomWidth: 20,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#D93843',
-    position: 'absolute',
-    top: 0,
-  },
-  rentBody: {
-    width: 40,
-    height: 30,
-    backgroundColor: '#D93843',
-    position: 'absolute',
-    bottom: 0,
-  },
-  rentLabel: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    position: 'absolute',
-    bottom: 8,
-  },
-  categoryText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    color: RHSColors.text,
   },
   projectsSection: {
     paddingHorizontal: 20,
@@ -400,7 +311,7 @@ const styles = StyleSheet.create({
   projectsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000',
+    color: RHSColors.govBlueDark,
     marginLeft: 10,
   },
   loadingContainer: {
@@ -410,7 +321,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 14,
-    color: '#999',
+    color: RHSColors.textMuted,
   },
   errorContainer: {
     padding: 40,
@@ -419,18 +330,18 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: 10,
     fontSize: 14,
-    color: '#D93843',
+    color: RHSColors.govRed,
     textAlign: 'center',
   },
   retryButton: {
     marginTop: 15,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: '#D93843',
+    backgroundColor: RHSColors.govRed,
     borderRadius: 8,
   },
   retryText: {
-    color: '#FFFFFF',
+    color: RHSColors.white,
     fontWeight: '600',
   },
   emptyContainer: {
@@ -440,18 +351,18 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 10,
     fontSize: 14,
-    color: '#999',
+    color: RHSColors.textMuted,
   },
   projectsGrid: {
     gap: 15,
   },
   projectCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: RHSColors.surfaceCard,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: RHSColors.border,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: RHSColors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -460,7 +371,7 @@ const styles = StyleSheet.create({
   projectThumbnail: {
     width: '100%',
     height: 180,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: RHSColors.surface,
     position: 'relative',
   },
   projectImage: {
@@ -473,19 +384,19 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: RHSColors.surface,
   },
   statusBadge: {
     position: 'absolute',
     top: 10,
     left: 10,
-    backgroundColor: '#34C759',
+    backgroundColor: RHSColors.govGreen,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
   statusText: {
-    color: '#FFFFFF',
+    color: RHSColors.white,
     fontSize: 10,
     fontWeight: 'bold',
   },
@@ -495,7 +406,7 @@ const styles = StyleSheet.create({
   projectName: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#000',
+    color: RHSColors.govBlueDark,
     marginBottom: 6,
   },
   projectMeta: {
@@ -506,12 +417,12 @@ const styles = StyleSheet.create({
   projectPrice: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#D93843',
+    color: RHSColors.govRed,
     marginRight: 10,
   },
   projectArea: {
     fontSize: 14,
-    color: '#666',
+    color: RHSColors.textMuted,
   },
   projectLocationRow: {
     flexDirection: 'row',
@@ -519,7 +430,7 @@ const styles = StyleSheet.create({
   },
   projectLocation: {
     fontSize: 12,
-    color: '#999',
+    color: RHSColors.textMuted,
     marginLeft: 4,
   },
   loadMoreButton: {
@@ -527,11 +438,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#D93843',
+    borderColor: RHSColors.govBlue,
     borderRadius: 8,
   },
   loadMoreText: {
-    color: '#D93843',
+    color: RHSColors.govBlue,
     fontWeight: '600',
     fontSize: 14,
   },

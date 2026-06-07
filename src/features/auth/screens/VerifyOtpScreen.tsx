@@ -1,63 +1,36 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
+  TextInput,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
-  TextInput as RNTextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { setTokens } from '../../../lib/tokenStorage';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { RHSColors } from '../../../lib/theme';
 import { authApi } from '../api/authApi';
+import { AuthStackParamList } from '../AuthNavigator';
 
-interface VerifyOtpRouteParams {
-  email: string;
-}
+type VerifyOtpRouteProp = RouteProp<AuthStackParamList, 'VerifyOtp'>;
 
 export const VerifyOtpScreen = () => {
   const navigation = useNavigation<any>();
-  const route = useRoute();
-  const { email } = route.params as VerifyOtpRouteParams;
+  const route = useRoute<VerifyOtpRouteProp>();
+  const email = route.params?.email || '';
 
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [timer, setTimer] = useState(60);
-  const inputRefs = useRef<(RNTextInput | null)[]>([]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimer((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleOtpChange = (text: string, index: number) => {
-    const newOtp = [...otp];
-    newOtp[index] = text;
-    setOtp(newOtp);
-
-    if (text && index < 5 && inputRefs.current[index + 1]) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
+  const [resending, setResending] = useState(false);
 
   const handleVerifyOtp = async () => {
-    const otpCode = otp.join('');
-    
-    if (otpCode.length !== 6) {
-      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ mã OTP');
+    if (!otpCode) {
+      Alert.alert('Lỗi', 'Vui lòng nhập mã OTP');
       return;
     }
 
@@ -65,13 +38,12 @@ export const VerifyOtpScreen = () => {
     try {
       const result = await authApi.verifyOtp({ email, otpCode });
 
-      if (result.success && result.accessToken) {
-        await setTokens(result.accessToken, result.refreshToken);
-        Alert.alert('Thành công', 'Xác thực tài khoản thành công!', [
-          { text: 'OK', onPress: () => navigation.navigate('MainTabs') },
+      if (result.success) {
+        Alert.alert('Thành công', 'Xác thực OTP thành công!', [
+          { text: 'OK', onPress: () => navigation.navigate('Login') },
         ]);
       } else {
-        Alert.alert('Lỗi', result.message || 'Xác thực thất bại');
+        Alert.alert('Lỗi', result.message || 'Xác thực OTP thất bại');
       }
     } catch (error: any) {
       Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
@@ -81,75 +53,76 @@ export const VerifyOtpScreen = () => {
   };
 
   const handleResendOtp = async () => {
-    setLoading(true);
+    setResending(true);
     try {
       const result = await authApi.resendOtp(email);
-      
       if (result.success) {
-        setTimer(60);
-        Alert.alert('Thành công', 'Mã OTP đã được gửi lại');
+        Alert.alert('Thành công', 'Mã OTP mới đã được gửi đến email của bạn');
       } else {
-        Alert.alert('Lỗi', result.message || 'Không thể gửi lại mã OTP');
+        Alert.alert('Lỗi', result.message || 'Gửi lại OTP thất bại');
       }
     } catch (error: any) {
       Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
     } finally {
-      setLoading(false);
+      setResending(false);
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
+      <View style={styles.brandBar}>
+        <View style={styles.brandBarStripeRed} />
+        <View style={styles.brandBarStripeGold} />
+        <View style={styles.brandBarStripeBlue} />
+      </View>
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Feather name="arrow-left" color="#000000" size={24} />
+            <Feather name="arrow-left" color={RHSColors.text} size={24} />
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.title}>Xác thực tài khoản</Text>
-        <Text style={styles.subtitle}>Nhập mã OTP đã gửi đến {email}</Text>
+        <Text style={styles.title}>Xác thực OTP</Text>
+        <Text style={styles.subtitle}>
+          Mã OTP đã được gửi đến email{' '}
+          <Text style={{ fontWeight: '700' }}>{email}</Text>
+        </Text>
 
-        <View style={styles.otpContainer}>
-          {otp.map((digit, index) => (
-            <RNTextInput
-              key={index}
-              ref={(ref) => { inputRefs.current[index] = ref; }}
-              style={[styles.otpInput, digit ? styles.otpInputFilled : null]}
-              value={digit}
-              onChangeText={(text) => handleOtpChange(text, index)}
-              onKeyPress={(e) => handleKeyPress(e, index)}
-              keyboardType="numeric"
-              maxLength={1}
-              textAlign="center"
-            />
-          ))}
-        </View>
+        <View style={styles.formContainer}>
+          <TextInput
+            style={styles.otpInput}
+            placeholder="Nhập mã OTP"
+            value={otpCode}
+            onChangeText={setOtpCode}
+            keyboardType="number-pad"
+            maxLength={6}
+            placeholderTextColor={RHSColors.textMuted}
+          />
 
-        <TouchableOpacity 
-          style={[styles.verifyBtn, loading && styles.verifyBtnDisabled]}
-          disabled={loading}
-          onPress={handleVerifyOtp}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.verifyBtnText}>Xác thực</Text>
-          )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.verifyBtn, otpCode.length > 0 && styles.verifyBtnActive]}
+            disabled={!otpCode || loading}
+            onPress={handleVerifyOtp}
+          >
+            {loading ? (
+              <ActivityIndicator color={RHSColors.white} />
+            ) : (
+              <Text style={[styles.verifyBtnText, otpCode.length > 0 && styles.verifyBtnTextActive]}>
+                Xác thực
+              </Text>
+            )}
+          </TouchableOpacity>
 
-        <View style={styles.resendContainer}>
-          <Text style={styles.resendText}>Không nhận được mã? </Text>
-          {timer > 0 ? (
-            <Text style={styles.timerText}>Gửi lại sau ({timer}s)</Text>
-          ) : (
-            <TouchableOpacity onPress={handleResendOtp} disabled={loading}>
-              <Text style={[styles.resendLink, loading && styles.resendLinkDisabled]}>Gửi lại</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity style={styles.resendBtn} onPress={handleResendOtp} disabled={resending}>
+            {resending ? (
+              <ActivityIndicator size="small" color={RHSColors.govBlue} />
+            ) : (
+              <Text style={styles.resendText}>Gửi lại mã OTP</Text>
+            )}
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -157,77 +130,68 @@ export const VerifyOtpScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  safeArea: { flex: 1, backgroundColor: RHSColors.surfaceCard },
+  brandBar: {
+    flexDirection: 'row',
+    height: 4,
+  },
+  brandBarStripeRed: {
+    flex: 2,
+    backgroundColor: RHSColors.govRed,
+  },
+  brandBarStripeGold: {
+    flex: 0.4,
+    backgroundColor: RHSColors.govGold,
+  },
+  brandBarStripeBlue: {
+    flex: 2,
+    backgroundColor: RHSColors.govBlue,
+  },
   container: { flex: 1, paddingHorizontal: 24 },
   header: { marginTop: 16, marginBottom: 40 },
   backButton: {
     width: 40, height: 40, borderRadius: 20, borderWidth: 1,
-    borderColor: '#E5E5EA', justifyContent: 'center', alignItems: 'center',
+    borderColor: RHSColors.border, justifyContent: 'center', alignItems: 'center',
   },
   title: {
-    fontSize: 28, fontWeight: 'bold', color: '#000000', textAlign: 'center', marginBottom: 12,
+    fontSize: 28, fontWeight: 'bold', color: RHSColors.text, textAlign: 'center', marginBottom: 12,
   },
   subtitle: {
-    fontSize: 14, color: '#666666', textAlign: 'center', marginBottom: 40,
+    fontSize: 14, color: RHSColors.textMuted, textAlign: 'center', marginBottom: 40, lineHeight: 20,
   },
-  otpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 40,
-    paddingHorizontal: 10,
-  },
+  formContainer: { marginBottom: 30 },
   otpInput: {
-    width: 50,
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
+    backgroundColor: RHSColors.surface,
+    borderWidth: 1.5,
+    borderColor: RHSColors.border,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  otpInputFilled: {
-    borderColor: '#000000',
-    backgroundColor: '#F8F8F8',
+    height: 52,
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: 8,
+    color: RHSColors.text,
+    marginBottom: 20,
   },
   verifyBtn: {
-    backgroundColor: '#000000',
+    backgroundColor: RHSColors.surface,
     height: 52,
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 16,
   },
-  verifyBtnDisabled: {
-    backgroundColor: '#C7C7CC',
-  },
-  verifyBtnText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  resendContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  verifyBtnActive: { backgroundColor: RHSColors.govBlue },
+  verifyBtnText: { fontSize: 16, fontWeight: '600', color: RHSColors.textMuted },
+  verifyBtnTextActive: { color: RHSColors.white },
+  resendBtn: {
     alignItems: 'center',
+    paddingVertical: 12,
   },
   resendText: {
     fontSize: 14,
-    color: '#333333',
-  },
-  timerText: {
-    fontSize: 14,
-    color: '#8E8E93',
-  },
-  resendLink: {
-    fontSize: 14,
     fontWeight: '600',
-    color: '#D93843',
+    color: RHSColors.govBlue,
     textDecorationLine: 'underline',
-  },
-  resendLinkDisabled: {
-    color: '#8E8E93',
   },
 });

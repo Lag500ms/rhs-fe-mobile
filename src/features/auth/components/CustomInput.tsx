@@ -1,54 +1,70 @@
-import React from 'react';
-import { View, TextInput, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, TextInput, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { RHSColors } from '../../../lib/theme';
 
 interface CustomInputProps {
-  iconName: keyof typeof Feather.glyphMap;
+  iconName: string;
   placeholder: string;
-  secureTextEntry?: boolean;
   value: string;
   onChangeText: (text: string) => void;
-  errorMessage?: string;
-  keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'numeric';
+  secureTextEntry?: boolean;
+  keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'number-pad';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  multiline?: boolean;
-  numberOfLines?: number;
+  errorMessage?: string;
 }
 
-export const CustomInput = ({ 
-  iconName, 
-  placeholder, 
-  secureTextEntry = false, 
-  value, 
+export const CustomInput = ({
+  iconName,
+  placeholder,
+  value,
   onChangeText,
-  errorMessage,
+  secureTextEntry = false,
   keyboardType = 'default',
   autoCapitalize = 'none',
-  multiline = false,
-  numberOfLines,
+  errorMessage,
 }: CustomInputProps) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
     <View style={styles.container}>
-      <View style={[
-        styles.inputWrapper, 
-        errorMessage ? styles.inputWrapperError : null
-      ]}>
-        <Feather name={iconName} color={errorMessage ? "#D93843" : "#000000"} size={20} style={styles.inputIcon} />
+      <View
+        style={[
+          styles.inputContainer,
+          isFocused && styles.inputContainerFocused,
+          errorMessage && styles.inputContainerError,
+        ]}
+      >
+        <Feather
+          name={iconName as any}
+          size={20}
+          color={isFocused ? RHSColors.govBlue : RHSColors.textMuted}
+          style={styles.icon}
+        />
         <TextInput
           style={styles.input}
           placeholder={placeholder}
-          placeholderTextColor="#A0A0A0"
-          secureTextEntry={secureTextEntry}
+          placeholderTextColor={RHSColors.textMuted}
           value={value}
           onChangeText={onChangeText}
-          autoCapitalize={autoCapitalize}
+          secureTextEntry={secureTextEntry && !showPassword}
           keyboardType={keyboardType}
-          multiline={multiline}
-          numberOfLines={numberOfLines}
+          autoCapitalize={autoCapitalize}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
         />
+        {secureTextEntry && (
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <Feather
+              name={showPassword ? 'eye-off' : 'eye'}
+              size={20}
+              color={RHSColors.textMuted}
+            />
+          </TouchableOpacity>
+        )}
       </View>
-     
-      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+      {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
     </View>
   );
 };
@@ -57,33 +73,34 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
   },
-  inputWrapper: {
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 25,
-    paddingHorizontal: 16,
+    backgroundColor: RHSColors.surface,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: RHSColors.border,
+    paddingHorizontal: 14,
     height: 52,
-    backgroundColor: '#FFFFFF',
   },
-  inputWrapperError: {
-    borderColor: '#D93843',
-    backgroundColor: '#FDF2F2', // Màu nền hồng nhạt khi lỗi
+  inputContainerFocused: {
+    borderColor: RHSColors.govTeal,
   },
-  inputIcon: {
-    marginRight: 12,
+  inputContainerError: {
+    borderColor: RHSColors.govRed,
+  },
+  icon: {
+    marginRight: 10,
   },
   input: {
     flex: 1,
-    fontSize: 16,
-    color: '#000000',
+    fontSize: 15,
+    color: RHSColors.text,
   },
   errorText: {
-    color: '#D93843',
+    color: RHSColors.govRed,
     fontSize: 12,
-    marginTop: 8,
+    marginTop: 4,
     marginLeft: 4,
-    fontWeight: '500',
-  }
+  },
 });

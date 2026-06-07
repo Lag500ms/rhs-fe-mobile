@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { RHSColors } from '../../../lib/theme';
+import { RHSLogo } from '../../../lib/Logo';
 
 import { userApi, UserProfileDto } from '../api/userApi';
 
@@ -64,18 +66,26 @@ export const ProfileScreen = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#000000" />
+        <ActivityIndicator size="large" color={RHSColors.govBlue} />
       </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <View style={styles.brandBar}>
+        <View style={styles.brandBarStripeRed} />
+        <View style={styles.brandBarStripeGold} />
+        <View style={styles.brandBarStripeBlue} />
+      </View>
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('EditProfile')}>
-            <Feather name="edit-2" color="#000000" size={24} />
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => navigation.navigate('EditProfile')}
+          >
+            <Feather name="edit-2" color={RHSColors.govBlue} size={20} />
           </TouchableOpacity>
         </View>
 
@@ -92,9 +102,9 @@ export const ProfileScreen = () => {
             )}
             <TouchableOpacity style={styles.uploadBtn} onPress={handleUploadImage} disabled={uploading}>
               {uploading ? (
-                <ActivityIndicator size="small" color="#000000" />
+                <ActivityIndicator size="small" color={RHSColors.govBlue} />
               ) : (
-                <Feather name="camera" color="#000000" size={20} />
+                <Feather name="camera" color={RHSColors.text} size={18} />
               )}
             </TouchableOpacity>
           </View>
@@ -122,7 +132,7 @@ export const ProfileScreen = () => {
 
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Trạng thái email</Text>
-              <Text style={[styles.infoValue, 
+              <Text style={[styles.infoValue,
                 profile?.isEmailVerified ? styles.verifiedText : styles.unverifiedText
               ]}>
                 {profile?.isEmailVerified ? 'Đã xác thực' : 'Chưa xác thực'}
@@ -131,20 +141,20 @@ export const ProfileScreen = () => {
           </View>
         </View>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.actionBtn}
           onPress={() => navigation.navigate('ChangePassword')}
         >
-          <Feather name="lock" color="#000000" size={20} />
+          <Feather name="lock" color={RHSColors.govBlue} size={20} />
           <Text style={styles.actionBtnText}>Đổi mật khẩu</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.actionBtn, styles.deleteAccountBtn]}
           onPress={() => navigation.navigate('DeleteAccount')}
         >
-          <Feather name="trash-2" color="#D93843" size={20} />
-          <Text style={[styles.actionBtnText, styles.deleteAccountText]}>Xóa tài khoản</Text>
+          <Feather name="trash-2" color={RHSColors.govRed} size={20} />
+          <Text style={[styles.actionBtnText, { color: RHSColors.govRed }]}>Xóa tài khoản</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -152,7 +162,23 @@ export const ProfileScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  safeArea: { flex: 1, backgroundColor: RHSColors.surfaceCard },
+  brandBar: {
+    flexDirection: 'row',
+    height: 4,
+  },
+  brandBarStripeRed: {
+    flex: 2,
+    backgroundColor: RHSColors.govRed,
+  },
+  brandBarStripeGold: {
+    flex: 0.4,
+    backgroundColor: RHSColors.govGold,
+  },
+  brandBarStripeBlue: {
+    flex: 2,
+    backgroundColor: RHSColors.govBlue,
+  },
   container: { flex: 1, paddingHorizontal: 24 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
@@ -165,7 +191,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000000',
+    color: RHSColors.text,
+  },
+  editButton: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: RHSColors.surface,
+    justifyContent: 'center', alignItems: 'center',
   },
   profileContainer: {
     flex: 1,
@@ -184,14 +215,14 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#000000',
+    backgroundColor: RHSColors.govBlue,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: RHSColors.white,
   },
   uploadBtn: {
     position: 'absolute',
@@ -200,14 +231,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: RHSColors.surfaceCard,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: RHSColors.border,
   },
   infoContainer: {
-    backgroundColor: '#F8F8F8',
+    backgroundColor: RHSColors.surface,
     borderRadius: 16,
     padding: 20,
   },
@@ -216,42 +247,39 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: RHSColors.border,
   },
   infoLabel: {
     fontSize: 14,
-    color: '#666666',
+    color: RHSColors.textMuted,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000000',
+    color: RHSColors.text,
   },
   verifiedText: {
-    color: '#34C759',
+    color: RHSColors.govGreen,
   },
   unverifiedText: {
-    color: '#D93843',
+    color: RHSColors.govRed,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F2F2F7',
+    backgroundColor: RHSColors.surface,
     height: 52,
-    borderRadius: 25,
+    borderRadius: 12,
     marginBottom: 16,
   },
   actionBtnText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000000',
+    color: RHSColors.govBlue,
     marginLeft: 8,
   },
   deleteAccountBtn: {
     backgroundColor: '#FDF2F2',
-  },
-  deleteAccountText: {
-    color: '#D93843',
   },
 });

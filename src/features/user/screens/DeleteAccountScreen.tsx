@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { RHSColors } from '../../../lib/theme';
 
 import { CustomInput } from '../../auth/components/CustomInput';
 import { userApi } from '../api/userApi';
@@ -28,7 +29,7 @@ export const DeleteAccountScreen = () => {
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
-    
+
     if (!password) {
       newErrors.password = 'Mật khẩu là bắt buộc để xác nhận';
     }
@@ -39,7 +40,7 @@ export const DeleteAccountScreen = () => {
 
   const handleDeleteAccount = async () => {
     setHasInteracted({ password: true });
-    
+
     if (!validateForm()) {
       return;
     }
@@ -77,13 +78,18 @@ export const DeleteAccountScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
+      <View style={styles.brandBar}>
+        <View style={styles.brandBarStripeRed} />
+        <View style={styles.brandBarStripeGold} />
+        <View style={styles.brandBarStripeBlue} />
+      </View>
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Feather name="arrow-left" color="#000000" size={24} />
+            <Feather name="arrow-left" color={RHSColors.text} size={24} />
           </TouchableOpacity>
         </View>
 
@@ -108,17 +114,15 @@ export const DeleteAccountScreen = () => {
             placeholder="Lý do (tùy chọn)"
             value={reason}
             onChangeText={setReason}
-            multiline
-            numberOfLines={3}
           />
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.deleteBtn, isSubmitEnabled && styles.deleteBtnActive]}
             disabled={!isSubmitEnabled || loading}
             onPress={handleDeleteAccount}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={RHSColors.white} />
             ) : (
               <Text style={styles.deleteBtnText}>Xóa tài khoản</Text>
             )}
@@ -130,28 +134,44 @@ export const DeleteAccountScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  safeArea: { flex: 1, backgroundColor: RHSColors.surfaceCard },
+  brandBar: {
+    flexDirection: 'row',
+    height: 4,
+  },
+  brandBarStripeRed: {
+    flex: 2,
+    backgroundColor: RHSColors.govRed,
+  },
+  brandBarStripeGold: {
+    flex: 0.4,
+    backgroundColor: RHSColors.govGold,
+  },
+  brandBarStripeBlue: {
+    flex: 2,
+    backgroundColor: RHSColors.govBlue,
+  },
   container: { flex: 1, paddingHorizontal: 24 },
   header: { marginTop: 16, marginBottom: 40 },
   backButton: {
     width: 40, height: 40, borderRadius: 20, borderWidth: 1,
-    borderColor: '#E5E5EA', justifyContent: 'center', alignItems: 'center',
+    borderColor: RHSColors.border, justifyContent: 'center', alignItems: 'center',
   },
   title: {
-    fontSize: 28, fontWeight: 'bold', color: '#D93843', textAlign: 'center', marginBottom: 12,
+    fontSize: 28, fontWeight: 'bold', color: RHSColors.govRed, textAlign: 'center', marginBottom: 12,
   },
   subtitle: {
-    fontSize: 14, color: '#666666', textAlign: 'center', marginBottom: 40,
+    fontSize: 14, color: RHSColors.textMuted, textAlign: 'center', marginBottom: 40, lineHeight: 20,
   },
   formContainer: { marginBottom: 30 },
   deleteBtn: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: RHSColors.surface,
     height: 52,
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 20,
   },
-  deleteBtnActive: { backgroundColor: '#D93843' },
-  deleteBtnText: { fontSize: 16, fontWeight: '600', color: '#8E8E93' },
+  deleteBtnActive: { backgroundColor: RHSColors.govRed },
+  deleteBtnText: { fontSize: 16, fontWeight: '600', color: RHSColors.textMuted },
 });

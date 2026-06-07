@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { RHSColors } from '../../../lib/theme';
 
 import { CustomInput } from '../components/CustomInput';
 import { Divider } from '../components/Divider';
@@ -32,19 +33,19 @@ export const RegisterScreen = () => {
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
-    
+
     if (!email) {
       newErrors.email = 'Email là bắt buộc';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = 'Email không hợp lệ';
     }
-    
+
     if (!password) {
       newErrors.password = 'Mật khẩu là bắt buộc';
     } else if (password.length < 6) {
       newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
     }
-    
+
     if (!fullName) {
       newErrors.fullName = 'Họ tên là bắt buộc';
     }
@@ -55,7 +56,7 @@ export const RegisterScreen = () => {
 
   const handleRegister = async () => {
     setHasInteracted({ email: true, password: true, fullName: true });
-    
+
     if (!validateForm()) {
       return;
     }
@@ -88,13 +89,18 @@ export const RegisterScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
+      <View style={styles.brandBar}>
+        <View style={styles.brandBarStripeRed} />
+        <View style={styles.brandBarStripeGold} />
+        <View style={styles.brandBarStripeBlue} />
+      </View>
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Feather name="arrow-left" color="#000000" size={24} />
+            <Feather name="arrow-left" color={RHSColors.text} size={24} />
           </TouchableOpacity>
         </View>
 
@@ -145,13 +151,13 @@ export const RegisterScreen = () => {
             keyboardType="phone-pad"
           />
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.registerBtn, isRegisterEnabled && styles.registerBtnActive]}
             disabled={!isRegisterEnabled || loading}
             onPress={handleRegister}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={RHSColors.white} />
             ) : (
               <Text style={[styles.registerBtnText, isRegisterEnabled && styles.registerBtnTextActive]}>
                 Đăng ký
@@ -161,7 +167,7 @@ export const RegisterScreen = () => {
         </View>
 
         <Divider text="Hoặc đăng ký với" />
-        
+
         <View style={styles.socialContainer}>
           <SocialButton />
         </View>
@@ -178,25 +184,41 @@ export const RegisterScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  safeArea: { flex: 1, backgroundColor: RHSColors.surfaceCard },
+  brandBar: {
+    flexDirection: 'row',
+    height: 4,
+  },
+  brandBarStripeRed: {
+    flex: 2,
+    backgroundColor: RHSColors.govRed,
+  },
+  brandBarStripeGold: {
+    flex: 0.4,
+    backgroundColor: RHSColors.govGold,
+  },
+  brandBarStripeBlue: {
+    flex: 2,
+    backgroundColor: RHSColors.govBlue,
+  },
   container: { flex: 1, paddingHorizontal: 24 },
   header: { marginTop: 16, marginBottom: 40 },
   backButton: {
     width: 40, height: 40, borderRadius: 20, borderWidth: 1,
-    borderColor: '#E5E5EA', justifyContent: 'center', alignItems: 'center',
+    borderColor: RHSColors.border, justifyContent: 'center', alignItems: 'center',
   },
   title: {
-    fontSize: 28, fontWeight: 'bold', color: '#000000', textAlign: 'center', marginBottom: 40,
+    fontSize: 28, fontWeight: 'bold', color: RHSColors.text, textAlign: 'center', marginBottom: 40,
   },
   formContainer: { marginBottom: 30 },
   registerBtn: {
-    backgroundColor: '#F2F2F7', height: 52, borderRadius: 25, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: RHSColors.surface, height: 52, borderRadius: 25, justifyContent: 'center', alignItems: 'center',
   },
-  registerBtnActive: { backgroundColor: '#000000' },
-  registerBtnText: { fontSize: 16, fontWeight: '600', color: '#8E8E93' },
-  registerBtnTextActive: { color: '#FFFFFF' },
+  registerBtnActive: { backgroundColor: RHSColors.govBlue },
+  registerBtnText: { fontSize: 16, fontWeight: '600', color: RHSColors.textMuted },
+  registerBtnTextActive: { color: RHSColors.white },
   socialContainer: { alignItems: 'center', marginBottom: 30 },
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  footerText: { fontSize: 14, color: '#333333' },
-  loginText: { fontSize: 14, fontWeight: '600', color: '#D93843', textDecorationLine: 'underline' },
+  footerText: { fontSize: 14, color: RHSColors.text },
+  loginText: { fontSize: 14, fontWeight: '600', color: RHSColors.govRed, textDecorationLine: 'underline' },
 });
