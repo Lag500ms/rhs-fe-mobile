@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import { RHSColors } from '../../lib/theme';
 
-import { HomeScreen } from '../home/screens/HomeScreen';
+import { HomeNavigator } from '../home/navigation/HomeNavigator';
 import { SavedScreen } from '../saved/screens/SavedScreen';
 import { AccountScreen } from '../account/screens/AccountScreen';
 
@@ -38,7 +38,7 @@ export const MainTabNavigator = () => {
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
+        component={HomeNavigator}
         options={{
           tabBarLabel: 'Trang chủ',
           tabBarIcon: ({ color, size }) => (

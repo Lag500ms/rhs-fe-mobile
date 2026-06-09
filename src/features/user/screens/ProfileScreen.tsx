@@ -4,17 +4,15 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
   ActivityIndicator,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RHSColors } from '../../../lib/theme';
-import { RHSLogo } from '../../../lib/Logo';
 
 import { userApi, UserProfileDto } from '../api/userApi';
 
@@ -65,9 +63,11 @@ export const ProfileScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={RHSColors.govBlue} />
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={RHSColors.govBlue} />
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -78,91 +78,105 @@ export const ProfileScreen = () => {
         <View style={styles.brandBarStripeGold} />
         <View style={styles.brandBarStripeBlue} />
       </View>
+      <LinearGradient
+        colors={[RHSColors.govBlueDark, RHSColors.govBlue, RHSColors.govTeal]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Feather name="arrow-left" size={24} color={RHSColors.white} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => navigation.navigate('EditProfile')}
+        >
+          <Feather name="edit-2" color={RHSColors.white} size={18} />
+        </TouchableOpacity>
+      </LinearGradient>
+
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => navigation.navigate('EditProfile')}
-          >
-            <Feather name="edit-2" color={RHSColors.govBlue} size={20} />
+        {/* Avatar Card */}
+        <View style={styles.avatarCard}>
+          {profile?.profileImageUrl ? (
+            <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Text style={styles.avatarText}>
+                {profile?.fullName?.charAt(0) || 'U'}
+              </Text>
+            </View>
+          )}
+          <TouchableOpacity style={styles.uploadBtn} onPress={handleUploadImage} disabled={uploading}>
+            {uploading ? (
+              <ActivityIndicator size="small" color={RHSColors.govBlue} />
+            ) : (
+              <Feather name="camera" color={RHSColors.white} size={16} />
+            )}
           </TouchableOpacity>
         </View>
 
-        <View style={styles.profileContainer}>
-          <View style={styles.avatarContainer}>
-            {profile?.profileImageUrl ? (
-              <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>
-                  {profile?.fullName?.charAt(0) || 'U'}
-                </Text>
-              </View>
-            )}
-            <TouchableOpacity style={styles.uploadBtn} onPress={handleUploadImage} disabled={uploading}>
-              {uploading ? (
-                <ActivityIndicator size="small" color={RHSColors.govBlue} />
-              ) : (
-                <Feather name="camera" color={RHSColors.text} size={18} />
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.infoContainer}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Họ tên</Text>
-              <Text style={styles.infoValue}>{profile?.fullName || 'Chưa cập nhật'}</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{profile?.email || 'Chưa cập nhật'}</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Số điện thoại</Text>
-              <Text style={styles.infoValue}>{profile?.phoneNumber || 'Chưa cập nhật'}</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Vai trò</Text>
-              <Text style={styles.infoValue}>{profile?.role || 'Applicant'}</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Trạng thái email</Text>
-              <Text style={[styles.infoValue,
-                profile?.isEmailVerified ? styles.verifiedText : styles.unverifiedText
-              ]}>
-                {profile?.isEmailVerified ? 'Đã xác thực' : 'Chưa xác thực'}
-              </Text>
-            </View>
-          </View>
+        {/* Info Card */}
+        <View style={styles.infoCard}>
+          <InfoRow label="Họ tên" value={profile?.fullName || 'Chưa cập nhật'} />
+          <InfoRow label="Email" value={profile?.email || 'Chưa cập nhật'} />
+          <InfoRow label="Số điện thoại" value={profile?.phoneNumber || 'Chưa cập nhật'} />
+          <InfoRow label="Vai trò" value={profile?.role || 'Applicant'} />
+          <InfoRow
+            label="Trạng thái email"
+            value={profile?.isEmailVerified ? 'Đã xác thực' : 'Chưa xác thực'}
+            isHighlight={profile?.isEmailVerified}
+            last
+          />
         </View>
 
+        {/* Actions */}
         <TouchableOpacity
           style={styles.actionBtn}
           onPress={() => navigation.navigate('ChangePassword')}
         >
           <Feather name="lock" color={RHSColors.govBlue} size={20} />
           <Text style={styles.actionBtnText}>Đổi mật khẩu</Text>
+          <Feather name="chevron-right" color={RHSColors.textMuted} size={20} />
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionBtn, styles.deleteAccountBtn]}
+          style={[styles.actionBtn, styles.deleteBtn]}
           onPress={() => navigation.navigate('DeleteAccount')}
         >
           <Feather name="trash-2" color={RHSColors.govRed} size={20} />
           <Text style={[styles.actionBtnText, { color: RHSColors.govRed }]}>Xóa tài khoản</Text>
+          <Feather name="chevron-right" color={RHSColors.textMuted} size={20} />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 };
 
+const InfoRow = ({ label, value, isHighlight, last }: {
+  label: string;
+  value: string;
+  isHighlight?: boolean;
+  last?: boolean;
+}) => (
+  <View style={[styles.infoRow, last && { borderBottomWidth: 0 }]}>
+    <Text style={styles.infoLabel}>{label}</Text>
+    <Text style={[
+      styles.infoValue,
+      isHighlight === true && { color: RHSColors.govGreen },
+      isHighlight === false && { color: RHSColors.govRed },
+    ]}>
+      {value}
+    </Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: RHSColors.surfaceCard },
+  safeArea: {
+    flex: 1,
+    backgroundColor: RHSColors.surface,
+  },
   brandBar: {
     flexDirection: 'row',
     height: 4,
@@ -179,37 +193,53 @@ const styles = StyleSheet.create({
     flex: 2,
     backgroundColor: RHSColors.govBlue,
   },
-  container: { flex: 1, paddingHorizontal: 24 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 30,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  backButton: {
+    padding: 4,
+    marginRight: 12,
   },
   headerTitle: {
-    fontSize: 24,
+    flex: 1,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: RHSColors.text,
+    color: RHSColors.white,
   },
   editButton: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: RHSColors.surface,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  profileContainer: {
-    flex: 1,
-  },
-  avatarContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 30,
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: RHSColors.surface,
+  },
+  avatarCard: {
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 24,
     position: 'relative',
   },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
+    borderWidth: 4,
+    borderColor: RHSColors.white,
   },
   avatarPlaceholder: {
     width: 100,
@@ -218,6 +248,13 @@ const styles = StyleSheet.create({
     backgroundColor: RHSColors.govBlue,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 4,
+    borderColor: RHSColors.white,
+    shadowColor: RHSColors.black,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   avatarText: {
     fontSize: 36,
@@ -226,28 +263,36 @@ const styles = StyleSheet.create({
   },
   uploadBtn: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: RHSColors.surfaceCard,
+    bottom: 4,
+    right: 4,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: RHSColors.govBlue,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: RHSColors.border,
+    borderWidth: 3,
+    borderColor: RHSColors.white,
   },
-  infoContainer: {
-    backgroundColor: RHSColors.surface,
+  infoCard: {
+    backgroundColor: RHSColors.white,
     borderRadius: 16,
-    padding: 20,
+    paddingHorizontal: 4,
+    marginBottom: 16,
+    shadowColor: RHSColors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: RHSColors.border,
+    borderBottomColor: RHSColors.surface,
   },
   infoLabel: {
     fontSize: 14,
@@ -257,29 +302,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: RHSColors.text,
-  },
-  verifiedText: {
-    color: RHSColors.govGreen,
-  },
-  unverifiedText: {
-    color: RHSColors.govRed,
+    maxWidth: '55%',
+    textAlign: 'right',
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: RHSColors.surface,
-    height: 52,
-    borderRadius: 12,
-    marginBottom: 16,
+    backgroundColor: RHSColors.white,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    marginBottom: 12,
+    shadowColor: RHSColors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   actionBtnText: {
-    fontSize: 16,
+    flex: 1,
+    fontSize: 15,
     fontWeight: '600',
     color: RHSColors.govBlue,
-    marginLeft: 8,
+    marginLeft: 12,
   },
-  deleteAccountBtn: {
-    backgroundColor: '#FDF2F2',
+  deleteBtn: {
+    marginBottom: 30,
   },
 });

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RHSColors } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
@@ -88,137 +89,117 @@ export const AccountScreen = () => {
         <View style={styles.brandBarStripeGold} />
         <View style={styles.brandBarStripeBlue} />
       </View>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Brand header */}
-        <View style={styles.brandHeader}>
-          <RHSLogo size={32} />
-          <Text style={styles.brandHeaderText}>RHS</Text>
-        </View>
+      <LinearGradient
+        colors={[RHSColors.govBlueDark, RHSColors.govBlue, RHSColors.govTeal]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.brandHeader}
+      >
+        <RHSLogo size={32} />
+        <Text style={styles.brandHeaderText}>RHS</Text>
+      </LinearGradient>
 
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Login/Profile Section */}
         {!isLoggedIn ? (
-          <View style={styles.loginPromptContainer}>
-            <View style={[styles.iconContainer, { backgroundColor: '#e0f4ff' }]}>
+          <View style={styles.loginCard}>
+            <View style={styles.loginIconWrap}>
               <Feather name="user" size={48} color={RHSColors.govBlue} />
             </View>
-            <Text style={styles.loginPromptText}>
-              Đăng nhập tài khoản để xem thông tin và liên hệ đăng kí nhà ở xã hội phù hợp với bạn. Nếu chưa có tài khoản, hãy đăng ký ngay để trải nghiệm đầy đủ các tính năng của ứng dụng RHS.
+            <Text style={styles.loginTitle}>Chào bạn!</Text>
+            <Text style={styles.loginDesc}>
+              Đăng nhập để xem thông tin và đăng ký nhà ở xã hội phù hợp với bạn.
             </Text>
             <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
               <Text style={styles.loginButtonText}>Đăng nhập</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Auth', { screen: 'Register' })}
+            >
+              <Text style={styles.registerText}>Chưa có tài khoản? Đăng ký</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity style={styles.profileContainer} onPress={handleProfilePress}>
-            <View style={styles.avatarContainer}>
-              <View style={[styles.avatar, { backgroundColor: RHSColors.govBlue }]}>
-                <Text style={styles.avatarText}>
-                  {profile?.fullName?.charAt(0)?.toUpperCase() || 'R'}
-                </Text>
-              </View>
+          <TouchableOpacity style={styles.profileCard} onPress={handleProfilePress}>
+            <View style={styles.avatarWrap}>
+              <Text style={styles.avatarText}>
+                {profile?.fullName?.charAt(0)?.toUpperCase() || 'R'}
+              </Text>
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>{profile?.fullName || 'Người dùng'}</Text>
               <Text style={styles.profileRole}>{profile?.role || 'Applicant'}</Text>
-              <Feather name="chevron-right" size={20} color={RHSColors.textMuted} />
             </View>
+            <Feather name="chevron-right" size={22} color={RHSColors.textMuted} />
           </TouchableOpacity>
         )}
 
-        {/* Hướng dẫn Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Hướng dẫn</Text>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Feather name="help-circle" size={20} color={RHSColors.text} />
-            <Text style={styles.menuItemText}>Câu hỏi thường gặp</Text>
-            <Feather name="chevron-right" size={20} color={RHSColors.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Feather name="message-circle" size={20} color={RHSColors.text} />
-            <Text style={styles.menuItemText}>Góp ý báo lỗi</Text>
-            <Feather name="chevron-right" size={20} color={RHSColors.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Feather name="users" size={20} color={RHSColors.text} />
-            <Text style={styles.menuItemText}>Về chúng tôi</Text>
-            <Feather name="chevron-right" size={20} color={RHSColors.textMuted} />
-          </TouchableOpacity>
+        {/* Menu Sections */}
+        <View style={styles.menuCard}>
+          <Text style={styles.menuSectionTitle}>Hướng dẫn</Text>
+          <MenuItem icon="help-circle" text="Câu hỏi thường gặp" />
+          <MenuItem icon="message-circle" text="Góp ý báo lỗi" />
+          <MenuItem icon="users" text="Về chúng tôi" last />
         </View>
 
-        {/* Quy định Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quy định</Text>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Feather name="file-text" size={20} color={RHSColors.text} />
-            <Text style={styles.menuItemText}>Điều khoản thỏa thuận</Text>
-            <Feather name="chevron-right" size={20} color={RHSColors.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Feather name="shield" size={20} color={RHSColors.text} />
-            <Text style={styles.menuItemText}>Chính sách bảo mật</Text>
-            <Feather name="chevron-right" size={20} color={RHSColors.textMuted} />
-          </TouchableOpacity>
+        <View style={styles.menuCard}>
+          <Text style={styles.menuSectionTitle}>Quy định</Text>
+          <MenuItem icon="file-text" text="Điều khoản thỏa thuận" />
+          <MenuItem icon="shield" text="Chính sách bảo mật" last />
         </View>
 
-        {/* Tài khoản & thông báo Section - Only show when logged in */}
         {isLoggedIn && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tài khoản & thông báo</Text>
-
-            <TouchableOpacity style={styles.menuItem}>
-              <Feather name="settings" size={20} color={RHSColors.text} />
-              <Text style={styles.menuItemText}>Cài đặt tài khoản</Text>
-              <Feather name="chevron-right" size={20} color={RHSColors.textMuted} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
+          <View style={styles.menuCard}>
+            <Text style={styles.menuSectionTitle}>Tài khoản & thông báo</Text>
+            <MenuItem icon="settings" text="Cài đặt tài khoản" />
+            <MenuItem
+              icon="key"
+              text="Đổi mật khẩu"
               onPress={() => navigation.navigate('UserProfile', { screen: 'ChangePassword' })}
-            >
-              <Feather name="key" size={20} color={RHSColors.text} />
-              <Text style={styles.menuItemText}>Đổi mật khẩu</Text>
-              <Feather name="chevron-right" size={20} color={RHSColors.textMuted} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.menuItem}>
-              <Feather name="bell" size={20} color={RHSColors.text} />
-              <Text style={styles.menuItemText}>Cài đặt thông báo</Text>
-              <Feather name="chevron-right" size={20} color={RHSColors.textMuted} />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-              <Feather name="log-out" size={20} color={RHSColors.govRed} />
-              <Text style={[styles.menuItemText, { color: RHSColors.govRed }]}>Đăng xuất</Text>
-              <Feather name="chevron-right" size={20} color={RHSColors.textMuted} />
-            </TouchableOpacity>
+            />
+            <MenuItem icon="bell" text="Cài đặt thông báo" />
+            <MenuItem icon="log-out" text="Đăng xuất" isDestructive onPress={handleLogout} last />
           </View>
         )}
 
-        {/* Footer Info */}
+        {/* Footer */}
         <View style={styles.footer}>
-          <RHSLogo size={28} />
-          <Text style={styles.footerTitle}>Hệ thống cung ứng nhà ở xã hội bền vững</Text>
+          <RHSLogo size={24} />
+          <Text style={styles.footerText}>Hệ thống cung ứng nhà ở xã hội bền vững</Text>
         </View>
-
-        {/* Post Button */}
-        <TouchableOpacity style={styles.postButton}>
-          <Feather name="arrow-right" size={20} color={RHSColors.white} />
-          <Text style={styles.postButtonText}>Chuyển sang đăng tin</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
+// Menu Item Component
+const MenuItem = ({ icon, text, onPress, isDestructive, last }: {
+  icon: string;
+  text: string;
+  onPress?: () => void;
+  isDestructive?: boolean;
+  last?: boolean;
+}) => (
+  <TouchableOpacity
+    style={[styles.menuItem, last && styles.menuItemLast]}
+    onPress={onPress}
+  >
+    <Feather
+      name={icon as any}
+      size={20}
+      color={isDestructive ? RHSColors.govRed : RHSColors.text}
+    />
+    <Text style={[styles.menuItemText, isDestructive && { color: RHSColors.govRed }]}>
+      {text}
+    </Text>
+    <Feather name="chevron-right" size={20} color={RHSColors.textMuted} />
+  </TouchableOpacity>
+);
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: RHSColors.surfaceCard,
+    backgroundColor: RHSColors.surface,
   },
   container: {
     flex: 1,
@@ -245,53 +226,61 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 16,
-    backgroundColor: RHSColors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: RHSColors.border,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   brandHeaderText: {
     fontSize: 20,
     fontWeight: '700',
-    color: RHSColors.govBlueDark,
+    color: RHSColors.white,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  loginPromptContainer: {
     backgroundColor: RHSColors.surface,
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 30,
-    padding: 24,
-    borderRadius: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: RHSColors.border,
   },
-  iconContainer: {
+  loginCard: {
+    margin: 16,
+    padding: 32,
+    backgroundColor: RHSColors.white,
+    borderRadius: 20,
+    alignItems: 'center',
+    shadowColor: RHSColors.black,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  loginIconWrap: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#e3f2fd',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  loginPromptText: {
-    fontSize: 14,
-    color: RHSColors.text,
-    textAlign: 'center',
     marginBottom: 20,
+  },
+  loginTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: RHSColors.text,
+    marginBottom: 8,
+  },
+  loginDesc: {
+    fontSize: 14,
+    color: RHSColors.textMuted,
+    textAlign: 'center',
     lineHeight: 20,
+    marginBottom: 24,
   },
   loginButton: {
     backgroundColor: RHSColors.govBlue,
-    paddingHorizontal: 40,
-    paddingVertical: 12,
+    paddingHorizontal: 48,
+    paddingVertical: 14,
     borderRadius: 25,
-    minWidth: 200,
+    marginBottom: 12,
+    width: '100%',
     alignItems: 'center',
   },
   loginButtonText: {
@@ -299,29 +288,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: RHSColors.white,
   },
-  profileContainer: {
+  registerText: {
+    fontSize: 14,
+    color: RHSColors.govRed,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+  },
+  profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 30,
-    padding: 16,
-    backgroundColor: RHSColors.surface,
+    margin: 16,
+    padding: 18,
+    backgroundColor: RHSColors.white,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: RHSColors.border,
-    position: 'relative',
+    shadowColor: RHSColors.black,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  avatarContainer: {
-    marginRight: 12,
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  avatarWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: RHSColors.govBlue,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 14,
   },
   avatarText: {
     fontSize: 24,
@@ -330,77 +323,66 @@ const styles = StyleSheet.create({
   },
   profileInfo: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
   },
   profileName: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     color: RHSColors.text,
-    width: '100%',
   },
   profileRole: {
-    fontSize: 12,
+    fontSize: 13,
     color: RHSColors.textMuted,
     marginTop: 2,
   },
-  section: {
-    marginBottom: 30,
-    paddingHorizontal: 20,
+  menuCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: RHSColors.white,
+    borderRadius: 16,
+    paddingHorizontal: 4,
+    shadowColor: RHSColors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  sectionTitle: {
-    fontSize: 16,
+  menuSectionTitle: {
+    fontSize: 13,
     fontWeight: '600',
     color: RHSColors.textMuted,
-    marginBottom: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 15,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: RHSColors.surface,
   },
+  menuItemLast: {
+    borderBottomWidth: 0,
+  },
   menuItemText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     color: RHSColors.text,
     marginLeft: 12,
   },
   footer: {
-    paddingHorizontal: 20,
-    marginBottom: 30,
     alignItems: 'center',
+    paddingVertical: 24,
     gap: 8,
-  },
-  footerTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: RHSColors.govBlueDark,
-    textAlign: 'center',
   },
   footerText: {
     fontSize: 12,
-    color: RHSColors.textMuted,
-    lineHeight: 18,
-    textAlign: 'center',
-  },
-  postButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: RHSColors.govBlue,
-    marginHorizontal: 20,
-    marginBottom: 30,
-    paddingVertical: 16,
-    borderRadius: 25,
-  },
-  postButtonText: {
-    fontSize: 16,
     fontWeight: '600',
-    color: RHSColors.white,
-    marginLeft: 8,
+    color: RHSColors.govBlueDark,
+    textAlign: 'center',
+    opacity: 0.7,
   },
 });

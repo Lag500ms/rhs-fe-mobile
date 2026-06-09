@@ -1,23 +1,4 @@
-import axios from 'axios';
-import { getToken } from '../../../lib/tokenStorage';
-
-const API_BASE_URL = 'http://10.0.2.2:5112/api';
-
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-apiClient.interceptors.request.use(async (config) => {
-  const token = await getToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
+import apiClient from '../../../lib/apiClient';
 export interface UserProfileDto {
   id: string;
   email: string;

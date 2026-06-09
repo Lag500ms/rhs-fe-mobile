@@ -8,9 +8,11 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { RHSColors } from '../../../lib/theme';
 
@@ -29,33 +31,25 @@ export const EditProfileScreen = () => {
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
-
     if (!fullName) {
       newErrors.fullName = 'Họ tên là bắt buộc';
     } else if (fullName.length < 2) {
       newErrors.fullName = 'Họ tên phải có ít nhất 2 ký tự';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSave = async () => {
     setHasInteracted({ fullName: true, phoneNumber: true });
-
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     setLoading(true);
     try {
       const updateData: UpdateProfileDto = {
         fullName,
         phoneNumber: phoneNumber || undefined,
       };
-
       const result = await userApi.updateProfile(updateData);
-
       if (result.success) {
         Alert.alert('Thành công', 'Cập nhật thông tin thành công', [
           { text: 'OK', onPress: () => navigation.goBack() },
@@ -72,64 +66,74 @@ export const EditProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <View style={styles.brandBar}>
+        <View style={styles.brandBarStripeRed} />
+        <View style={styles.brandBarStripeGold} />
+        <View style={styles.brandBarStripeBlue} />
+      </View>
+      <LinearGradient
+        colors={[RHSColors.govBlueDark, RHSColors.govBlue, RHSColors.govTeal]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Feather name="x" color={RHSColors.white} size={24} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Chỉnh sửa hồ sơ</Text>
+        <View style={{ width: 40 }} />
+      </LinearGradient>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
-        <View style={styles.brandBar}>
-          <View style={styles.brandBarStripeRed} />
-          <View style={styles.brandBarStripeGold} />
-          <View style={styles.brandBarStripeBlue} />
-        </View>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Feather name="x" color={RHSColors.text} size={24} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Chỉnh sửa hồ sơ</Text>
-          <View style={{ width: 40 }} />
-        </View>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.formCard}>
+            <CustomInput
+              iconName="user"
+              placeholder="Họ tên"
+              value={fullName}
+              onChangeText={(text) => {
+                setFullName(text);
+                setHasInteracted({ ...hasInteracted, fullName: false });
+              }}
+              errorMessage={hasInteracted.fullName ? errors.fullName : undefined}
+            />
 
-        <View style={styles.formContainer}>
-          <CustomInput
-            iconName="user"
-            placeholder="Họ tên"
-            value={fullName}
-            onChangeText={(text) => {
-              setFullName(text);
-              setHasInteracted({ ...hasInteracted, fullName: false });
-            }}
-            errorMessage={hasInteracted.fullName ? errors.fullName : undefined}
-          />
+            <CustomInput
+              iconName="phone"
+              placeholder="Số điện thoại"
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              keyboardType="phone-pad"
+            />
 
-          <CustomInput
-            iconName="phone"
-            placeholder="Số điện thoại"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            keyboardType="phone-pad"
-          />
-
-          <TouchableOpacity
-            style={[styles.saveBtn, isSaveEnabled && styles.saveBtnActive]}
-            disabled={!isSaveEnabled || loading}
-            onPress={handleSave}
-          >
-            {loading ? (
-              <ActivityIndicator color={RHSColors.white} />
-            ) : (
-              <Text style={[styles.saveBtnText, isSaveEnabled && styles.saveBtnTextActive]}>
-                Lưu thay đổi
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={[styles.saveBtn, isSaveEnabled && styles.saveBtnActive]}
+              disabled={!isSaveEnabled || loading}
+              onPress={handleSave}
+            >
+              {loading ? (
+                <ActivityIndicator color={RHSColors.white} />
+              ) : (
+                <Text style={[styles.saveBtnText, isSaveEnabled && styles.saveBtnTextActive]}>
+                  Lưu thay đổi
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: RHSColors.surfaceCard },
+  safeArea: {
+    flex: 1,
+    backgroundColor: RHSColors.surface,
+  },
   brandBar: {
     flexDirection: 'row',
     height: 4,
@@ -146,33 +150,57 @@ const styles = StyleSheet.create({
     flex: 2,
     backgroundColor: RHSColors.govBlue,
   },
-  container: { flex: 1, paddingHorizontal: 24 },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 30,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   backButton: {
-    width: 40, height: 40, borderRadius: 20, borderWidth: 1,
-    borderColor: RHSColors.border, justifyContent: 'center', alignItems: 'center',
+    padding: 4,
+    marginRight: 12,
   },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: '600',
-    color: RHSColors.text,
+    color: RHSColors.white,
   },
-  formContainer: { flex: 1 },
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  formCard: {
+    backgroundColor: RHSColors.white,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: RHSColors.black,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
   saveBtn: {
     backgroundColor: RHSColors.surface,
     height: 52,
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 24,
   },
-  saveBtnActive: { backgroundColor: RHSColors.govBlue },
-  saveBtnText: { fontSize: 16, fontWeight: '600', color: RHSColors.textMuted },
-  saveBtnTextActive: { color: RHSColors.white },
+  saveBtnActive: {
+    backgroundColor: RHSColors.govBlue,
+  },
+  saveBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: RHSColors.textMuted,
+  },
+  saveBtnTextActive: {
+    color: RHSColors.white,
+  },
 });

@@ -10,12 +10,19 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { RHSColors } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
 import { housingApi, HousingProjectResponse } from '../api/housingApi';
+import { HomeStackParamList } from '../navigation/HomeNavigator';
+
+type HomeScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeList'>;
 
 export const HomeScreen = () => {
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const [searchText, setSearchText] = useState('');
   const [housingProjects, setHousingProjects] = useState<HousingProjectResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,8 +95,17 @@ export const HomeScreen = () => {
     return `${minArea} - ${maxArea} m²`;
   };
 
+  const handleProjectPress = (project: HousingProjectResponse) => {
+    navigation.navigate('HousingProjectDetail', { project });
+  };
+
   const renderProjectCard = (project: HousingProjectResponse) => (
-    <TouchableOpacity key={project.id} style={styles.projectCard} activeOpacity={0.8}>
+    <TouchableOpacity
+      key={project.id}
+      style={styles.projectCard}
+      activeOpacity={0.85}
+      onPress={() => handleProjectPress(project)}
+    >
       <View style={styles.projectThumbnail}>
         {project.thumbnailUrl ? (
           <Image source={{ uri: project.thumbnailUrl }} style={styles.projectImage} />
@@ -105,20 +121,22 @@ export const HomeScreen = () => {
         )}
       </View>
       <View style={styles.projectInfo}>
-        <Text style={[styles.projectName, { color: RHSColors.govBlueDark }]} numberOfLines={2}>
+        <Text style={styles.projectName} numberOfLines={2}>
           {project.projectName}
         </Text>
         <View style={styles.projectMeta}>
-          <Text style={[styles.projectPrice, { color: RHSColors.govRed }]}>
+          <Text style={styles.projectPrice}>
             {formatPrice(project.minPrice, project.maxPrice)}
           </Text>
-          <Text style={[styles.projectArea, { color: RHSColors.textMuted }]}>
-            {formatArea(project.minArea, project.maxArea)}
-          </Text>
+          {formatArea(project.minArea, project.maxArea) ? (
+            <Text style={styles.projectArea}>
+              {formatArea(project.minArea, project.maxArea)}
+            </Text>
+          ) : null}
         </View>
         <View style={styles.projectLocationRow}>
-          <Feather name="map-pin" size={12} color={RHSColors.textMuted} />
-          <Text style={[styles.projectLocation, { color: RHSColors.textMuted }]} numberOfLines={1}>
+          <Feather name="map-pin" size={13} color={RHSColors.textMuted} />
+          <Text style={styles.projectLocation} numberOfLines={1}>
             {project.province}, {project.district}
           </Text>
         </View>
@@ -128,93 +146,99 @@ export const HomeScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Brand header bar */}
+      {/* Brand bar */}
       <View style={styles.brandBar}>
         <View style={styles.brandBarStripeRed} />
         <View style={styles.brandBarStripeGold} />
         <View style={styles.brandBarStripeBlue} />
       </View>
+      {/* Header with gradient */}
+      <LinearGradient
+        colors={[RHSColors.govBlueDark, RHSColors.govBlue, RHSColors.govTeal]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.headerBrand}>
+          <RHSLogo size={44} />
+          <View style={styles.headerTitles}>
+            <Text style={styles.orgLine}>Cổng thông tin điều phối & thẩm định</Text>
+            <Text style={styles.appName}>Hệ thống cung ứng nhà ở xã hội bền vững</Text>
+          </View>
+        </View>
+      </LinearGradient>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header with brand logo */}
-        <View style={styles.header}>
-          <View style={styles.headerBrand}>
-            <RHSLogo size={44} />
-            <View style={styles.headerTitles}>
-              <Text style={styles.orgLine}>Cổng thông tin điều phối & thẩm định</Text>
-              <Text style={styles.appName}>Hệ thống cung ứng nhà ở xã hội bền vững</Text>
-            </View>
+        {/* Search */}
+        <View style={styles.searchCard}>
+          <View style={styles.searchRow}>
+            <Feather name="search" size={20} color={RHSColors.textMuted} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Tìm kiếm dự án nhà ở..."
+              value={searchText}
+              onChangeText={setSearchText}
+              onSubmitEditing={handleSearch}
+              placeholderTextColor={RHSColors.textMuted}
+              returnKeyType="search"
+            />
+            {searchText.length > 0 && (
+              <TouchableOpacity onPress={() => { setSearchText(''); fetchHousingProjects(1); }}>
+                <Feather name="x" size={20} color={RHSColors.textMuted} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Feather name="search" size={20} color={RHSColors.textMuted} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Tìm kiếm dự án nhà ở..."
-            value={searchText}
-            onChangeText={setSearchText}
-            onSubmitEditing={handleSearch}
-            placeholderTextColor={RHSColors.textMuted}
-            returnKeyType="search"
-          />
-          {searchText.length > 0 && (
-            <TouchableOpacity onPress={() => { setSearchText(''); fetchHousingProjects(1); }}>
-              <Feather name="x" size={20} color={RHSColors.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Housing Projects List */}
-        <View style={styles.projectsSection}>
-          <View style={styles.projectsHeader}>
-            <Feather name="home" size={22} color={RHSColors.govBlueDark} />
-            <Text style={[styles.projectsTitle, { color: RHSColors.govBlueDark }]}>Danh sách nhà ở</Text>
+        {/* Housing Projects Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderLeft}>
+              <View style={styles.sectionIconWrap}>
+                <Feather name="home" size={16} color={RHSColors.white} />
+              </View>
+              <Text style={styles.sectionTitle}>Danh sách nhà ở</Text>
+            </View>
+            <Text style={styles.sectionCount}>{housingProjects.length} dự án</Text>
           </View>
 
           {loading && pageIndex === 1 ? (
-            <View style={styles.loadingContainer}>
+            <View style={styles.stateBox}>
               <ActivityIndicator size="large" color={RHSColors.govRed} />
-              <Text style={[styles.loadingText, { color: RHSColors.textMuted }]}>Đang tải dữ liệu...</Text>
+              <Text style={styles.stateText}>Đang tải dữ liệu...</Text>
             </View>
           ) : error ? (
-            <View style={styles.errorContainer}>
-              <Feather name="alert-circle" size={40} color={RHSColors.govRed} />
-              <Text style={[styles.errorText, { color: RHSColors.govRed }]}>{error}</Text>
-              <TouchableOpacity
-                style={[styles.retryButton, { backgroundColor: RHSColors.govRed }]}
-                onPress={() => fetchHousingProjects(1)}
-              >
+            <View style={styles.stateBox}>
+              <Feather name="alert-circle" size={48} color={RHSColors.govRed} />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryBtn} onPress={() => fetchHousingProjects(1)}>
                 <Text style={styles.retryText}>Thử lại</Text>
               </TouchableOpacity>
             </View>
           ) : housingProjects.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Feather name="inbox" size={40} color={RHSColors.textMuted} />
-              <Text style={[styles.emptyText, { color: RHSColors.textMuted }]}>Không có dự án nào</Text>
+            <View style={styles.stateBox}>
+              <Feather name="inbox" size={48} color={RHSColors.textMuted} />
+              <Text style={styles.stateText}>Không có dự án nào</Text>
             </View>
           ) : (
             <>
-              <View style={styles.projectsGrid}>
+              <View style={styles.grid}>
                 {housingProjects.map(renderProjectCard)}
               </View>
-
               {pageIndex < totalPages && (
                 <TouchableOpacity
-                  style={[styles.loadMoreButton, { borderColor: RHSColors.govBlue }]}
+                  style={styles.loadMore}
                   onPress={handleLoadMore}
                   disabled={loading}
                 >
                   {loading ? (
-                    <ActivityIndicator size="small" color={RHSColors.govBlue} />
+                    <ActivityIndicator size="small" color={RHSColors.white} />
                   ) : (
-                    <Text style={[styles.loadMoreText, { color: RHSColors.govBlue }]}>Xem thêm</Text>
+                    <Text style={styles.loadMoreText}>Xem thêm dự án</Text>
                   )}
                 </TouchableOpacity>
               )}
-
               {refreshing && (
-                <View style={styles.refreshingContainer}>
+                <View style={styles.refreshWrap}>
                   <ActivityIndicator size="small" color={RHSColors.govRed} />
                 </View>
               )}
@@ -227,158 +251,112 @@ export const HomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: RHSColors.surfaceCard,
-  },
-  container: {
-    flex: 1,
-  },
-  brandBar: {
-    flexDirection: 'row',
-    height: 4,
-  },
-  brandBarStripeRed: {
-    flex: 2,
-    backgroundColor: RHSColors.govRed,
-  },
-  brandBarStripeGold: {
-    flex: 0.4,
-    backgroundColor: RHSColors.govGold,
-  },
-  brandBarStripeBlue: {
-    flex: 2,
-    backgroundColor: RHSColors.govBlue,
-  },
-  header: {
+  safeArea: { flex: 1, backgroundColor: RHSColors.surface },
+  container: { flex: 1 },
+  brandBar: { flexDirection: 'row', height: 4 },
+  brandBarStripeRed: { flex: 2, backgroundColor: RHSColors.govRed },
+  brandBarStripeGold: { flex: 0.4, backgroundColor: RHSColors.govGold },
+  brandBarStripeBlue: { flex: 2, backgroundColor: RHSColors.govBlue },
+
+  headerGradient: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 14,
     paddingBottom: 16,
-    backgroundColor: RHSColors.surface,
   },
-  headerBrand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerTitles: {
-    flex: 1,
-  },
+  headerBrand: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerTitles: { flex: 1 },
   orgLine: {
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    color: RHSColors.govGoldDark,
+    color: '#ffd166',
     marginBottom: 2,
   },
   appName: {
     fontSize: 15,
     fontWeight: '700',
-    color: RHSColors.govBlueDark,
+    color: RHSColors.white,
     lineHeight: 20,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: RHSColors.surfaceCard,
+
+  searchCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    backgroundColor: RHSColors.white,
     borderWidth: 1,
     borderColor: RHSColors.border,
-    borderRadius: 25,
-    marginHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 20,
-    paddingHorizontal: 15,
-    height: 50,
   },
-  searchIcon: {
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: RHSColors.text,
-  },
-  projectsSection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  projectsHeader: {
+  searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    paddingHorizontal: 14,
+    height: 48,
   },
-  projectsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: RHSColors.govBlueDark,
-    marginLeft: 10,
-  },
-  loadingContainer: {
-    padding: 40,
+  searchIcon: { marginRight: 10 },
+  searchInput: { flex: 1, fontSize: 15, color: RHSColors.text },
+
+  section: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 30 },
+  sectionHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
   },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: RHSColors.textMuted,
-  },
-  errorContainer: {
-    padding: 40,
+  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
+  sectionIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: RHSColors.govBlue,
+    justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 8,
   },
+  sectionTitle: { fontSize: 17, fontWeight: 'bold', color: RHSColors.text },
+  sectionCount: { fontSize: 12, color: RHSColors.textMuted, fontWeight: '500' },
+
+  stateBox: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    backgroundColor: RHSColors.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
+  },
+  stateText: { marginTop: 12, fontSize: 14, color: RHSColors.textMuted },
   errorText: {
-    marginTop: 10,
+    marginTop: 12,
     fontSize: 14,
     color: RHSColors.govRed,
     textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: 15,
     paddingHorizontal: 20,
+  },
+  retryBtn: {
+    marginTop: 16,
+    paddingHorizontal: 28,
     paddingVertical: 10,
     backgroundColor: RHSColors.govRed,
-    borderRadius: 8,
+    borderRadius: 25,
   },
-  retryText: {
-    color: RHSColors.white,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptyText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: RHSColors.textMuted,
-  },
-  projectsGrid: {
-    gap: 15,
-  },
+  retryText: { color: RHSColors.white, fontWeight: '600', fontSize: 14 },
+
+  grid: { gap: 12 },
   projectCard: {
-    backgroundColor: RHSColors.surfaceCard,
+    backgroundColor: RHSColors.white,
     borderRadius: 12,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: RHSColors.border,
-    overflow: 'hidden',
-    shadowColor: RHSColors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   projectThumbnail: {
     width: '100%',
-    height: 180,
+    height: 160,
     backgroundColor: RHSColors.surface,
     position: 'relative',
   },
-  projectImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
+  projectImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   projectImagePlaceholder: {
     width: '100%',
     height: '100%',
@@ -390,64 +368,47 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     left: 10,
-    backgroundColor: RHSColors.govGreen,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: 6,
   },
-  statusText: {
-    color: RHSColors.white,
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  projectInfo: {
-    padding: 12,
-  },
+  statusText: { color: RHSColors.white, fontSize: 11, fontWeight: 'bold' },
+  projectInfo: { padding: 12 },
   projectName: {
     fontSize: 15,
     fontWeight: 'bold',
     color: RHSColors.govBlueDark,
-    marginBottom: 6,
+    marginBottom: 8,
+    lineHeight: 19,
   },
   projectMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    flexWrap: 'wrap',
+    marginBottom: 6,
   },
   projectPrice: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: RHSColors.govRed,
     marginRight: 10,
   },
-  projectArea: {
-    fontSize: 14,
-    color: RHSColors.textMuted,
-  },
-  projectLocationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  projectArea: { fontSize: 12, color: RHSColors.textMuted, fontWeight: '500' },
+  projectLocationRow: { flexDirection: 'row', alignItems: 'center' },
   projectLocation: {
     fontSize: 12,
     color: RHSColors.textMuted,
-    marginLeft: 4,
+    marginLeft: 5,
+    flex: 1,
   },
-  loadMoreButton: {
-    marginTop: 15,
+
+  loadMore: {
+    marginTop: 16,
     alignItems: 'center',
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: RHSColors.govBlue,
-    borderRadius: 8,
+    paddingVertical: 13,
+    backgroundColor: RHSColors.govBlue,
+    borderRadius: 10,
   },
-  loadMoreText: {
-    color: RHSColors.govBlue,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  refreshingContainer: {
-    padding: 10,
-    alignItems: 'center',
-  },
+  loadMoreText: { color: RHSColors.white, fontWeight: '700', fontSize: 14 },
+  refreshWrap: { padding: 14, alignItems: 'center' },
 });

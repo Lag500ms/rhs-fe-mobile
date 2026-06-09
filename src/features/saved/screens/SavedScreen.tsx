@@ -1,15 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { RHSColors } from '../../../lib/theme';
 
 export const SavedScreen = () => {
@@ -20,20 +18,30 @@ export const SavedScreen = () => {
         <View style={styles.brandBarStripeGold} />
         <View style={styles.brandBarStripeBlue} />
       </View>
-      <View style={styles.container}>
+      <LinearGradient
+        colors={[RHSColors.govBlueDark, RHSColors.govBlue, RHSColors.govTeal]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
         <Text style={styles.title}>Quan tâm</Text>
+        <Text style={styles.subtitle}>Các dự án bạn đã lưu</Text>
+      </LinearGradient>
 
+      <View style={styles.container}>
         <ScrollView
           contentContainerStyle={styles.emptyContainer}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.emptyIconContainer}>
-            <Feather name="heart" size={48} color={RHSColors.govRed} />
+          <View style={styles.emptyCard}>
+            <View style={styles.emptyIconWrap}>
+              <Feather name="heart" size={40} color={RHSColors.govRed} />
+            </View>
+            <Text style={styles.emptyTitle}>Chưa có dự án quan tâm</Text>
+            <Text style={styles.emptyDesc}>
+              Nhấn vào biểu tượng trái tim ở mỗi dự án để lưu lại tại đây
+            </Text>
           </View>
-          <Text style={styles.emptyText}>Chưa có dự án quan tâm</Text>
-          <Text style={styles.emptySubText}>
-            Nhấn vào biểu tượng trái tim ở mỗi dự án để lưu lại tại đây
-          </Text>
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -43,7 +51,7 @@ export const SavedScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: RHSColors.surfaceCard,
+    backgroundColor: RHSColors.surface,
   },
   brandBar: {
     flexDirection: 'row',
@@ -61,43 +69,62 @@ const styles = StyleSheet.create({
     flex: 2,
     backgroundColor: RHSColors.govBlue,
   },
-  container: {
-    flex: 1,
+  headerGradient: {
     paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: RHSColors.text,
-    marginTop: 16,
-    marginBottom: 20,
+    color: RHSColors.white,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+  },
+  container: {
+    flex: 1,
   },
   emptyContainer: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingHorizontal: 20,
   },
-  emptyIconContainer: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+  emptyCard: {
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: RHSColors.white,
+    borderRadius: 20,
+    shadowColor: RHSColors.black,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+    width: '100%',
+  },
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#ffe5e7',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
-  emptyText: {
+  emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: RHSColors.text,
-    marginTop: 20,
     marginBottom: 8,
   },
-  emptySubText: {
+  emptyDesc: {
     fontSize: 14,
     color: RHSColors.textMuted,
     textAlign: 'center',
-    paddingHorizontal: 40,
+    lineHeight: 20,
   },
 });
