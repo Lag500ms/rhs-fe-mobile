@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,10 @@ export const VerifyOtpScreen = () => {
   const email = route.params?.email || '';
 
   const [otpCode, setOtpCode] = useState('');
+
+  useEffect(() => {
+    setOtpCode('');
+  }, [email]);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
 
@@ -40,7 +44,7 @@ export const VerifyOtpScreen = () => {
 
       if (result.success) {
         Alert.alert('Thành công', 'Xác thực OTP thành công!', [
-          { text: 'OK', onPress: () => navigation.navigate('Login') },
+          { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) },
         ]);
       } else {
         Alert.alert('Lỗi', result.message || 'Xác thực OTP thất bại');

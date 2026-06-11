@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,26 +7,43 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  ScrollView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RHSColors } from '../../../lib/theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 
 import { userApi, UserProfileDto } from '../api/userApi';
+import { BrandBar } from '../../../components/BrandBar';
+import { ScreenHeader } from '../../../components/ScreenHeader';
+import { ActionButton } from '../../../components/ActionButton';
+import { InfoRow } from '../../../components/InfoRow';
+
+const VERIFIED_KEY = 'identityVerified';
 
 export const ProfileScreen = () => {
   const navigation = useNavigation<any>();
   const [profile, setProfile] = useState<UserProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
+      checkVerifiedStatus();
       loadProfile();
     }, [])
   );
+
+  const checkVerifiedStatus = async () => {
+    try {
+      const verified = await AsyncStorage.getItem(VERIFIED_KEY);
+      setIsVerified(verified === 'true');
+    } catch {}
+  };
 
   const loadProfile = async () => {
     setLoading(true);
@@ -44,10 +61,71 @@ export const ProfileScreen = () => {
     }
   };
 
-  const handleUploadImage = async () => {
+  const requestMediaPermission = async (): Promise<boolean> => {
+    if (Platform.OS === 'android') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Cần quyền truy cập', 'Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh đại diện.');
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const requestCameraPermission = async (): Promise<boolean> => {
+    if (Platform.OS === 'android') {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Cần quyền truy cập', 'Ứng dụng cần quyền truy cập camera để chụp ảnh đại diện.');
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const pickImageFromGallery = async (): Promise<{ uri: string; type: string; fileName: string } | null> => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images',
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets || result.assets.length === 0) {
+      return null;
+    }
+    const asset = result.assets[0];
+    const uri = asset.uri;
+    const fileType = asset.type || 'image/jpeg';
+    const mimeType = fileType.startsWith('image/') ? fileType : 'image/jpeg';
+    return {
+      uri,
+      type: mimeType,
+      fileName: asset.fileName || `profile_${Date.now()}.jpg`,
+    };
+  };
+
+  const pickImageFromCamera = async (): Promise<{ uri: string; type: string; fileName: string } | null> => {
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: 'images',
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets || result.assets.length === 0) {
+      return null;
+    }
+    const asset = result.assets[0];
+    const fileType = asset.type || 'image/jpeg';
+    const mimeType = fileType.startsWith('image/') ? fileType : 'image/jpeg';
+    return {
+      uri: asset.uri,
+      type: mimeType,
+      fileName: asset.fileName || `profile_${Date.now()}.jpg`,
+    };
+  };
+
+  const uploadImage = async (asset: { uri: string; type: string; fileName: string }) => {
     setUploading(true);
     try {
-      const result = await userApi.uploadProfileImage('https://example.com/avatar.jpg');
+      const result = await userApi.uploadProfileImage(asset);
       if (result.success) {
         Alert.alert('Thành công', 'Upload ảnh đại diện thành công');
         loadProfile();
@@ -55,15 +133,49 @@ export const ProfileScreen = () => {
         Alert.alert('Lỗi', result.message || 'Upload thất bại');
       }
     } catch (error: any) {
-      Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      const status = error.response?.status;
+      const serverMsg = error.response?.data?.message || error.response?.data?.title;
+      const detailMsg = error.message;
+      const finalMsg = serverMsg || detailMsg || 'Không thể kết nối đến máy chủ';
+      Alert.alert(`Lỗi${status ? ` (${status})` : ''}`, finalMsg);
     } finally {
       setUploading(false);
     }
   };
 
+  const handleUploadImage = () => {
+    Alert.alert('Chọn ảnh đại diện', 'Vui lòng chọn nguồn ảnh', [
+      {
+        text: 'Chụp ảnh',
+        onPress: async () => {
+          const hasPermission = await requestCameraPermission();
+          if (!hasPermission) return;
+          const asset = await pickImageFromCamera();
+          if (asset) await uploadImage(asset);
+        },
+      },
+      {
+        text: 'Chọn từ thư viện',
+        onPress: async () => {
+          const hasPermission = await requestMediaPermission();
+          if (!hasPermission) return;
+          const asset = await pickImageFromGallery();
+          if (asset) await uploadImage(asset);
+        },
+      },
+      { text: 'Hủy', style: 'cancel' },
+    ]);
+  };
+
+  const handleVerifyIdentity = () => {
+    navigation.getParent()?.navigate('EKyc');
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
+        <BrandBar />
+        <ScreenHeader title="Hồ sơ cá nhân" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={RHSColors.govBlue} />
         </View>
@@ -73,31 +185,21 @@ export const ProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.brandBar}>
-        <View style={styles.brandBarStripeRed} />
-        <View style={styles.brandBarStripeGold} />
-        <View style={styles.brandBarStripeBlue} />
-      </View>
-      <LinearGradient
-        colors={[RHSColors.govBlueDark, RHSColors.govBlue, RHSColors.govTeal]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Feather name="arrow-left" size={24} color={RHSColors.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => navigation.navigate('EditProfile')}
-        >
-          <Feather name="edit-2" color={RHSColors.white} size={18} />
-        </TouchableOpacity>
-      </LinearGradient>
+      <BrandBar />
+      <ScreenHeader
+        title="Hồ sơ cá nhân"
+        rightAction={
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => navigation.navigate('EditProfile')}
+          >
+            <Text style={{ color: '#fff', fontSize: 13 }}>Sửa</Text>
+          </TouchableOpacity>
+        }
+      />
 
-      <View style={styles.container}>
-        {/* Avatar Card */}
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        {/* Avatar */}
         <View style={styles.avatarCard}>
           {profile?.profileImageUrl ? (
             <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
@@ -112,7 +214,7 @@ export const ProfileScreen = () => {
             {uploading ? (
               <ActivityIndicator size="small" color={RHSColors.govBlue} />
             ) : (
-              <Feather name="camera" color={RHSColors.white} size={16} />
+              <Text style={{ color: '#fff', fontSize: 16 }}>+</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -132,94 +234,42 @@ export const ProfileScreen = () => {
         </View>
 
         {/* Actions */}
-        <TouchableOpacity
-          style={styles.actionBtn}
+        <ActionButton
+          icon="lock"
+          text="Đổi mật khẩu"
           onPress={() => navigation.navigate('ChangePassword')}
-        >
-          <Feather name="lock" color={RHSColors.govBlue} size={20} />
-          <Text style={styles.actionBtnText}>Đổi mật khẩu</Text>
-          <Feather name="chevron-right" color={RHSColors.textMuted} size={20} />
-        </TouchableOpacity>
+        />
 
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.deleteBtn]}
+        <ActionButton
+          icon="shield"
+          text={isVerified ? 'Đã xác minh danh tính' : 'Xác minh danh tính'}
+          color={isVerified ? RHSColors.govGreen : RHSColors.govGold}
+          leftBorderColor={isVerified ? RHSColors.govGreen : RHSColors.govGold}
+          showChevron={!isVerified}
+          onPress={handleVerifyIdentity}
+        />
+
+        <ActionButton
+          icon="trash-2"
+          text="Xóa tài khoản"
+          isDestructive
           onPress={() => navigation.navigate('DeleteAccount')}
-        >
-          <Feather name="trash-2" color={RHSColors.govRed} size={20} />
-          <Text style={[styles.actionBtnText, { color: RHSColors.govRed }]}>Xóa tài khoản</Text>
-          <Feather name="chevron-right" color={RHSColors.textMuted} size={20} />
-        </TouchableOpacity>
-      </View>
+          last
+        />
+      </ScrollView>
     </SafeAreaView>
   );
 };
-
-const InfoRow = ({ label, value, isHighlight, last }: {
-  label: string;
-  value: string;
-  isHighlight?: boolean;
-  last?: boolean;
-}) => (
-  <View style={[styles.infoRow, last && { borderBottomWidth: 0 }]}>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={[
-      styles.infoValue,
-      isHighlight === true && { color: RHSColors.govGreen },
-      isHighlight === false && { color: RHSColors.govRed },
-    ]}>
-      {value}
-    </Text>
-  </View>
-);
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: RHSColors.surface,
   },
-  brandBar: {
-    flexDirection: 'row',
-    height: 4,
-  },
-  brandBarStripeRed: {
-    flex: 2,
-    backgroundColor: RHSColors.govRed,
-  },
-  brandBarStripeGold: {
-    flex: 0.4,
-    backgroundColor: RHSColors.govGold,
-  },
-  brandBarStripeBlue: {
-    flex: 2,
-    backgroundColor: RHSColors.govBlue,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  backButton: {
-    padding: 4,
-    marginRight: 12,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: RHSColors.white,
-  },
-  editButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   container: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 16,
   },
   loadingContainer: {
@@ -227,6 +277,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: RHSColors.surface,
+  },
+  editButton: {
+    width: 52,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   avatarCard: {
     alignItems: 'center',
@@ -264,7 +322,6 @@ const styles = StyleSheet.create({
   uploadBtn: {
     position: 'absolute',
     bottom: 4,
-    right: 4,
     width: 34,
     height: 34,
     borderRadius: 17,
@@ -284,49 +341,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: RHSColors.surface,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: RHSColors.textMuted,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: RHSColors.text,
-    maxWidth: '55%',
-    textAlign: 'right',
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: RHSColors.white,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    marginBottom: 12,
-    shadowColor: RHSColors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  actionBtnText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: RHSColors.govBlue,
-    marginLeft: 12,
-  },
-  deleteBtn: {
-    marginBottom: 30,
   },
 });

@@ -21,9 +21,12 @@ import { HousingProjectResponse } from '../api/housingApi';
 import { HomeStackParamList } from '../navigation/HomeNavigator';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
+import { getToken } from '../../../lib/tokenStorage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type DetailNavProp = NativeStackNavigationProp<HomeStackParamList, 'HousingProjectDetail'>;
 
+const VERIFIED_KEY = 'identityVerified';
 const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2lyeGlhb2xpbjJrNCIsImEiOiJjbXE2NXI3aXIwMWdqMnRwdTloemM4am9zIn0.AQVt7JOUOcycgp-G49qwOA';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -86,6 +89,47 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
       longitude: coords.longitude,
       projectName: project.projectName,
     });
+  };
+
+  const handleRegister = async () => {
+    try {
+      // Navigate to root to access Auth/EKyc screens
+      const rootNav = navigation.getParent()?.getParent();
+
+      // 1. Kiểm tra đã đăng nhập chưa
+      const accessToken = await getToken();
+      if (!accessToken) {
+        Alert.alert(
+          'Chưa đăng nhập',
+          'Vui lòng đăng nhập để đăng ký nhà ở xã hội.',
+          [
+            { text: 'Huỷ', style: 'cancel' },
+            { text: 'Đăng nhập', onPress: () => rootNav?.navigate('Auth', { screen: 'Login' }) },
+          ],
+        );
+        return;
+      }
+
+      // 2. Kiểm tra đã xác minh danh tính chưa
+      const verified = await AsyncStorage.getItem(VERIFIED_KEY);
+      if (verified !== 'true') {
+        Alert.alert(
+          'Chưa xác minh danh tính',
+          'Bạn cần xác thực danh tính trước khi đăng ký nhà ở xã hội.',
+          [
+            { text: 'Huỷ', style: 'cancel' },
+            { text: 'Xác minh ngay', onPress: () => rootNav?.navigate('EKyc') },
+          ],
+        );
+        return;
+      }
+
+      // 3. Đã đăng nhập + đã xác minh → chuyển qua tạo đơn
+      // TODO: Navigate to CreateApplicationScreen when implemented
+      Alert.alert('Thông báo', 'Tính năng tạo đơn đăng ký đang được phát triển.');
+    } catch {
+      Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
+    }
   };
 
   // Build Mapbox GL HTML
@@ -213,6 +257,20 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
             </View>
           )}
         </View>
+
+        {/* Register Button */}
+        <TouchableOpacity style={styles.registerBtn} onPress={handleRegister}>
+          <LinearGradient
+            colors={[RHSColors.govRed, '#c1121f']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.registerGradient}
+          >
+            <Feather name="edit-3" size={20} color="#fff" />
+            <Text style={styles.registerText}>Đăng ký nhà ở</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
@@ -251,4 +309,7 @@ const styles = StyleSheet.create({
   errText: { fontSize: 12, color: RHSColors.textMuted, marginLeft: 6 },
   openBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: RHSColors.govBlue, paddingVertical: 14, marginTop: 1 },
   openText: { fontSize: 14, fontWeight: '600', color: '#fff', marginLeft: 8 },
+  registerBtn: { marginHorizontal: 16, marginBottom: 16, borderRadius: 16, overflow: 'hidden', elevation: 4, shadowColor: RHSColors.govRed, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  registerGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 10 },
+  registerText: { fontSize: 17, fontWeight: 'bold', color: '#fff' },
 });

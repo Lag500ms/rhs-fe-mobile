@@ -1,4 +1,10 @@
 import apiClient from '../../../lib/apiClient';
+import { getToken } from '../../../lib/tokenStorage';
+import * as FileSystem from 'expo-file-system';
+import { FileSystemUploadType } from 'expo-file-system/legacy';
+
+const API_BASE_URL = 'http://192.168.1.16:5112/api';
+
 export interface UserProfileDto {
   id: string;
   email: string;
@@ -21,12 +27,10 @@ export interface DeleteAccountDto {
   reason?: string;
 }
 
-export interface UploadProfileImageDto {
-  image: {
-    uri: string;
-    name: string;
-    type: string;
-  };
+export interface ImageAsset {
+  uri: string;
+  type: string;
+  fileName: string;
 }
 
 export interface UserResponse {
@@ -34,6 +38,38 @@ export interface UserResponse {
   user?: UserProfileDto;
   message?: string;
 }
+
+const uploadProfileImage = async (asset: ImageAsset): Promise<UserResponse> => {
+  const token = await getToken();
+
+  const response = await FileSystem.uploadAsync(
+    `${API_BASE_URL}/users/profile/image`,
+    asset.uri,
+    {
+      httpMethod: 'POST',
+      uploadType: FileSystemUploadType.MULTIPART,
+      fieldName: 'Image',
+      mimeType: asset.type,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  const result = JSON.parse(response.body);
+
+  if (response.status >= 200 && response.status < 300) {
+    return result;
+  }
+
+  throw {
+    response: {
+      status: response.status,
+      data: result,
+    },
+    message: result.message || `HTTP ${response.status}`,
+  };
+};
 
 export const userApi = {
   getProfile: async (): Promise<UserResponse> => {
@@ -46,25 +82,7 @@ export const userApi = {
     return response.data;
   },
 
-  uploadProfileImage: async (imageUri: string): Promise<UserResponse> => {
-    const filename = imageUri.split('/').pop() || 'profile.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-    const formData = new FormData();
-    formData.append('Image', {
-      uri: imageUri,
-      name: filename,
-      type,
-    } as any);
-
-    const response = await apiClient.post<UserResponse>('/users/profile/image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
+  uploadProfileImage,
 
   deleteProfileImage: async (): Promise<{ success: boolean; message: string }> => {
     const response = await apiClient.delete<{ success: boolean; message: string }>('/users/profile/image');

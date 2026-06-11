@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getToken, getRefreshToken, setTokens, clearTokens } from './tokenStorage';
 
-const API_BASE_URL = 'http://10.0.2.2:5112/api';
+const API_BASE_URL = 'http://192.168.1.16:5112/api';
 
 interface FailedQueueItem {
   resolve: (token: string) => void;
@@ -24,9 +24,7 @@ const processQueue = (error: any, token: string | null = null) => {
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: {},
 });
 
 apiClient.interceptors.request.use(async (config) => {
