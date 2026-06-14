@@ -29,14 +29,36 @@ export interface LivenessResult {
   message: string;
 }
 
+const getMimeType = (uri: string): string => {
+  const ext = uri.split('.').pop()?.toLowerCase().split('?')[0];
+  switch (ext) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'gif':
+      return 'image/gif';
+    case 'webp':
+      return 'image/webp';
+    case 'heic':
+      return 'image/heic';
+    case 'heif':
+      return 'image/heif';
+    default:
+      return 'image/jpeg';
+  }
+};
+
+const multipartHeaders = { 'Content-Type': 'multipart/form-data' };
+
 export const eKycApi = {
   /**
    * Bước 1: OCR - Trích xuất thông tin từ ảnh CCCD
    */
   ocr: async (imageUri: string): Promise<OcrResult> => {
-    const filename = imageUri.split('/').pop() || 'cccd.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
+    const filename = imageUri.split('/').pop()?.split('?')[0] || 'cccd.jpg';
+    const type = getMimeType(imageUri);
 
     const formData = new FormData();
     formData.append('image', {
@@ -45,7 +67,7 @@ export const eKycApi = {
       type,
     } as any);
 
-    const response = await apiClient.post('/EKyc/ocr', formData);
+    const response = await apiClient.post('/EKyc/ocr', formData, { headers: multipartHeaders });
     return response.data.data;
   },
 
@@ -58,13 +80,11 @@ export const eKycApi = {
   ): Promise<FaceMatchResult> => {
     const formData = new FormData();
 
-    const faceFilename = faceImageUri.split('/').pop() || 'selfie.jpg';
-    const faceMatch = /\.(\w+)$/.exec(faceFilename);
-    const faceType = faceMatch ? `image/${faceMatch[1]}` : 'image/jpeg';
+    const faceFilename = faceImageUri.split('/').pop()?.split('?')[0] || 'selfie.jpg';
+    const faceType = getMimeType(faceImageUri);
 
-    const idFilename = idCardImageUri.split('/').pop() || 'cccd_face.jpg';
-    const idMatch = /\.(\w+)$/.exec(idFilename);
-    const idType = idMatch ? `image/${idMatch[1]}` : 'image/jpeg';
+    const idFilename = idCardImageUri.split('/').pop()?.split('?')[0] || 'cccd_face.jpg';
+    const idType = getMimeType(idCardImageUri);
 
     formData.append('faceImage', {
       uri: faceImageUri,
@@ -78,7 +98,7 @@ export const eKycApi = {
       type: idType,
     } as any);
 
-    const response = await apiClient.post('/EKyc/face-match', formData);
+    const response = await apiClient.post('/EKyc/face-match', formData, { headers: multipartHeaders });
     return response.data.data;
   },
 
@@ -86,9 +106,8 @@ export const eKycApi = {
    * Bước 3: Liveness - Kiểm tra ảnh selfie có phải người thật
    */
   liveness: async (faceImageUri: string): Promise<LivenessResult> => {
-    const filename = faceImageUri.split('/').pop() || 'selfie.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
+    const filename = faceImageUri.split('/').pop()?.split('?')[0] || 'selfie.jpg';
+    const type = getMimeType(faceImageUri);
 
     const formData = new FormData();
     formData.append('faceImage', {
@@ -97,7 +116,7 @@ export const eKycApi = {
       type,
     } as any);
 
-    const response = await apiClient.post('/EKyc/liveness', formData);
+    const response = await apiClient.post('/EKyc/liveness', formData, { headers: multipartHeaders });
     return response.data.data;
   },
 };

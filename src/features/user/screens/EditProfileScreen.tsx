@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -13,16 +13,25 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { RHSColors } from '../../../lib/theme';
 
 import { CustomInput } from '../../auth/components/CustomInput';
-import { userApi, UpdateProfileDto } from '../api/userApi';
+import { userApi, UpdateProfileDto, UserProfileDto } from '../api/userApi';
 
 export const EditProfileScreen = () => {
   const navigation = useNavigation<any>();
-  const [fullName, setFullName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const route = useRoute<any>();
+  const existingProfile: UserProfileDto | undefined = route.params?.profile;
+
+  const [fullName, setFullName] = useState(existingProfile?.fullName || '');
+  const [phoneNumber, setPhoneNumber] = useState(existingProfile?.phoneNumber || '');
+  const [address, setAddress] = useState(existingProfile?.address || '');
+  const [dateOfBirth, setDateOfBirth] = useState(
+    existingProfile?.dateOfBirth
+      ? existingProfile.dateOfBirth.split('T')[0]
+      : ''
+  );
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [hasInteracted, setHasInteracted] = useState<{ [key: string]: boolean }>({});
@@ -36,18 +45,23 @@ export const EditProfileScreen = () => {
     } else if (fullName.length < 2) {
       newErrors.fullName = 'Họ tên phải có ít nhất 2 ký tự';
     }
+    if (dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
+      newErrors.dateOfBirth = 'Ngày sinh phải có định dạng YYYY-MM-DD';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSave = async () => {
-    setHasInteracted({ fullName: true, phoneNumber: true });
+    setHasInteracted({ fullName: true, phoneNumber: true, address: true, dateOfBirth: true });
     if (!validateForm()) return;
     setLoading(true);
     try {
       const updateData: UpdateProfileDto = {
         fullName,
         phoneNumber: phoneNumber || undefined,
+        address: address || undefined,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth).toISOString() : undefined,
       };
       const result = await userApi.updateProfile(updateData);
       if (result.success) {
@@ -107,6 +121,25 @@ export const EditProfileScreen = () => {
               value={phoneNumber}
               onChangeText={setPhoneNumber}
               keyboardType="phone-pad"
+            />
+
+            <CustomInput
+              iconName="map-pin"
+              placeholder="Địa chỉ"
+              value={address}
+              onChangeText={setAddress}
+            />
+
+            <CustomInput
+              iconName="calendar"
+              placeholder="Ngày sinh (YYYY-MM-DD)"
+              value={dateOfBirth}
+              onChangeText={(text) => {
+                setDateOfBirth(text);
+                setHasInteracted({ ...hasInteracted, dateOfBirth: false });
+              }}
+              errorMessage={hasInteracted.dateOfBirth ? errors.dateOfBirth : undefined}
+              keyboardType="numbers-and-punctuation"
             />
 
             <TouchableOpacity

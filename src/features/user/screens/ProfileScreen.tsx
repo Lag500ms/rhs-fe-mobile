@@ -83,6 +83,27 @@ export const ProfileScreen = () => {
     return true;
   };
 
+  const getMimeTypeFromUri = (uri: string): string => {
+    const ext = uri.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      case 'heic':
+        return 'image/heic';
+      case 'heif':
+        return 'image/heif';
+      default:
+        return 'image/jpeg';
+    }
+  };
+
   const pickImageFromGallery = async (): Promise<{ uri: string; type: string; fileName: string } | null> => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images',
@@ -94,12 +115,12 @@ export const ProfileScreen = () => {
     }
     const asset = result.assets[0];
     const uri = asset.uri;
-    const fileType = asset.type || 'image/jpeg';
-    const mimeType = fileType.startsWith('image/') ? fileType : 'image/jpeg';
+    const mimeType = getMimeTypeFromUri(uri);
+    const fileName = asset.fileName || `profile_${Date.now()}.${mimeType.split('/')[1]}`;
     return {
       uri,
       type: mimeType,
-      fileName: asset.fileName || `profile_${Date.now()}.jpg`,
+      fileName,
     };
   };
 
@@ -113,12 +134,13 @@ export const ProfileScreen = () => {
       return null;
     }
     const asset = result.assets[0];
-    const fileType = asset.type || 'image/jpeg';
-    const mimeType = fileType.startsWith('image/') ? fileType : 'image/jpeg';
+    const uri = asset.uri;
+    const mimeType = getMimeTypeFromUri(uri);
+    const fileName = asset.fileName || `profile_${Date.now()}.${mimeType.split('/')[1]}`;
     return {
-      uri: asset.uri,
+      uri,
       type: mimeType,
-      fileName: asset.fileName || `profile_${Date.now()}.jpg`,
+      fileName,
     };
   };
 
@@ -191,7 +213,7 @@ export const ProfileScreen = () => {
         rightAction={
           <TouchableOpacity
             style={styles.editButton}
-            onPress={() => navigation.navigate('EditProfile')}
+          onPress={() => navigation.navigate('EditProfile', { profile })}
           >
             <Text style={{ color: '#fff', fontSize: 13 }}>Sửa</Text>
           </TouchableOpacity>
@@ -224,6 +246,16 @@ export const ProfileScreen = () => {
           <InfoRow label="Họ tên" value={profile?.fullName || 'Chưa cập nhật'} />
           <InfoRow label="Email" value={profile?.email || 'Chưa cập nhật'} />
           <InfoRow label="Số điện thoại" value={profile?.phoneNumber || 'Chưa cập nhật'} />
+          <InfoRow label="Địa chỉ" value={profile?.address || 'Chưa cập nhật'} />
+          <InfoRow
+            label="Ngày sinh"
+            value={
+              profile?.dateOfBirth
+                ? new Date(profile.dateOfBirth).toLocaleDateString('vi-VN')
+                : 'Chưa cập nhật'
+            }
+          />
+          <InfoRow label="Số CCCD" value={profile?.citizenId || 'Chưa cập nhật'} />
           <InfoRow label="Vai trò" value={profile?.role || 'Applicant'} />
           <InfoRow
             label="Trạng thái email"

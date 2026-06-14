@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Image,
+  FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Linking,
-  Platform,
   Alert,
   Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -42,7 +43,9 @@ const VIETNAM_FALLBACK: LatLng = { latitude: 21.0285, longitude: 105.8542 };
 export const HousingProjectDetailScreen = ({ route }: Props) => {
   const navigation = useNavigation<DetailNavProp>();
   const { project } = route.params;
+  const carouselRef = useRef<FlatList>(null);
   const webViewRef = useRef<WebView>(null);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [coords, setCoords] = useState<LatLng | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +54,10 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
     .filter(Boolean).join(', ');
 
   useEffect(() => { geocode(fullAddress); }, []);
+
+  const sortedImages = project.images && project.images.length > 0
+    ? [...project.images].sort((a, b) => a.displayOrder - b.displayOrder)
+    : [];
 
   const geocode = async (address: string) => {
     try {
@@ -93,10 +100,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
 
   const handleRegister = async () => {
     try {
-      // Navigate to root to access Auth/EKyc screens
       const rootNav = navigation.getParent()?.getParent();
-
-      // 1. Kiểm tra đã đăng nhập chưa
       const accessToken = await getToken();
       if (!accessToken) {
         Alert.alert(
@@ -109,8 +113,6 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
         );
         return;
       }
-
-      // 2. Kiểm tra đã xác minh danh tính chưa
       const verified = await AsyncStorage.getItem(VERIFIED_KEY);
       if (verified !== 'true') {
         Alert.alert(
@@ -123,14 +125,20 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
         );
         return;
       }
-
-      // 3. Đã đăng nhập + đã xác minh → chuyển qua tạo đơn
-      // TODO: Navigate to CreateApplicationScreen when implemented
       Alert.alert('Thông báo', 'Tính năng tạo đơn đăng ký đang được phát triển.');
     } catch {
       Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
     }
   };
+
+  const onScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+    setActiveImageIndex(index);
+  }, []);
+
+  const renderCarouselItem = ({ item }: { item: { id: string; imageUrl: string; displayOrder: number } }) => (
+    <Image source={{ uri: item.imageUrl }} style={styles.carouselImage} />
+  );
 
   // Build Mapbox GL HTML
   const mapHtml = coords ? `
@@ -165,8 +173,6 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           zoom: 15,
           attributionControl: false,
         });
-
-        // Ensure marker is centered on load
         map.on('load', () => {
           map.flyTo({
             center: [${coords.longitude}, ${coords.latitude}],
@@ -174,7 +180,6 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
             duration: 800,
           });
         });
-
         map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-left');
         const el = document.createElement('div');
         el.className = 'marker';
@@ -213,11 +218,51 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
       </LinearGradient>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.thumb}>
-          {project.thumbnailUrl ? <Image source={{ uri: project.thumbnailUrl }} style={styles.thumbImg} /> : (
-            <View style={styles.thumbPlace}><Feather name="home" size={60} color={RHSColors.textMuted} /></View>
+        {/* Image Carousel */}
+        <View style={styles.carouselContainer}>
+          {sortedImages.length > 0 ? (
+            <>
+              <FlatList
+                ref={carouselRef}
+                data={sortedImages}
+                keyExtractor={(item) => item.id}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={onScrollEnd}
+                renderItem={renderCarouselItem}
+              />
+              {/* Dots indicator */}
+              {sortedImages.length > 1 && (
+                <View style={styles.dotsContainer}>
+                  {sortedImages.map((_, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.dot,
+                        index === activeImageIndex && styles.dotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+              {/* Image counter */}
+              <View style={styles.imageCounter}>
+                <Text style={styles.imageCounterText}>
+                  {activeImageIndex + 1}/{sortedImages.length}
+                </Text>
+              </View>
+            </>
+          ) : (
+            <View style={styles.thumbPlace}>
+              <Feather name="home" size={60} color={RHSColors.textMuted} />
+            </View>
           )}
-          {project.status && <View style={[styles.badge, { backgroundColor: RHSColors.govGreen }]}><Text style={styles.badgeText}>{project.status}</Text></View>}
+          {project.status && (
+            <View style={[styles.badge, { backgroundColor: RHSColors.govGreen }]}>
+              <Text style={styles.badgeText}>{project.status}</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.infoCard}>
@@ -285,12 +330,67 @@ const styles = StyleSheet.create({
   back: { padding: 4, marginRight: 12 },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: 'bold', color: '#fff' },
   scroll: { flex: 1 },
-  thumb: { width: '100%', height: 250, position: 'relative' },
-  thumbImg: { width: '100%', height: '100%', resizeMode: 'cover' },
-  thumbPlace: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.surface },
-  badge: { position: 'absolute', top: 16, left: 16, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  carouselContainer: {
+    width: '100%',
+    height: 280,
+    position: 'relative',
+  },
+  carouselImage: {
+    width: SCREEN_WIDTH,
+    height: 280,
+    resizeMode: 'cover',
+  },
+  thumbPlace: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: RHSColors.surface,
+  },
+  dotsContainer: {
+    position: 'absolute',
+    bottom: 16,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    marginHorizontal: 4,
+  },
+  dotActive: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#fff',
+  },
+  imageCounter: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  imageCounterText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  badge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
   badgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  infoCard: { margin: 16, padding: 20, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: RHSColors.border },
+  infoCard: { margin: 16, marginBottom: 10, padding: 20, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: RHSColors.border },
   name: { fontSize: 22, fontWeight: 'bold', color: RHSColors.govBlueDark, marginBottom: 14, lineHeight: 28 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 25 },

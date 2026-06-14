@@ -1,5 +1,11 @@
 import apiClient from '../../../lib/apiClient';
 
+export interface ProjectImageResponse {
+  id: string;
+  imageUrl: string;
+  displayOrder: number;
+}
+
 export interface HousingProjectResponse {
   id: string;
   projectName: string;
@@ -16,6 +22,7 @@ export interface HousingProjectResponse {
   createdAt: string;
   updatedAt?: string;
   status?: string;
+  images: ProjectImageResponse[];
 }
 
 export interface HousingProjectFilterParams {

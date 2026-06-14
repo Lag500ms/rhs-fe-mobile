@@ -1,15 +1,13 @@
 import apiClient from '../../../lib/apiClient';
-import { getToken } from '../../../lib/tokenStorage';
-import * as FileSystem from 'expo-file-system';
-import { FileSystemUploadType } from 'expo-file-system/legacy';
-
-const API_BASE_URL = 'http://192.168.1.16:5112/api';
 
 export interface UserProfileDto {
   id: string;
   email: string;
   fullName: string;
   phoneNumber?: string;
+  citizenId?: string;
+  dateOfBirth?: string;
+  address?: string;
   role: string;
   isEmailVerified: boolean;
   profileImageUrl?: string;
@@ -20,6 +18,8 @@ export interface UserProfileDto {
 export interface UpdateProfileDto {
   fullName: string;
   phoneNumber?: string;
+  dateOfBirth?: string;
+  address?: string;
 }
 
 export interface DeleteAccountDto {
@@ -40,35 +40,17 @@ export interface UserResponse {
 }
 
 const uploadProfileImage = async (asset: ImageAsset): Promise<UserResponse> => {
-  const token = await getToken();
+  const formData = new FormData();
+  formData.append('Image', {
+    uri: asset.uri,
+    name: asset.fileName,
+    type: asset.type,
+  } as any);
 
-  const response = await FileSystem.uploadAsync(
-    `${API_BASE_URL}/users/profile/image`,
-    asset.uri,
-    {
-      httpMethod: 'POST',
-      uploadType: FileSystemUploadType.MULTIPART,
-      fieldName: 'Image',
-      mimeType: asset.type,
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
-  );
-
-  const result = JSON.parse(response.body);
-
-  if (response.status >= 200 && response.status < 300) {
-    return result;
-  }
-
-  throw {
-    response: {
-      status: response.status,
-      data: result,
-    },
-    message: result.message || `HTTP ${response.status}`,
-  };
+  const response = await apiClient.post<UserResponse>('/users/profile/image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
 };
 
 export const userApi = {

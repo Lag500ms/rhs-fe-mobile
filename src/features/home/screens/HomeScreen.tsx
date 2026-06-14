@@ -95,54 +95,65 @@ export const HomeScreen = () => {
     return `${minArea} - ${maxArea} m²`;
   };
 
+  const getThumbnailUrl = (project: HousingProjectResponse): string | null => {
+    if (project.images && project.images.length > 0) {
+      const sorted = [...project.images].sort((a, b) => a.displayOrder - b.displayOrder);
+      return sorted[0].imageUrl;
+    }
+    return project.thumbnailUrl || null;
+  };
+
   const handleProjectPress = (project: HousingProjectResponse) => {
     navigation.navigate('HousingProjectDetail', { project });
   };
 
-  const renderProjectCard = (project: HousingProjectResponse) => (
-    <TouchableOpacity
-      key={project.id}
-      style={styles.projectCard}
-      activeOpacity={0.85}
-      onPress={() => handleProjectPress(project)}
-    >
-      <View style={styles.projectThumbnail}>
-        {project.thumbnailUrl ? (
-          <Image source={{ uri: project.thumbnailUrl }} style={styles.projectImage} />
-        ) : (
-          <View style={styles.projectImagePlaceholder}>
-            <Feather name="home" size={40} color={RHSColors.textMuted} />
-          </View>
-        )}
-        {project.status && (
-          <View style={[styles.statusBadge, { backgroundColor: RHSColors.govGreen }]}>
-            <Text style={styles.statusText}>{project.status}</Text>
-          </View>
-        )}
-      </View>
-      <View style={styles.projectInfo}>
-        <Text style={styles.projectName} numberOfLines={2}>
-          {project.projectName}
-        </Text>
-        <View style={styles.projectMeta}>
-          <Text style={styles.projectPrice}>
-            {formatPrice(project.minPrice, project.maxPrice)}
+  const renderProjectCard = (project: HousingProjectResponse) => {
+    const thumbUrl = getThumbnailUrl(project);
+    return (
+      <TouchableOpacity
+        key={project.id}
+        style={styles.projectCard}
+        activeOpacity={0.85}
+        onPress={() => handleProjectPress(project)}
+      >
+        <View style={styles.projectThumbnail}>
+          {thumbUrl ? (
+            <Image source={{ uri: thumbUrl }} style={styles.projectImage} />
+          ) : (
+            <View style={styles.projectImagePlaceholder}>
+              <Feather name="home" size={40} color={RHSColors.textMuted} />
+            </View>
+          )}
+          {project.status && (
+            <View style={[styles.statusBadge, { backgroundColor: RHSColors.govGreen }]}>
+              <Text style={styles.statusText}>{project.status}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.projectInfo}>
+          <Text style={styles.projectName} numberOfLines={2}>
+            {project.projectName}
           </Text>
-          {formatArea(project.minArea, project.maxArea) ? (
-            <Text style={styles.projectArea}>
-              {formatArea(project.minArea, project.maxArea)}
+          <View style={styles.projectMeta}>
+            <Text style={styles.projectPrice}>
+              {formatPrice(project.minPrice, project.maxPrice)}
             </Text>
-          ) : null}
+            {formatArea(project.minArea, project.maxArea) ? (
+              <Text style={styles.projectArea}>
+                {formatArea(project.minArea, project.maxArea)}
+              </Text>
+            ) : null}
+          </View>
+          <View style={styles.projectLocationRow}>
+            <Feather name="map-pin" size={13} color={RHSColors.textMuted} />
+            <Text style={styles.projectLocation} numberOfLines={1}>
+              {project.province}, {project.district}
+            </Text>
+          </View>
         </View>
-        <View style={styles.projectLocationRow}>
-          <Feather name="map-pin" size={13} color={RHSColors.textMuted} />
-          <Text style={styles.projectLocation} numberOfLines={1}>
-            {project.province}, {project.district}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>

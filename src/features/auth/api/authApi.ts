@@ -48,13 +48,16 @@ export interface AuthResponse {
   message: string;
   accessToken?: string;
   refreshToken?: string;
+  requiresOtpVerification?: boolean;
   user?: {
     id: string;
     email: string;
     fullName: string;
     phoneNumber?: string;
+    address?: string;
     role: string;
     isEmailVerified: boolean;
+    profileImageUrl?: string;
   };
 }
 
@@ -80,7 +83,11 @@ export const authApi = {
   },
 
   resendOtp: async (email: string): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.post<{ success: boolean; message: string }>('/auth/resend-otp', `"${email}"`);
+    const response = await apiClient.post<{ success: boolean; message: string }>(
+      '/auth/resend-otp',
+      `"${email}"`,
+      { headers: { 'Content-Type': 'application/json' } },
+    );
     return response.data;
   },
 
