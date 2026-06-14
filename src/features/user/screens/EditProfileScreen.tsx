@@ -139,7 +139,7 @@ export const EditProfileScreen = () => {
                 setHasInteracted({ ...hasInteracted, dateOfBirth: false });
               }}
               errorMessage={hasInteracted.dateOfBirth ? errors.dateOfBirth : undefined}
-              keyboardType="numbers-and-punctuation"
+              keyboardType="default"
             />
 
             <TouchableOpacity

@@ -35,7 +35,8 @@
           "photosPermission": "Ứng dụng cần truy cập thư viện ảnh để chọn ảnh CCCD.",
           "cameraPermission": "Ứng dụng cần truy cập camera để chụp ảnh CCCD và selfie xác thực danh tính."
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }

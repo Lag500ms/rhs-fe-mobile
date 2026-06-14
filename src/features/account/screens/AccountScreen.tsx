@@ -138,7 +138,11 @@ export const AccountScreen = () => {
         <View style={styles.menuCard}>
           <Text style={styles.menuSectionTitle}>Hướng dẫn</Text>
           <MenuItem icon="help-circle" text="Câu hỏi thường gặp" />
-          <MenuItem icon="message-circle" text="Góp ý báo lỗi" />
+          <MenuItem
+            icon="message-circle"
+            text="Góp ý báo lỗi"
+            onPress={() => navigation.navigate('IssueReport')}
+          />
           <MenuItem icon="users" text="Về chúng tôi" last />
         </View>
 

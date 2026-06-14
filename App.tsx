@@ -6,12 +6,14 @@ import { AuthNavigator } from './src/features/auth/AuthNavigator';
 import { UserNavigator } from './src/features/user/UserNavigator';
 import { MainTabNavigator } from './src/features/main/MainTabNavigator';
 import { EKycNavigator } from './src/features/ekyc/EKycNavigator';
+import { IssueReportNavigator } from './src/features/issue-reports/IssueReportNavigator';
 
 export type RootStackParamList = {
   MainTabs: undefined;
   Auth: undefined;
   UserProfile: undefined;
   EKyc: { returnTo?: string } | undefined;
+  IssueReport: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -27,6 +29,7 @@ export default function App() {
         <Stack.Screen name="Auth" component={AuthNavigator} />
         <Stack.Screen name="UserProfile" component={UserNavigator} />
         <Stack.Screen name="EKyc" component={EKycNavigator} />
+        <Stack.Screen name="IssueReport" component={IssueReportNavigator} />
       </Stack.Navigator>
     </NavigationContainer>
   );
