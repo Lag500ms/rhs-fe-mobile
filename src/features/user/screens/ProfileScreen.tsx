@@ -12,38 +12,25 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { RHSColors } from '../../../lib/theme';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-
+import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
 import { userApi, UserProfileDto } from '../api/userApi';
-import { BrandBar } from '../../../components/BrandBar';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { ActionButton } from '../../../components/ActionButton';
 import { InfoRow } from '../../../components/InfoRow';
-
-const VERIFIED_KEY = 'identityVerified';
 
 export const ProfileScreen = () => {
   const navigation = useNavigation<any>();
   const [profile, setProfile] = useState<UserProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      checkVerifiedStatus();
       loadProfile();
     }, [])
   );
-
-  const checkVerifiedStatus = async () => {
-    try {
-      const verified = await AsyncStorage.getItem(VERIFIED_KEY);
-      setIsVerified(verified === 'true');
-    } catch {}
-  };
 
   const loadProfile = async () => {
     setLoading(true);
@@ -86,62 +73,28 @@ export const ProfileScreen = () => {
   const getMimeTypeFromUri = (uri: string): string => {
     const ext = uri.split('.').pop()?.toLowerCase();
     switch (ext) {
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'png':
-        return 'image/png';
-      case 'gif':
-        return 'image/gif';
-      case 'webp':
-        return 'image/webp';
-      case 'heic':
-        return 'image/heic';
-      case 'heif':
-        return 'image/heif';
-      default:
-        return 'image/jpeg';
+      case 'jpg': case 'jpeg': return 'image/jpeg';
+      case 'png': return 'image/png';
+      case 'gif': return 'image/gif';
+      case 'webp': return 'image/webp';
+      case 'heic': return 'image/heic';
+      case 'heif': return 'image/heif';
+      default: return 'image/jpeg';
     }
   };
 
-  const pickImageFromGallery = async (): Promise<{ uri: string; type: string; fileName: string } | null> => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images',
-      quality: 0.8,
-    });
+  const pickImage = async (fromCamera: boolean): Promise<{ uri: string; type: string; fileName: string } | null> => {
+    const result = fromCamera
+      ? await ImagePicker.launchCameraAsync({ mediaTypes: 'images', quality: 0.8 })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.8 });
 
-    if (result.canceled || !result.assets || result.assets.length === 0) {
-      return null;
-    }
+    if (result.canceled || !result.assets || result.assets.length === 0) return null;
+
     const asset = result.assets[0];
     const uri = asset.uri;
     const mimeType = getMimeTypeFromUri(uri);
     const fileName = asset.fileName || `profile_${Date.now()}.${mimeType.split('/')[1]}`;
-    return {
-      uri,
-      type: mimeType,
-      fileName,
-    };
-  };
-
-  const pickImageFromCamera = async (): Promise<{ uri: string; type: string; fileName: string } | null> => {
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: 'images',
-      quality: 0.8,
-    });
-
-    if (result.canceled || !result.assets || result.assets.length === 0) {
-      return null;
-    }
-    const asset = result.assets[0];
-    const uri = asset.uri;
-    const mimeType = getMimeTypeFromUri(uri);
-    const fileName = asset.fileName || `profile_${Date.now()}.${mimeType.split('/')[1]}`;
-    return {
-      uri,
-      type: mimeType,
-      fileName,
-    };
+    return { uri, type: mimeType, fileName };
   };
 
   const uploadImage = async (asset: { uri: string; type: string; fileName: string }) => {
@@ -167,78 +120,72 @@ export const ProfileScreen = () => {
 
   const handleUploadImage = () => {
     Alert.alert('Chọn ảnh đại diện', 'Vui lòng chọn nguồn ảnh', [
-      {
-        text: 'Chụp ảnh',
-        onPress: async () => {
-          const hasPermission = await requestCameraPermission();
-          if (!hasPermission) return;
-          const asset = await pickImageFromCamera();
-          if (asset) await uploadImage(asset);
-        },
-      },
-      {
-        text: 'Chọn từ thư viện',
-        onPress: async () => {
-          const hasPermission = await requestMediaPermission();
-          if (!hasPermission) return;
-          const asset = await pickImageFromGallery();
-          if (asset) await uploadImage(asset);
-        },
-      },
+      { text: 'Chụp ảnh', onPress: async () => {
+        if (!(await requestCameraPermission())) return;
+        const asset = await pickImage(true);
+        if (asset) await uploadImage(asset);
+      }},
+      { text: 'Chọn từ thư viện', onPress: async () => {
+        if (!(await requestMediaPermission())) return;
+        const asset = await pickImage(false);
+        if (asset) await uploadImage(asset);
+      }},
       { text: 'Hủy', style: 'cancel' },
     ]);
   };
 
+  const isVerified = !!profile?.citizenId;
+
   const handleVerifyIdentity = () => {
+    if (isVerified) {
+      Alert.alert('Thông báo', 'Bạn đã xác minh danh tính thành công rồi.');
+      return;
+    }
     navigation.getParent()?.navigate('EKyc');
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <BrandBar />
+      <SafeAreaView style={styles.safe}>
         <ScreenHeader title="Hồ sơ cá nhân" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={RHSColors.govBlue} />
+          <ActivityIndicator size="large" color={RHSColors.blue700} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <BrandBar />
+    <SafeAreaView style={styles.safe}>
       <ScreenHeader
         title="Hồ sơ cá nhân"
         rightAction={
-          <TouchableOpacity
-            style={styles.editButton}
-          onPress={() => navigation.navigate('EditProfile', { profile })}
-          >
-            <Text style={{ color: '#fff', fontSize: 13 }}>Sửa</Text>
+          <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('EditProfile', { profile })}>
+            <Feather name="edit-2" size={15} color="#fff" style={{ marginRight: 4 }} />
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Sửa</Text>
           </TouchableOpacity>
         }
       />
 
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Avatar */}
         <View style={styles.avatarCard}>
-          {profile?.profileImageUrl ? (
-            <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarText}>
-                {profile?.fullName?.charAt(0) || 'U'}
-              </Text>
-            </View>
-          )}
-          <TouchableOpacity style={styles.uploadBtn} onPress={handleUploadImage} disabled={uploading}>
-            {uploading ? (
-              <ActivityIndicator size="small" color={RHSColors.govBlue} />
+          <View style={styles.avatarWrapper}>
+            {profile?.profileImageUrl ? (
+              <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
             ) : (
-              <Text style={{ color: '#fff', fontSize: 16 }}>+</Text>
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarInitial}>{profile?.fullName?.charAt(0) || 'U'}</Text>
+              </View>
             )}
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.uploadBtn} onPress={handleUploadImage} disabled={uploading}>
+              {uploading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Feather name="camera" size={14} color="#fff" />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Info Card */}
@@ -249,14 +196,9 @@ export const ProfileScreen = () => {
           <InfoRow label="Địa chỉ" value={profile?.address || 'Chưa cập nhật'} />
           <InfoRow
             label="Ngày sinh"
-            value={
-              profile?.dateOfBirth
-                ? new Date(profile.dateOfBirth).toLocaleDateString('vi-VN')
-                : 'Chưa cập nhật'
-            }
+            value={profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
           />
           <InfoRow label="Số CCCD" value={profile?.citizenId || 'Chưa cập nhật'} />
-          <InfoRow label="Vai trò" value={profile?.role || 'Applicant'} />
           <InfoRow
             label="Trạng thái email"
             value={profile?.isEmailVerified ? 'Đã xác thực' : 'Chưa xác thực'}
@@ -266,112 +208,81 @@ export const ProfileScreen = () => {
         </View>
 
         {/* Actions */}
-        <ActionButton
-          icon="lock"
-          text="Đổi mật khẩu"
-          onPress={() => navigation.navigate('ChangePassword')}
-        />
+        <ActionButton icon="lock" text="Đổi mật khẩu" onPress={() => navigation.navigate('ChangePassword')} />
 
         <ActionButton
           icon="shield"
           text={isVerified ? 'Đã xác minh danh tính' : 'Xác minh danh tính'}
-          color={isVerified ? RHSColors.govGreen : RHSColors.govGold}
-          leftBorderColor={isVerified ? RHSColors.govGreen : RHSColors.govGold}
+          color={isVerified ? RHSColors.green600 : RHSColors.amber700}
+          leftBorderColor={isVerified ? RHSColors.green600 : RHSColors.amber700}
           showChevron={!isVerified}
           onPress={handleVerifyIdentity}
         />
 
-        <ActionButton
-          icon="trash-2"
-          text="Xóa tài khoản"
-          isDestructive
-          onPress={() => navigation.navigate('DeleteAccount')}
-          last
-        />
+        <ActionButton icon="trash-2" text="Xóa tài khoản" isDestructive onPress={() => navigation.navigate('DeleteAccount')} last />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: RHSColors.surface,
-  },
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  safe: { flex: 1, backgroundColor: RHSColors.surface },
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.surface },
+
+  editBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: RHSColors.surface,
-  },
-  editButton: {
-    width: 52,
-    height: 32,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
-  avatarCard: {
-    alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 24,
-    position: 'relative',
-  },
+
+  // Avatar
+  avatarCard: { alignItems: 'center', marginTop: 20, marginBottom: 20 },
+  avatarWrapper: { position: 'relative' },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
     borderWidth: 4,
     borderColor: RHSColors.white,
+    ...shadows.md,
   },
   avatarPlaceholder: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: RHSColors.govBlue,
+    backgroundColor: RHSColors.blue700,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 4,
     borderColor: RHSColors.white,
-    shadowColor: RHSColors.black,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    ...shadows.md,
   },
-  avatarText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: RHSColors.white,
-  },
+  avatarInitial: { fontSize: 36, fontWeight: '800', color: '#fff' },
   uploadBtn: {
     position: 'absolute',
-    bottom: 4,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: RHSColors.govBlue,
+    bottom: -4,
+    right: -4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: RHSColors.blue700,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
     borderColor: RHSColors.white,
   },
+
+  // Info
   infoCard: {
-    backgroundColor: RHSColors.white,
-    borderRadius: 16,
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.xl,
     paddingHorizontal: 4,
     marginBottom: 16,
-    shadowColor: RHSColors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...shadows.md,
   },
 });

@@ -2,22 +2,21 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { RHSColors } from '../../../lib/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { RHSColors, spacing, borderRadius, shadows, typography } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
-
-import { CustomInput } from '../components/CustomInput';
-import { Divider } from '../components/Divider';
-import { SocialButton } from '../components/SocialButton';
 import { authApi } from '../api/authApi';
 import { setTokens, getRememberedEmail, saveRememberedEmail } from '../../../lib/tokenStorage';
 
@@ -25,10 +24,9 @@ export const LoginScreen = () => {
   const navigation = useNavigation<any>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [hasInteracted, setHasInteracted] = useState<{ [key: string]: boolean }>({});
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
@@ -41,145 +39,142 @@ export const LoginScreen = () => {
     })();
   }, []);
 
-  const isLoginEnabled = email.length > 0 && password.length > 0;
+  const isFormValid = email.trim().length > 0 && password.length > 0;
 
-  const validateForm = () => {
-    const newErrors: { [key: string]: string } = {};
-
-    if (!email) {
-      newErrors.email = 'Email là bắt buộc';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Email không hợp lệ';
-    }
-
-    if (!password) {
-      newErrors.password = 'Mật khẩu là bắt buộc';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const validate = (): boolean => {
+    const errs: { email?: string; password?: string } = {};
+    if (!email.trim()) errs.email = 'Vui lòng nhập email';
+    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = 'Email không đúng định dạng';
+    if (!password) errs.password = 'Vui lòng nhập mật khẩu';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   const handleLogin = async () => {
-    setHasInteracted({ email: true, password: true });
-
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validate()) return;
     setLoading(true);
+    setErrors({});
+
     try {
-      const result = await authApi.login({ email, password });
+      const result = await authApi.login({ email: email.trim(), password });
 
       if (result.success && result.accessToken) {
         await setTokens(result.accessToken, result.refreshToken);
-        if (rememberMe) {
-          await saveRememberedEmail(email);
-        }
-        setShowSuccess(true);
-        setTimeout(() => {
-          setShowSuccess(false);
-          navigation.goBack();
-        }, 1000);
+        if (rememberMe) await saveRememberedEmail(email.trim());
+        // Chuyển thẳng về trang chủ, không cần Alert thành công
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
       } else {
-        setShowSuccess(false);
+        setErrors({ password: result.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại.' });
       }
     } catch (error: any) {
-      setShowSuccess(false);
+      const status = error.response?.status;
+      const serverMsg = error.response?.data?.message || error.response?.data?.title;
+
+      if (status === 401 || serverMsg?.toLowerCase().includes('password') || serverMsg?.toLowerCase().includes('mật khẩu')) {
+        setErrors({ password: 'Mật khẩu hoặc email không đúng' });
+      } else if (status === 400 && serverMsg?.toLowerCase().includes('otp')) {
+        Alert.alert('Chưa xác thực', 'Tài khoản chưa xác thực email. Vui lòng nhập mã OTP.', [
+          { text: 'Nhập OTP', onPress: () => navigation.navigate('VerifyOtp', { email: email.trim() }) },
+          { text: 'Để sau', style: 'cancel' },
+        ]);
+      } else {
+        setErrors({ password: 'Không thể kết nối đến máy chủ. Vui lòng thử lại.' });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.brandBar}>
-        <View style={styles.brandBarStripeRed} />
-        <View style={styles.brandBarStripeGold} />
-        <View style={styles.brandBarStripeBlue} />
-      </View>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-      >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
-              <Feather name="x" color={RHSColors.text} size={24} />
-            </TouchableOpacity>
-          </View>
+    <SafeAreaView style={styles.safe}>
+      {/* Compact header — giống AccountScreen */}
+      <LinearGradient colors={['#0A3A85', '#1565C0', '#1E88E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerBg}>
+        <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
+          <Feather name="x" size={22} color="#fff" />
+        </TouchableOpacity>
+        <RHSLogo size={36} />
+        <Text style={styles.headerTitle}>RHS Platform</Text>
+        <View style={{ width: 36 }} />
+      </LinearGradient>
 
-          <View style={styles.logoContainer}>
-            <RHSLogo size={64} />
-            <Text style={styles.appNameText}>Hệ thống cung ứng{'\n'}nhà ở xã hội bền vững</Text>
-          </View>
+      {/* Form card */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <View style={styles.card}>
+            <Text style={styles.welcome}>Chào mừng bạn!</Text>
+            <Text style={styles.subtitle}>Đăng nhập để tra cứu nhà ở và đăng ký</Text>
 
-          <Text style={styles.title}>Đăng nhập</Text>
-
-          <View style={styles.formContainer}>
-            <CustomInput
-              iconName="mail"
-              placeholder="Nhập email"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                setHasInteracted({ ...hasInteracted, email: false });
-              }}
-              errorMessage={hasInteracted.email ? errors.email : undefined}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <CustomInput
-              iconName="lock"
-              placeholder="Nhập mật khẩu"
-              secureTextEntry
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                setHasInteracted({ ...hasInteracted, password: false });
-              }}
-              errorMessage={hasInteracted.password ? errors.password : undefined}
-            />
-
-            <TouchableOpacity
-              style={styles.rememberContainer}
-              onPress={() => setRememberMe(!rememberMe)}
-            >
-              <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
-                {rememberMe && <Feather name="check" color={RHSColors.white} size={16} />}
+            {/* Email */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Email</Text>
+              <View style={[styles.inputWrap, errors.email && styles.inputError]}>
+                <Feather name="mail" size={18} color={RHSColors.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.textInputInner}
+                  value={email}
+                  onChangeText={(t: string) => { setEmail(t); setErrors(prev => ({ ...prev, email: undefined })); }}
+                  placeholder="Nhập email của bạn"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  placeholderTextColor={RHSColors.textMuted}
+                />
               </View>
-              <Text style={styles.rememberText}>Lưu tài khoản</Text>
+              {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+            </View>
+
+            {/* Password */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Mật khẩu</Text>
+              <View style={[styles.inputWrap, errors.password && styles.inputError]}>
+                <Feather name="lock" size={18} color={RHSColors.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.textInputInner}
+                  value={password}
+                  onChangeText={(t: string) => { setPassword(t); setErrors(prev => ({ ...prev, password: undefined })); }}
+                  placeholder="Nhập mật khẩu"
+                  secureTextEntry={!showPassword}
+                  placeholderTextColor={RHSColors.textMuted}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={RHSColors.textMuted} />
+                </TouchableOpacity>
+              </View>
+              {errors.password ? <Text style={[styles.errorText, { color: RHSColors.red600, fontWeight: '600', fontSize: 13, textAlign: 'center', marginTop: 10, backgroundColor: '#FFF0F0', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, overflow: 'hidden' }]}>{errors.password}</Text> : null}
+            </View>
+
+            {/* Remember me */}
+            <TouchableOpacity style={styles.rememberRow} onPress={() => setRememberMe(!rememberMe)} activeOpacity={0.7}>
+              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                {rememberMe && <Feather name="check" size={14} color="#fff" />}
+              </View>
+              <Text style={styles.rememberText}>Ghi nhớ tài khoản</Text>
             </TouchableOpacity>
 
+            {/* Login button */}
             <TouchableOpacity
-              style={[styles.loginBtn, isLoginEnabled && styles.loginBtnActive]}
-              disabled={!isLoginEnabled || loading}
+              style={[styles.loginBtn, isFormValid && styles.loginBtnActive]}
+              disabled={!isFormValid || loading}
               onPress={handleLogin}
+              activeOpacity={0.85}
             >
               {loading ? (
-                <ActivityIndicator color={RHSColors.white} />
+                <ActivityIndicator color="#fff" size={22} />
               ) : (
-                <Text style={[styles.loginBtnText, isLoginEnabled && styles.loginBtnTextActive]}>
-                  Đăng nhập
-                </Text>
+                <Text style={[styles.loginBtnText, isFormValid && { color: '#fff' }]}>Đăng nhập</Text>
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+            {/* Forgot password */}
+            <TouchableOpacity style={styles.forgotBtn} onPress={() => navigation.navigate('ForgotPassword')}>
               <Text style={styles.forgotText}>Quên mật khẩu?</Text>
             </TouchableOpacity>
           </View>
 
-          <Divider text="Hoặc đăng nhập với" />
-
-          <View style={styles.socialContainer}>
-            <SocialButton />
-          </View>
-
+          {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>Bạn chưa có tài khoản? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerText}>Đăng ký</Text>
+              <Text style={styles.registerLink}>Đăng ký ngay</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -189,81 +184,80 @@ export const LoginScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: RHSColors.surfaceCard },
-  brandBar: {
-    flexDirection: 'row',
-    height: 4,
-  },
-  brandBarStripeRed: {
-    flex: 2,
-    backgroundColor: RHSColors.govRed,
-  },
-  brandBarStripeGold: {
-    flex: 0.4,
-    backgroundColor: RHSColors.govGold,
-  },
-  brandBarStripeBlue: {
-    flex: 2,
-    backgroundColor: RHSColors.govBlue,
-  },
-  container: { flex: 1, paddingHorizontal: 24 },
-  scrollContainer: { flexGrow: 1 },
-  header: { marginTop: 16, marginBottom: 20 },
-  closeButton: {
-    width: 40, height: 40, borderRadius: 20, borderWidth: 1,
-    borderColor: RHSColors.border, justifyContent: 'center', alignItems: 'center',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  appNameText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: RHSColors.govBlueDark,
-    textAlign: 'center',
-    marginTop: 12,
-    lineHeight: 18,
-  },
-  title: {
-    fontSize: 28, fontWeight: 'bold', color: RHSColors.text, textAlign: 'center', marginBottom: 32,
-  },
-  formContainer: { marginBottom: 30 },
-  loginBtn: {
-    backgroundColor: RHSColors.surface, height: 52, borderRadius: 25, justifyContent: 'center', alignItems: 'center',
-  },
-  loginBtnActive: { backgroundColor: RHSColors.govBlue },
-  loginBtnText: { fontSize: 16, fontWeight: '600', color: RHSColors.textMuted },
-  loginBtnTextActive: { color: RHSColors.white },
-  rememberContainer: {
+  safe: { flex: 1, backgroundColor: RHSColors.grey50 },
+  flex: { flex: 1 },
+  scroll: { flexGrow: 1, paddingBottom: 40 },
+  headerBg: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 16,
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: 1 },
+  card: {
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderRadius: borderRadius.xl,
+    padding: 24,
+    ...shadows.md,
+  },
+  welcome: { ...typography.h2, color: RHSColors.text, marginBottom: 4 },
+  subtitle: { ...typography.bodySmall, color: RHSColors.textSecondary, marginBottom: 24 },
+  fieldGroup: { marginBottom: 16 },
+  label: { ...typography.caption, color: RHSColors.textSecondary, marginBottom: 6, fontWeight: '600' },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: RHSColors.grey50,
+    borderWidth: 1.5,
+    borderColor: RHSColors.border,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: 14,
+    height: 50,
+  },
+  inputError: { borderColor: RHSColors.error },
+  textInputInner: { flex: 1, fontSize: 15, color: RHSColors.text, padding: 0 },
+  inputIcon: { marginRight: 10 },
+  errorText: { color: RHSColors.error, fontSize: 12, marginTop: 4, marginLeft: 4 },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   checkbox: {
     width: 20,
     height: 20,
-    borderRadius: 4,
+    borderRadius: 5,
     borderWidth: 2,
-    borderColor: RHSColors.govRed,
+    borderColor: RHSColors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: 10,
   },
-  checkboxActive: {
-    backgroundColor: RHSColors.govRed,
+  checkboxChecked: { backgroundColor: RHSColors.blue700, borderColor: RHSColors.blue700 },
+  rememberText: { ...typography.bodySmall, color: RHSColors.textSecondary },
+  loginBtn: {
+    backgroundColor: RHSColors.grey300,
+    borderRadius: borderRadius.lg,
+    height: 54,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    ...shadows.sm,
   },
-  rememberText: {
-    fontSize: 14,
-    color: RHSColors.text,
-  },
-  forgotText: {
-    fontSize: 14, color: RHSColors.govRed, textAlign: 'center', marginTop: 16,
-    textDecorationLine: 'underline',
-  },
-  socialContainer: { alignItems: 'center', marginBottom: 30 },
-  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 30 },
-  footerText: { fontSize: 14, color: RHSColors.text },
-  registerText: { fontSize: 14, fontWeight: '600', color: RHSColors.govRed, textDecorationLine: 'underline' },
+  loginBtnActive: { backgroundColor: RHSColors.blue700, ...shadows.md },
+  loginBtnText: { ...typography.button, color: RHSColors.white, letterSpacing: 0.5 },
+  forgotBtn: { alignItems: 'center' },
+  forgotText: { ...typography.bodySmall, color: RHSColors.blue700, fontWeight: '600' },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 24 },
+  footerText: { ...typography.bodySmall, color: RHSColors.textSecondary },
+  registerLink: { ...typography.bodySmall, color: RHSColors.blue700, fontWeight: '700', textDecorationLine: 'underline' },
 });

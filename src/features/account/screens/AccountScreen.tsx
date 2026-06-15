@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,13 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { RHSColors } from '../../../lib/theme';
+import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
 import { getToken, clearTokens } from '../../../lib/tokenStorage';
 import { userApi, UserProfileDto } from '../../user/api/userApi';
@@ -39,7 +40,7 @@ export const AccountScreen = () => {
         setIsLoggedIn(false);
         setProfile(null);
       }
-    } catch (error) {
+    } catch {
       setIsLoggedIn(false);
       setProfile(null);
     } finally {
@@ -58,14 +59,8 @@ export const AccountScreen = () => {
     }
   };
 
-  const handleLogin = () => {
-    navigation.navigate('Auth', { screen: 'Login' });
-  };
-
-  const handleProfilePress = () => {
-    navigation.navigate('UserProfile');
-  };
-
+  const handleLogin = () => navigation.navigate('Auth', { screen: 'Login' });
+  const handleProfilePress = () => navigation.navigate('UserProfile');
   const handleLogout = async () => {
     await clearTokens();
     setIsLoggedIn(false);
@@ -74,319 +69,273 @@ export const AccountScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safe}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={RHSColors.govBlue} />
+          <ActivityIndicator size="large" color={RHSColors.blue700} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safe}>
+      {/* Brand bar stripes */}
       <View style={styles.brandBar}>
-        <View style={styles.brandBarStripeRed} />
-        <View style={styles.brandBarStripeGold} />
-        <View style={styles.brandBarStripeBlue} />
+        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.red600 }]} />
+        <View style={[styles.stripe, { flex: 0.4, backgroundColor: RHSColors.amber600 }]} />
+        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.blue700 }]} />
       </View>
+
+      {/* Header gradient */}
       <LinearGradient
-        colors={[RHSColors.govBlueDark, RHSColors.govBlue, RHSColors.govTeal]}
+        colors={['#0A3A85', '#1565C0', '#1E88E5']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.brandHeader}
+        style={styles.headerBg}
       >
-        <RHSLogo size={32} />
-        <Text style={styles.brandHeaderText}>RHS</Text>
+        <RHSLogo size={36} />
+        <Text style={styles.headerTitle}>RHS Platform</Text>
       </LinearGradient>
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Login/Profile Section */}
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Profile card OR Login prompt */}
         {!isLoggedIn ? (
           <View style={styles.loginCard}>
-            <View style={styles.loginIconWrap}>
-              <Feather name="user" size={48} color={RHSColors.govBlue} />
+            <View style={styles.loginAvatarCircle}>
+              <Feather name="user" size={44} color={RHSColors.blue700} />
             </View>
             <Text style={styles.loginTitle}>Chào bạn!</Text>
-            <Text style={styles.loginDesc}>
-              Đăng nhập để xem thông tin và đăng ký nhà ở xã hội phù hợp với bạn.
+            <Text style={styles.loginSub}>
+              Đăng nhập để tra cứu và đăng ký nhà ở xã hội dành cho hộ nghèo, cận nghèo tại phường.
             </Text>
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-              <Text style={styles.loginButtonText}>Đăng nhập</Text>
+            <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin} activeOpacity={0.85}>
+              <Feather name="log-in" size={18} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.primaryBtnText}>Đăng nhập</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Auth', { screen: 'Register' })}
-            >
-              <Text style={styles.registerText}>Chưa có tài khoản? Đăng ký</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Auth', { screen: 'Register' })} style={styles.linkBtn}>
+              <Text style={styles.linkText}>Chưa có tài khoản? Đăng ký</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity style={styles.profileCard} onPress={handleProfilePress}>
-            <View style={styles.avatarWrap}>
-              <Text style={styles.avatarText}>
-                {profile?.fullName?.charAt(0)?.toUpperCase() || 'R'}
-              </Text>
-            </View>
+          <TouchableOpacity style={styles.profileCard} onPress={handleProfilePress} activeOpacity={0.85}>
+            {profile?.profileImageUrl ? (
+              <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarInitial}>
+                  {profile?.fullName?.charAt(0)?.toUpperCase() || 'R'}
+                </Text>
+              </View>
+            )}
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>{profile?.fullName || 'Người dùng'}</Text>
-              <Text style={styles.profileRole}>{profile?.role || 'Applicant'}</Text>
+              <Text style={styles.profileHint}>Xem hồ sơ cá nhân</Text>
             </View>
             <Feather name="chevron-right" size={22} color={RHSColors.textMuted} />
           </TouchableOpacity>
         )}
 
-        {/* Menu Sections */}
+        {/* Menu: Guide */}
         <View style={styles.menuCard}>
-          <Text style={styles.menuSectionTitle}>Hướng dẫn</Text>
-          <MenuItem icon="help-circle" text="Câu hỏi thường gặp" />
-          <MenuItem
-            icon="message-circle"
-            text="Góp ý báo lỗi"
-            onPress={() => navigation.navigate('IssueReport')}
-          />
-          <MenuItem icon="users" text="Về chúng tôi" last />
+          <Text style={styles.menuTitle}>HƯỚNG DẪN</Text>
+          <MenuItem icon="help-circle" label="Câu hỏi thường gặp" />
+          <MenuItem icon="message-circle" label="Góp ý, báo lỗi" onPress={() => navigation.navigate('IssueReport')} />
+          <MenuItem icon="info" label="Về chúng tôi" last />
         </View>
 
+        {/* Menu: Policy */}
         <View style={styles.menuCard}>
-          <Text style={styles.menuSectionTitle}>Quy định</Text>
-          <MenuItem icon="file-text" text="Điều khoản thỏa thuận" />
-          <MenuItem icon="shield" text="Chính sách bảo mật" last />
+          <Text style={styles.menuTitle}>QUY ĐỊNH</Text>
+          <MenuItem icon="file-text" label="Điều khoản thỏa thuận" />
+          <MenuItem icon="shield" label="Chính sách bảo mật" last />
         </View>
 
+        {/* Menu: Account (only when logged in) */}
         {isLoggedIn && (
           <View style={styles.menuCard}>
-            <Text style={styles.menuSectionTitle}>Tài khoản & thông báo</Text>
-            <MenuItem icon="settings" text="Cài đặt tài khoản" />
+            <Text style={styles.menuTitle}>TÀI KHOẢN & THÔNG BÁO</Text>
+            <MenuItem icon="settings" label="Cài đặt tài khoản" />
             <MenuItem
-              icon="key"
-              text="Đổi mật khẩu"
+              icon="lock"
+              label="Đổi mật khẩu"
               onPress={() => navigation.navigate('UserProfile', { screen: 'ChangePassword' })}
             />
-            <MenuItem icon="bell" text="Cài đặt thông báo" />
-            <MenuItem icon="log-out" text="Đăng xuất" isDestructive onPress={handleLogout} last />
+            <MenuItem icon="bell" label="Thông báo" />
+            <MenuItem icon="log-out" label="Đăng xuất" onPress={handleLogout} danger last />
           </View>
         )}
 
         {/* Footer */}
         <View style={styles.footer}>
-          <RHSLogo size={24} />
-          <Text style={styles.footerText}>Hệ thống cung ứng nhà ở xã hội bền vững</Text>
+          <RHSLogo size={20} />
+          <Text style={styles.footerText}>RHS Platform — Nền tảng hỗ trợ nhà ở {'\n'}cho hộ nghèo, cận nghèo tại phường</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-// Menu Item Component
-const MenuItem = ({ icon, text, onPress, isDestructive, last }: {
+// ─── Menu Item ──────────────────────────────────────────────────
+const MenuItem = ({
+  icon,
+  label,
+  onPress,
+  danger,
+  last,
+}: {
   icon: string;
-  text: string;
+  label: string;
   onPress?: () => void;
-  isDestructive?: boolean;
+  danger?: boolean;
   last?: boolean;
 }) => (
   <TouchableOpacity
-    style={[styles.menuItem, last && styles.menuItemLast]}
+    style={[styles.menuItem, last && { borderBottomWidth: 0 }]}
     onPress={onPress}
+    activeOpacity={0.6}
   >
-    <Feather
-      name={icon as any}
-      size={20}
-      color={isDestructive ? RHSColors.govRed : RHSColors.text}
-    />
-    <Text style={[styles.menuItemText, isDestructive && { color: RHSColors.govRed }]}>
-      {text}
-    </Text>
-    <Feather name="chevron-right" size={20} color={RHSColors.textMuted} />
+    <View style={[styles.menuIconWrap, danger && { backgroundColor: RHSColors.red50 }]}>
+      <Feather name={icon as any} size={18} color={danger ? RHSColors.red600 : RHSColors.blue700} />
+    </View>
+    <Text style={[styles.menuLabel, danger && { color: RHSColors.red600 }]}>{label}</Text>
+    <Feather name="chevron-right" size={18} color={RHSColors.grey400} />
   </TouchableOpacity>
 );
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: RHSColors.surface,
-  },
-  container: {
-    flex: 1,
-  },
-  brandBar: {
-    flexDirection: 'row',
-    height: 4,
-  },
-  brandBarStripeRed: {
-    flex: 2,
-    backgroundColor: RHSColors.govRed,
-  },
-  brandBarStripeGold: {
-    flex: 0.4,
-    backgroundColor: RHSColors.govGold,
-  },
-  brandBarStripeBlue: {
-    flex: 2,
-    backgroundColor: RHSColors.govBlue,
-  },
-  brandHeader: {
+  safe: { flex: 1, backgroundColor: RHSColors.surface },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.surface },
+  brandBar: { flexDirection: 'row', height: 4 },
+  stripe: { height: '100%' },
+  headerBg: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    gap: 10,
+    paddingVertical: 18,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  brandHeaderText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: RHSColors.white,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: RHSColors.surface,
-  },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: 1 },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 40 },
+
+  // ── Login card ──
   loginCard: {
     margin: 16,
-    padding: 32,
-    backgroundColor: RHSColors.white,
-    borderRadius: 20,
+    padding: 28,
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.xl,
     alignItems: 'center',
-    shadowColor: RHSColors.black,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
+    ...shadows.md,
   },
-  loginIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#e3f2fd',
+  loginAvatarCircle: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: RHSColors.blue50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  loginTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: RHSColors.text,
-    marginBottom: 8,
-  },
-  loginDesc: {
-    fontSize: 14,
-    color: RHSColors.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  loginButton: {
-    backgroundColor: RHSColors.govBlue,
-    paddingHorizontal: 48,
+  loginTitle: { ...typography.h2, color: RHSColors.text, marginBottom: 8 },
+  loginSub: { ...typography.bodySmall, color: RHSColors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 24, paddingHorizontal: 10 },
+  primaryBtn: {
+    flexDirection: 'row',
+    backgroundColor: RHSColors.blue700,
+    paddingHorizontal: 32,
     paddingVertical: 14,
-    borderRadius: 25,
-    marginBottom: 12,
-    width: '100%',
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginBottom: 12,
+    ...shadows.md,
   },
-  loginButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: RHSColors.white,
-  },
-  registerText: {
-    fontSize: 14,
-    color: RHSColors.govRed,
-    fontWeight: '500',
-    textDecorationLine: 'underline',
-  },
+  primaryBtnText: { ...typography.button, color: '#fff' },
+  linkBtn: { paddingVertical: 4 },
+  linkText: { ...typography.bodySmall, color: RHSColors.blue700, fontWeight: '600', textDecorationLine: 'underline' },
+
+  // ── Profile card ──
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
     margin: 16,
     padding: 18,
-    backgroundColor: RHSColors.white,
-    borderRadius: 16,
-    shadowColor: RHSColors.black,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.xl,
+    ...shadows.md,
   },
-  avatarWrap: {
+  avatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: RHSColors.govBlue,
+    borderWidth: 3,
+    borderColor: RHSColors.white,
+    marginRight: 14,
+  },
+  avatarPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: RHSColors.blue700,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: RHSColors.white,
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: RHSColors.text,
-  },
-  profileRole: {
-    fontSize: 13,
-    color: RHSColors.textMuted,
-    marginTop: 2,
-  },
+  avatarInitial: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  profileInfo: { flex: 1 },
+  profileName: { ...typography.h3, color: RHSColors.text },
+  profileHint: { fontSize: 12, color: RHSColors.textMuted, marginTop: 2 },
+
+  // ── Menu ──
   menuCard: {
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: RHSColors.white,
-    borderRadius: 16,
-    paddingHorizontal: 4,
-    shadowColor: RHSColors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.xl,
+    paddingVertical: 8,
+    ...shadows.sm,
   },
-  menuSectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+  menuTitle: {
+    fontSize: 11,
+    fontWeight: '700',
     color: RHSColors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    letterSpacing: 1,
+    paddingHorizontal: 18,
+    paddingTop: 14,
     paddingBottom: 8,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
     borderBottomWidth: 1,
-    borderBottomColor: RHSColors.surface,
+    borderBottomColor: RHSColors.grey100,
   },
-  menuItemLast: {
-    borderBottomWidth: 0,
+  menuIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: RHSColors.blue50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
   },
-  menuItemText: {
-    flex: 1,
-    fontSize: 15,
-    color: RHSColors.text,
-    marginLeft: 12,
-  },
+  menuLabel: { flex: 1, ...typography.bodySmall, color: RHSColors.text, fontWeight: '500' },
+
+  // ── Footer ──
   footer: {
     alignItems: 'center',
     paddingVertical: 24,
     gap: 8,
   },
   footerText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: RHSColors.govBlueDark,
+    color: RHSColors.textMuted,
     textAlign: 'center',
-    opacity: 0.7,
+    lineHeight: 16,
   },
 });

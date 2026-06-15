@@ -1,13 +1,7 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { RHSColors } from '../lib/theme';
+import { RHSColors, borderRadius, shadows } from '../lib/theme';
 
 interface ActionButtonProps {
   icon: string;
@@ -26,7 +20,7 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
   icon,
   text,
   onPress,
-  color = RHSColors.govBlue,
+  color = RHSColors.blue700,
   showChevron = true,
   disabled = false,
   loading = false,
@@ -34,8 +28,8 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
   isDestructive = false,
   last = false,
 }) => {
-  const iconColor = isDestructive ? RHSColors.govRed : color;
-  const textColor = isDestructive ? RHSColors.govRed : color;
+  const iconColor = isDestructive ? RHSColors.red600 : color;
+  const textColor = isDestructive ? RHSColors.red600 : color;
 
   return (
     <TouchableOpacity
@@ -46,16 +40,16 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
       ]}
       onPress={onPress}
       disabled={disabled}
-      activeOpacity={0.7}
+      activeOpacity={0.65}
     >
       {loading ? (
         <ActivityIndicator size="small" color={iconColor} />
       ) : (
-        <Feather name={icon as any} size={20} color={iconColor} />
+        <Feather name={icon as any} size={18} color={iconColor} />
       )}
       <Text style={[styles.text, { color: textColor }]}>{text}</Text>
       {showChevron && !loading && (
-        <Feather name={isDestructive ? 'alert-triangle' : 'chevron-right'} size={20} color={RHSColors.textMuted} />
+        <Feather name="chevron-right" size={18} color={RHSColors.grey400} />
       )}
     </TouchableOpacity>
   );
@@ -74,25 +68,25 @@ export const SubmitButton: React.FC<SubmitButtonProps> = ({
   onPress,
   disabled = false,
   loading = false,
-  color = RHSColors.govBlue,
+  color = RHSColors.blue700,
 }) => {
   return (
     <TouchableOpacity
       style={[
         styles.submitBtn,
         !disabled && { backgroundColor: color },
-        disabled && { backgroundColor: RHSColors.surface },
+        disabled && { backgroundColor: RHSColors.grey200 },
       ]}
       disabled={disabled || loading}
       onPress={onPress}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
     >
       {loading ? (
-        <ActivityIndicator color={RHSColors.white} />
+        <ActivityIndicator color="#fff" />
       ) : (
         <Text style={[
           styles.submitText,
-          !disabled && { color: RHSColors.white },
+          !disabled && { color: '#fff' },
           disabled && { color: RHSColors.textMuted },
         ]}>{text}</Text>
       )}
@@ -104,16 +98,12 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: RHSColors.white,
-    paddingVertical: 16,
+    backgroundColor: '#fff',
+    paddingVertical: 15,
     paddingHorizontal: 16,
-    borderRadius: 14,
-    marginBottom: 12,
-    shadowColor: RHSColors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: borderRadius.lg,
+    marginBottom: 10,
+    ...shadows.sm,
   },
   text: {
     flex: 1,
@@ -123,13 +113,13 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     height: 52,
-    borderRadius: 25,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
   },
   submitText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

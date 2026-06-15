@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { RHSColors } from '../../../lib/theme';
+import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
 import { housingApi, HousingProjectResponse } from '../api/housingApi';
 import { HomeStackParamList } from '../navigation/HomeNavigator';
@@ -26,15 +26,15 @@ export const HomeScreen = () => {
   const [searchText, setSearchText] = useState('');
   const [housingProjects, setHousingProjects] = useState<HousingProjectResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchHousingProjects = useCallback(async (page: number = 1, isRefresh: boolean = false) => {
+  const fetchProjects = useCallback(async (page: number = 1, append: boolean = false) => {
     try {
-      if (isRefresh) setRefreshing(true);
-      else if (page === 1) setLoading(true);
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       setError(null);
 
       const result = await housingApi.getHousingProjects({
@@ -43,383 +43,300 @@ export const HomeScreen = () => {
         search: searchText || undefined,
       });
 
-      if (page === 1) {
-        setHousingProjects(result.items);
-      } else {
-        setHousingProjects(prev => [...prev, ...result.items]);
-      }
+      if (page === 1) setHousingProjects(result.items);
+      else setHousingProjects(prev => [...prev, ...result.items]);
+
       setPageIndex(result.pageIndex);
       setTotalPages(result.totalPages);
     } catch (err: any) {
       setError(err.message || 'Không thể tải danh sách nhà');
     } finally {
       setLoading(false);
-      setRefreshing(false);
+      setLoadingMore(false);
     }
   }, [searchText]);
 
-  useEffect(() => {
-    fetchHousingProjects(1);
-  }, [fetchHousingProjects]);
+  useEffect(() => { fetchProjects(1); }, [fetchProjects]);
 
-  const handleSearch = () => {
-    fetchHousingProjects(1);
-  };
-
+  const handleSearch = () => fetchProjects(1);
   const handleLoadMore = () => {
-    if (pageIndex < totalPages && !loading) {
-      fetchHousingProjects(pageIndex + 1);
-    }
+    if (pageIndex < totalPages && !loadingMore) fetchProjects(pageIndex + 1, true);
   };
 
-  const formatPrice = (minPrice: number, maxPrice: number) => {
-    if (minPrice === 0 && maxPrice === 0) return 'Liên hệ';
-    if (minPrice >= 1000000000) {
-      const minB = minPrice / 1000000000;
-      const maxB = maxPrice / 1000000000;
-      if (minB === maxB) return `${minB} tỷ`;
-      return `${minB} - ${maxB} tỷ`;
-    }
-    if (minPrice >= 1000000) {
-      const minM = minPrice / 1000000;
-      const maxM = maxPrice / 1000000;
-      if (minM === maxM) return `${minM} triệu`;
-      return `${minM} - ${maxM} triệu`;
-    }
-    return `${minPrice.toLocaleString()} - ${maxPrice.toLocaleString()} VNĐ`;
+  const formatPrice = (min: number, max: number) => {
+    if (min === 0 && max === 0) return 'Liên hệ';
+    if (min >= 1e9) return min === max ? `${min/1e9} tỷ` : `${min/1e9} - ${max/1e9} tỷ`;
+    if (min >= 1e6) return min === max ? `${min/1e6} triệu` : `${min/1e6} - ${max/1e6} triệu`;
+    return `${min.toLocaleString()}đ`;
   };
 
-  const formatArea = (minArea: number, maxArea: number) => {
-    if (minArea === 0 && maxArea === 0) return '';
-    if (minArea === maxArea) return `${minArea} m²`;
-    return `${minArea} - ${maxArea} m²`;
-  };
-
-  const getThumbnailUrl = (project: HousingProjectResponse): string | null => {
-    if (project.images && project.images.length > 0) {
-      const sorted = [...project.images].sort((a, b) => a.displayOrder - b.displayOrder);
+  const getThumb = (p: HousingProjectResponse) => {
+    if (p.images?.length) {
+      const sorted = [...p.images].sort((a, b) => a.displayOrder - b.displayOrder);
       return sorted[0].imageUrl;
     }
-    return project.thumbnailUrl || null;
-  };
-
-  const handleProjectPress = (project: HousingProjectResponse) => {
-    navigation.navigate('HousingProjectDetail', { project });
-  };
-
-  const renderProjectCard = (project: HousingProjectResponse) => {
-    const thumbUrl = getThumbnailUrl(project);
-    return (
-      <TouchableOpacity
-        key={project.id}
-        style={styles.projectCard}
-        activeOpacity={0.85}
-        onPress={() => handleProjectPress(project)}
-      >
-        <View style={styles.projectThumbnail}>
-          {thumbUrl ? (
-            <Image source={{ uri: thumbUrl }} style={styles.projectImage} />
-          ) : (
-            <View style={styles.projectImagePlaceholder}>
-              <Feather name="home" size={40} color={RHSColors.textMuted} />
-            </View>
-          )}
-          {project.status && (
-            <View style={[styles.statusBadge, { backgroundColor: RHSColors.govGreen }]}>
-              <Text style={styles.statusText}>{project.status}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.projectInfo}>
-          <Text style={styles.projectName} numberOfLines={2}>
-            {project.projectName}
-          </Text>
-          <View style={styles.projectMeta}>
-            <Text style={styles.projectPrice}>
-              {formatPrice(project.minPrice, project.maxPrice)}
-            </Text>
-            {formatArea(project.minArea, project.maxArea) ? (
-              <Text style={styles.projectArea}>
-                {formatArea(project.minArea, project.maxArea)}
-              </Text>
-            ) : null}
-          </View>
-          <View style={styles.projectLocationRow}>
-            <Feather name="map-pin" size={13} color={RHSColors.textMuted} />
-            <Text style={styles.projectLocation} numberOfLines={1}>
-              {project.province}, {project.district}
-            </Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
+    return p.thumbnailUrl || null;
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* Brand bar */}
-      <View style={styles.brandBar}>
-        <View style={styles.brandBarStripeRed} />
-        <View style={styles.brandBarStripeGold} />
-        <View style={styles.brandBarStripeBlue} />
+    <SafeAreaView style={styles.safe}>
+      {/* Brand stripes */}
+      <View style={styles.bar}>
+        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.red600 }]} />
+        <View style={[styles.stripe, { flex: 0.4, backgroundColor: RHSColors.amber600 }]} />
+        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.blue700 }]} />
       </View>
-      {/* Header with gradient */}
+
+      {/* Hero header */}
       <LinearGradient
-        colors={[RHSColors.govBlueDark, RHSColors.govBlue, RHSColors.govTeal]}
+        colors={['#0A3A85', '#1565C0', '#1E88E5']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.headerGradient}
+        style={styles.hero}
       >
-        <View style={styles.headerBrand}>
-          <RHSLogo size={44} />
-          <View style={styles.headerTitles}>
-            <Text style={styles.orgLine}>Cổng thông tin điều phối & thẩm định</Text>
-            <Text style={styles.appName}>Hệ thống cung ứng nhà ở xã hội bền vững</Text>
-          </View>
-        </View>
-      </LinearGradient>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Search */}
-        <View style={styles.searchCard}>
-          <View style={styles.searchRow}>
-            <Feather name="search" size={20} color={RHSColors.textMuted} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Tìm kiếm dự án nhà ở..."
-              value={searchText}
-              onChangeText={setSearchText}
-              onSubmitEditing={handleSearch}
-              placeholderTextColor={RHSColors.textMuted}
-              returnKeyType="search"
-            />
-            {searchText.length > 0 && (
-              <TouchableOpacity onPress={() => { setSearchText(''); fetchHousingProjects(1); }}>
-                <Feather name="x" size={20} color={RHSColors.textMuted} />
-              </TouchableOpacity>
-            )}
+        <View style={styles.heroTop}>
+          <RHSLogo size={40} />
+          <View style={styles.heroTextWrap}>
+          <Text style={styles.heroTitle}>Tra cứu nhà ở</Text>
+          <Text style={styles.heroSub}>Hỗ trợ nhà ở xã hội cho hộ nghèo, cận nghèo tại phường</Text>
           </View>
         </View>
 
-        {/* Housing Projects Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionHeaderLeft}>
-              <View style={styles.sectionIconWrap}>
-                <Feather name="home" size={16} color={RHSColors.white} />
-              </View>
-              <Text style={styles.sectionTitle}>Danh sách nhà ở</Text>
-            </View>
-            <Text style={styles.sectionCount}>{housingProjects.length} dự án</Text>
-          </View>
-
-          {loading && pageIndex === 1 ? (
-            <View style={styles.stateBox}>
-              <ActivityIndicator size="large" color={RHSColors.govRed} />
-              <Text style={styles.stateText}>Đang tải dữ liệu...</Text>
-            </View>
-          ) : error ? (
-            <View style={styles.stateBox}>
-              <Feather name="alert-circle" size={48} color={RHSColors.govRed} />
-              <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryBtn} onPress={() => fetchHousingProjects(1)}>
-                <Text style={styles.retryText}>Thử lại</Text>
-              </TouchableOpacity>
-            </View>
-          ) : housingProjects.length === 0 ? (
-            <View style={styles.stateBox}>
-              <Feather name="inbox" size={48} color={RHSColors.textMuted} />
-              <Text style={styles.stateText}>Không có dự án nào</Text>
-            </View>
-          ) : (
-            <>
-              <View style={styles.grid}>
-                {housingProjects.map(renderProjectCard)}
-              </View>
-              {pageIndex < totalPages && (
-                <TouchableOpacity
-                  style={styles.loadMore}
-                  onPress={handleLoadMore}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color={RHSColors.white} />
-                  ) : (
-                    <Text style={styles.loadMoreText}>Xem thêm dự án</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-              {refreshing && (
-                <View style={styles.refreshWrap}>
-                  <ActivityIndicator size="small" color={RHSColors.govRed} />
-                </View>
-              )}
-            </>
+        {/* Search bar inside hero */}
+        <View style={styles.searchWrap}>
+          <Feather name="search" size={18} color={RHSColors.textMuted} style={{ marginRight: 10 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm kiếm dự án nhà ở..."
+            placeholderTextColor={RHSColors.textMuted}
+            value={searchText}
+            onChangeText={setSearchText}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+          />
+          {searchText.length > 0 && (
+            <TouchableOpacity onPress={() => { setSearchText(''); fetchProjects(1); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Feather name="x" size={18} color={RHSColors.textMuted} />
+            </TouchableOpacity>
           )}
         </View>
+      </LinearGradient>
+
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Section header */}
+        <View style={styles.sectionHead}>
+          <View style={styles.sectionBadge}>
+            <Feather name="home" size={14} color="#fff" />
+          </View>
+          <Text style={styles.sectionTitle}>Danh sách nhà ở</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{housingProjects.length} dự án</Text>
+          </View>
+        </View>
+
+        {/* Content */}
+        {loading && pageIndex === 1 ? (
+          <View style={styles.stateBox}>
+            <ActivityIndicator size="large" color={RHSColors.blue700} />
+            <Text style={styles.stateText}>Đang tải dữ liệu...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.stateBox}>
+            <Feather name="alert-circle" size={44} color={RHSColors.red600} />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => fetchProjects(1)}>
+              <Feather name="refresh-cw" size={14} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.retryBtnText}>Thử lại</Text>
+            </TouchableOpacity>
+          </View>
+        ) : housingProjects.length === 0 ? (
+          <View style={styles.stateBox}>
+            <Feather name="inbox" size={44} color={RHSColors.textMuted} />
+            <Text style={styles.stateText}>Không tìm thấy dự án phù hợp</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.grid}>
+              {housingProjects.map(project => {
+                const thumb = getThumb(project);
+                return (
+                  <TouchableOpacity
+                    key={project.id}
+                    style={styles.card}
+                    activeOpacity={0.9}
+                    onPress={() => navigation.navigate('HousingProjectDetail', { project })}
+                  >
+                    <View style={styles.cardImageWrap}>
+                      {thumb ? (
+                        <Image source={{ uri: thumb }} style={styles.cardImage} />
+                      ) : (
+                        <View style={styles.cardImagePlaceholder}>
+                          <Feather name="home" size={36} color={RHSColors.grey400} />
+                        </View>
+                      )}
+                      {project.status && (
+                        <View style={styles.statusBadge}>
+                          <Text style={styles.statusText}>{project.status}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.cardBody}>
+                      <Text style={styles.cardName} numberOfLines={2}>{project.projectName}</Text>
+                      <View style={styles.cardMeta}>
+                        <View style={styles.chip}>
+                          <Feather name="dollar-sign" size={12} color={RHSColors.red600} />
+                          <Text style={styles.chipText}>{formatPrice(project.minPrice, project.maxPrice)}</Text>
+                        </View>
+                        {project.minArea > 0 && (
+                          <View style={[styles.chip, { backgroundColor: RHSColors.blue50 }]}>
+                            <Feather name="maximize" size={12} color={RHSColors.blue700} />
+                            <Text style={[styles.chipText, { color: RHSColors.blue700 }]}>
+                              {project.minArea === project.maxArea ? `${project.minArea}m²` : `${project.minArea}-${project.maxArea}m²`}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.locationRow}>
+                        <Feather name="map-pin" size={12} color={RHSColors.textMuted} />
+                        <Text style={styles.locationText} numberOfLines={1}>{project.province}, {project.district}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Load more */}
+            {pageIndex < totalPages && (
+              <TouchableOpacity style={styles.loadMoreBtn} onPress={handleLoadMore} disabled={loadingMore} activeOpacity={0.85}>
+                {loadingMore ? (
+                  <ActivityIndicator size="small" color={RHSColors.blue700} />
+                ) : (
+                  <Text style={styles.loadMoreText}>Xem thêm dự án</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+        <View style={{ height: 30 }} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: RHSColors.surface },
-  container: { flex: 1 },
-  brandBar: { flexDirection: 'row', height: 4 },
-  brandBarStripeRed: { flex: 2, backgroundColor: RHSColors.govRed },
-  brandBarStripeGold: { flex: 0.4, backgroundColor: RHSColors.govGold },
-  brandBarStripeBlue: { flex: 2, backgroundColor: RHSColors.govBlue },
-
-  headerGradient: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 16,
+  safe: { flex: 1, backgroundColor: RHSColors.surface },
+  bar: { flexDirection: 'row', height: 4 },
+  stripe: { height: '100%' },
+  hero: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    ...shadows.lg,
   },
-  headerBrand: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  headerTitles: { flex: 1 },
-  orgLine: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    color: '#ffd166',
-    marginBottom: 2,
-  },
-  appName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: RHSColors.white,
-    lineHeight: 20,
-  },
-
-  searchCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 12,
-    backgroundColor: RHSColors.white,
-    borderWidth: 1,
-    borderColor: RHSColors.border,
-  },
-  searchRow: {
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  heroTextWrap: { flex: 1 },
+  heroTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  heroSub: { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2, fontWeight: '500' },
+  searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.lg,
     paddingHorizontal: 14,
-    height: 48,
+    height: 46,
+    ...shadows.sm,
   },
-  searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, fontSize: 15, color: RHSColors.text },
-
-  section: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 30 },
-  sectionHeader: {
+  searchInput: { flex: 1, fontSize: 14, color: RHSColors.text },
+  scroll: { flex: 1, paddingHorizontal: 16 },
+  sectionHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+    marginTop: 20,
+    marginBottom: 12,
   },
-  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
-  sectionIconWrap: {
-    width: 28,
-    height: 28,
+  sectionBadge: {
+    width: 26,
+    height: 26,
     borderRadius: 8,
-    backgroundColor: RHSColors.govBlue,
+    backgroundColor: RHSColors.blue700,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: 10,
   },
-  sectionTitle: { fontSize: 17, fontWeight: 'bold', color: RHSColors.text },
-  sectionCount: { fontSize: 12, color: RHSColors.textMuted, fontWeight: '500' },
-
+  sectionTitle: { ...typography.h3, color: RHSColors.text, flex: 1 },
+  countBadge: {
+    backgroundColor: RHSColors.grey200,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  countText: { fontSize: 11, fontWeight: '600', color: RHSColors.textSecondary },
   stateBox: {
     alignItems: 'center',
     paddingVertical: 60,
-    backgroundColor: RHSColors.white,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: RHSColors.border,
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.xl,
+    ...shadows.sm,
   },
-  stateText: { marginTop: 12, fontSize: 14, color: RHSColors.textMuted },
-  errorText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: RHSColors.govRed,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-  },
+  stateText: { marginTop: 10, ...typography.bodySmall, color: RHSColors.textMuted },
+  errorText: { marginTop: 10, ...typography.bodySmall, color: RHSColors.red600, textAlign: 'center', paddingHorizontal: 16 },
   retryBtn: {
-    marginTop: 16,
-    paddingHorizontal: 28,
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: RHSColors.red600,
+    paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: RHSColors.govRed,
-    borderRadius: 25,
+    borderRadius: borderRadius.full,
   },
-  retryText: { color: RHSColors.white, fontWeight: '600', fontSize: 14 },
+  retryBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
 
   grid: { gap: 12 },
-  projectCard: {
-    backgroundColor: RHSColors.white,
-    borderRadius: 12,
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.xl,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: RHSColors.border,
+    ...shadows.md,
   },
-  projectThumbnail: {
-    width: '100%',
-    height: 160,
-    backgroundColor: RHSColors.surface,
-    position: 'relative',
-  },
-  projectImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  projectImagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: RHSColors.surface,
-  },
+  cardImageWrap: { width: '100%', height: 170, position: 'relative', backgroundColor: RHSColors.grey100 },
+  cardImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  cardImagePlaceholder: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
   statusBadge: {
     position: 'absolute',
     top: 10,
     left: 10,
+    backgroundColor: RHSColors.green600,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
   },
-  statusText: { color: RHSColors.white, fontSize: 11, fontWeight: 'bold' },
-  projectInfo: { padding: 12 },
-  projectName: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: RHSColors.govBlueDark,
-    marginBottom: 8,
-    lineHeight: 19,
-  },
-  projectMeta: {
+  statusText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  cardBody: { padding: 14 },
+  cardName: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text, marginBottom: 10, lineHeight: 20 },
+  cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    marginBottom: 6,
+    backgroundColor: RHSColors.red50,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    gap: 4,
   },
-  projectPrice: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: RHSColors.govRed,
-    marginRight: 10,
-  },
-  projectArea: { fontSize: 12, color: RHSColors.textMuted, fontWeight: '500' },
-  projectLocationRow: { flexDirection: 'row', alignItems: 'center' },
-  projectLocation: {
-    fontSize: 12,
-    color: RHSColors.textMuted,
-    marginLeft: 5,
-    flex: 1,
-  },
+  chipText: { fontSize: 12, fontWeight: '700', color: RHSColors.red600 },
+  locationRow: { flexDirection: 'row', alignItems: 'center' },
+  locationText: { fontSize: 12, color: RHSColors.textMuted, marginLeft: 4, flex: 1 },
 
-  loadMore: {
+  loadMoreBtn: {
     marginTop: 16,
     alignItems: 'center',
-    paddingVertical: 13,
-    backgroundColor: RHSColors.govBlue,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderWidth: 2,
+    borderColor: RHSColors.blue700,
+    borderRadius: borderRadius.lg,
   },
-  loadMoreText: { color: RHSColors.white, fontWeight: '700', fontSize: 14 },
-  refreshWrap: { padding: 14, alignItems: 'center' },
+  loadMoreText: { ...typography.buttonSmall, color: RHSColors.blue700 },
 });

@@ -20,6 +20,7 @@ export interface UpdateProfileDto {
   phoneNumber?: string;
   dateOfBirth?: string;
   address?: string;
+  citizenId?: string;
 }
 
 export interface DeleteAccountDto {

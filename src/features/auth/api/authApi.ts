@@ -12,11 +12,6 @@ export interface LoginDto {
   password: string;
 }
 
-export interface GoogleLoginDto {
-  idToken: string;
-  accessToken?: string;
-}
-
 export interface VerifyOtpDto {
   email: string;
   otpCode: string;
@@ -69,11 +64,6 @@ export const authApi = {
 
   login: async (data: LoginDto): Promise<AuthResponse> => {
     const response = await apiClient.post<AuthResponse>('/auth/login', data);
-    return response.data;
-  },
-
-  googleLogin: async (data: GoogleLoginDto): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/auth/google-login', data);
     return response.data;
   },
 

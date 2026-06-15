@@ -1,14 +1,9 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { RHSColors } from '../lib/theme';
+import { RHSColors, shadows } from '../lib/theme';
 
 interface ScreenHeaderProps {
   title: string;
@@ -27,30 +22,24 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 }) => {
   const navigation = useNavigation<any>();
 
-  const handleBack = () => {
-    if (onBack) {
-      onBack();
-    } else {
-      navigation.goBack();
-    }
-  };
+  const handleBack = () => (onBack ? onBack() : navigation.goBack());
 
   return (
     <LinearGradient
-      colors={[RHSColors.govBlueDark, RHSColors.govBlue, RHSColors.govTeal]}
+      colors={['#0A3A85', '#1565C0', '#1E88E5']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.header}
     >
       {showBack ? (
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Feather name={backIcon} size={24} color={RHSColors.white} />
+        <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Feather name={backIcon} size={22} color="#fff" />
         </TouchableOpacity>
       ) : (
-        <View style={styles.placeholder} />
+        <View style={styles.spacer} />
       )}
       <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
-      {rightAction || <View style={styles.placeholder} />}
+      {rightAction || <View style={styles.spacer} />}
     </LinearGradient>
   );
 };
@@ -61,8 +50,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    ...shadows.md,
   },
   backButton: {
     padding: 4,
@@ -70,11 +60,11 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    color: RHSColors.white,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
   },
-  placeholder: {
-    width: 40,
+  spacer: {
+    width: 36,
   },
 });

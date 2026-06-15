@@ -1,4 +1,18 @@
 import apiClient from '../../../lib/apiClient';
+import { userApi } from '../../user/api/userApi';
+
+/** Trích xuất message chi tiết từ lỗi 400 của backend */
+function extractErrorMessage(e: any, fallback: string): string {
+  const data = e?.response?.data;
+  if (!data) return fallback;
+  const msg = data.message || data.detail || data.title || fallback;
+  const field = data.field;
+  const code = data.errorCode;
+  const parts: string[] = [msg];
+  if (code) parts.push(`(Mã: ${code})`);
+  if (field) parts.push(`[Field: ${field}]`);
+  return parts.join(' ');
+}
 
 export interface OcrResult {
   id?: string;
@@ -18,39 +32,34 @@ export interface OcrResult {
 export interface FaceMatchResult {
   isMatch: boolean;
   similarity: number;
-  isBothFace: boolean;
-  requestId: string;
+  isBothImgIdCard: boolean;
+  fptMessage: string;
 }
 
 export interface LivenessResult {
   isLive: boolean;
-  livenessScore: number;
-  code: string;
-  message: string;
+  spoofProbability: number;
+  needToReview: boolean;
+  isDeepfake: boolean;
+  warning: string;
+  livenessCode: string;
+  livenessMessage: string;
+  fptMessage: string;
 }
 
 const getMimeType = (uri: string): string => {
   const ext = uri.split('.').pop()?.toLowerCase().split('?')[0];
   switch (ext) {
-    case 'jpg':
-    case 'jpeg':
-      return 'image/jpeg';
-    case 'png':
-      return 'image/png';
-    case 'gif':
-      return 'image/gif';
-    case 'webp':
-      return 'image/webp';
-    case 'heic':
-      return 'image/heic';
-    case 'heif':
-      return 'image/heif';
-    default:
-      return 'image/jpeg';
+    case 'jpg': case 'jpeg': return 'image/jpeg';
+    case 'png': return 'image/png';
+    case 'mp4': return 'video/mp4';
+    case 'mov': return 'video/quicktime';
+    case 'avi': return 'video/x-msvideo';
+    case 'gif': return 'image/gif';
+    case 'webp': return 'image/webp';
+    default: return 'image/jpeg';
   }
 };
-
-const multipartHeaders = { 'Content-Type': 'multipart/form-data' };
 
 export const eKycApi = {
   /**
@@ -67,56 +76,129 @@ export const eKycApi = {
       type,
     } as any);
 
-    const response = await apiClient.post('/EKyc/ocr', formData, { headers: multipartHeaders });
-    return response.data.data;
+    try {
+      const response = await apiClient.post('/EKyc/ocr', formData);
+      return response.data.data;
+    } catch (e: any) {
+      const msg = extractErrorMessage(e, 'Lỗi không xác định từ OCR API');
+      throw new Error(msg);
+    }
   },
 
   /**
-   * Bước 2: Face Match - So khớp khuôn mặt selfie với ảnh trên CCCD
+   * Bước 3: Liveness - Gửi video + ảnh khuôn mặt để kiểm tra thực thể sống
+   * Backend yêu cầu cả videoFile (video) và cmndImage (ảnh selfie)
    */
-  faceMatch: async (
-    faceImageUri: string,
-    idCardImageUri: string,
-  ): Promise<FaceMatchResult> => {
+  liveness: async (videoUri: string, cmndImageUri: string): Promise<LivenessResult> => {
+    const videoFilename = videoUri.split('/').pop()?.split('?')[0] || 'face.mp4';
+    const videoType = getMimeType(videoUri);
+    const imageFilename = cmndImageUri.split('/').pop()?.split('?')[0] || 'selfie.jpg';
+    const imageType = getMimeType(cmndImageUri);
+
+    const formData = new FormData();
+    formData.append('videoFile', {
+      uri: videoUri,
+      name: videoFilename,
+      type: videoType,
+    } as any);
+    formData.append('cmndImage', {
+      uri: cmndImageUri,
+      name: imageFilename,
+      type: imageType,
+    } as any);
+
+    try {
+      const response = await apiClient.post('/EKyc/liveness', formData);
+      return response.data.data;
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const msg = extractErrorMessage(e, 'Lỗi không xác định từ Liveness API');
+      if (status === 400) {
+        throw new Error(`[400] Dữ liệu gửi lên không hợp lệ:\n${msg}\n\nKiểm tra:\n• Dung lượng video (tối đa có thể 5-10MB)\n• Định dạng video (phải là .mp4 / .avi / .mov / .wmv)\n• Ảnh khuôn mặt (cmndImage) không được để trống`);
+      }
+      throw new Error(msg);
+    }
+  },
+
+  /**
+   * Bước 2b: Face Match - So khớp ảnh selfie với ảnh CCCD
+   */
+  faceMatch: async (faceImageUri: string, idCardImageUri: string): Promise<FaceMatchResult> => {
     const formData = new FormData();
 
     const faceFilename = faceImageUri.split('/').pop()?.split('?')[0] || 'selfie.jpg';
     const faceType = getMimeType(faceImageUri);
-
-    const idFilename = idCardImageUri.split('/').pop()?.split('?')[0] || 'cccd_face.jpg';
+    const idFilename = idCardImageUri.split('/').pop()?.split('?')[0] || 'cccd.jpg';
     const idType = getMimeType(idCardImageUri);
 
-    formData.append('faceImage', {
-      uri: faceImageUri,
-      name: faceFilename,
-      type: faceType,
-    } as any);
+    formData.append('faceImage', { uri: faceImageUri, name: faceFilename, type: faceType } as any);
+    formData.append('idCardImage', { uri: idCardImageUri, name: idFilename, type: idType } as any);
 
-    formData.append('idCardImage', {
-      uri: idCardImageUri,
-      name: idFilename,
-      type: idType,
-    } as any);
-
-    const response = await apiClient.post('/EKyc/face-match', formData, { headers: multipartHeaders });
-    return response.data.data;
+    try {
+      const response = await apiClient.post('/EKyc/face-match', formData);
+      return response.data.data;
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const msg = extractErrorMessage(e, 'Lỗi không xác định từ FaceMatch API');
+      if (status === 400) {
+        throw new Error(`[400] Dữ liệu gửi lên không hợp lệ:\n${msg}\n\nKiểm tra:\n• Dung lượng ảnh (tối đa có thể 5-10MB)\n• Định dạng file (phải là .jpg/.jpeg/.png)\n• Ảnh không được rỗng\n• Cả 2 ảnh (selfie + CCCD) đều phải có`);
+      }
+      throw new Error(msg);
+    }
   },
 
   /**
-   * Bước 3: Liveness - Kiểm tra ảnh selfie có phải người thật
+   * Sau khi xác minh thành công: cập nhật profile từ dữ liệu OCR.
+   * Fetch profile hiện tại trước để giữ lại phoneNumber, sau đó merge với dữ liệu OCR.
    */
-  liveness: async (faceImageUri: string): Promise<LivenessResult> => {
-    const filename = faceImageUri.split('/').pop()?.split('?')[0] || 'selfie.jpg';
-    const type = getMimeType(faceImageUri);
+  updateProfileFromOcr: async (ocr: OcrResult) => {
+    // 1. Lấy profile hiện tại để lấy phoneNumber
+    let currentPhone: string | undefined;
+    try {
+      const profileRes = await apiClient.get('/users/profile');
+      currentPhone = profileRes?.data?.user?.phoneNumber;
+    } catch {
+      // Nếu không lấy được profile thì vẫn tiếp tục (không có phoneNumber)
+    }
 
-    const formData = new FormData();
-    formData.append('faceImage', {
-      uri: faceImageUri,
-      name: filename,
-      type,
-    } as any);
+    // 2. Xây dựng payload
+    const payload: {
+      fullName: string;
+      phoneNumber?: string;
+      dateOfBirth?: string;
+      address?: string;
+      citizenId?: string;
+    } = {
+      fullName: ocr.name || '',
+    };
 
-    const response = await apiClient.post('/EKyc/liveness', formData, { headers: multipartHeaders });
-    return response.data.data;
+    // Giữ lại số điện thoại hiện có (chỉ gửi nếu có giá trị)
+    if (currentPhone) {
+      payload.phoneNumber = currentPhone;
+    }
+
+    if (ocr.dob) {
+      // Convert DD/MM/YYYY or YYYY-MM-DD to ISO string for API
+      try {
+        let dateStr = ocr.dob;
+        // Handle DD/MM/YYYY format
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+          const [d, m, y] = dateStr.split('/');
+          dateStr = `${y}-${m}-${d}`;
+        }
+        const date = new Date(dateStr);
+        if (!isNaN(date.getTime())) {
+          payload.dateOfBirth = date.toISOString();
+        }
+      } catch {}
+    }
+
+    if (ocr.address || ocr.home) payload.address = ocr.address || ocr.home;
+    // CCCD = ocr.id (ví dụ: "051204000297")
+    if (ocr.id) payload.citizenId = ocr.id;
+
+    // 3. Gửi cập nhật
+    const response = await apiClient.put('/users/profile', payload);
+    return response.data;
   },
 };
