@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RHSColors } from '../../../lib/theme';
 import { wishlistApi, WishlistItemResponse, PagedResult } from '../api/wishlistApi';
 
@@ -57,13 +57,17 @@ export const SavedScreen = () => {
     }
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      await fetchWishlist(1, false);
-      setLoading(false);
-    })();
-  }, [fetchWishlist]);
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        setLoading(true);
+        await fetchWishlist(1, false);
+        if (active) setLoading(false);
+      })();
+      return () => { active = false; };
+    }, [fetchWishlist])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);

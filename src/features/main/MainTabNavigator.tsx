@@ -5,10 +5,12 @@ import { RHSColors } from '../../lib/theme';
 
 import { HomeNavigator } from '../home/navigation/HomeNavigator';
 import { SavedScreen } from '../saved/screens/SavedScreen';
+import { MyApplicationsScreen } from '../home/screens/MyApplicationsScreen';
 import { AccountScreen } from '../account/screens/AccountScreen';
 
 export type MainTabParamList = {
   Home: undefined;
+  Applications: undefined;
   Saved: undefined;
   Account: undefined;
 };
@@ -43,6 +45,16 @@ export const MainTabNavigator = () => {
           tabBarLabel: 'Trang chủ',
           tabBarIcon: ({ color, size }) => (
             <Feather name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Applications"
+        component={MyApplicationsScreen}
+        options={{
+          tabBarLabel: 'Hồ sơ của tôi',
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="file-text" size={size} color={color} />
           ),
         }}
       />

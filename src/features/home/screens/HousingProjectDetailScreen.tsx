@@ -23,7 +23,8 @@ import { HomeStackParamList } from '../navigation/HomeNavigator';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { getToken } from '../../../lib/tokenStorage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { wishlistApi } from '../../saved/api/wishlistApi';
+import { userApi } from '../../user/api/userApi';
 
 type DetailNavProp = NativeStackNavigationProp<HomeStackParamList, 'HousingProjectDetail'>;
 
@@ -45,13 +46,24 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
   const [coords, setCoords] = useState<LatLng | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   const fullAddress = [project.province, project.district, project.address].filter(Boolean).join(', ');
   const sortedImages = project.images?.length
     ? [...project.images].sort((a, b) => a.displayOrder - b.displayOrder)
     : [];
 
-  useEffect(() => { geocode(fullAddress); }, []);
+  useEffect(() => { geocode(fullAddress); checkWishlist(); }, []);
+
+  const checkWishlist = async () => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const status = await wishlistApi.checkWishlistStatus(project.id);
+      setIsWishlisted(status);
+    } catch {}
+  };
 
   const geocode = async (address: string) => {
     try {
@@ -91,9 +103,38 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
     });
   };
 
+  const toggleWishlist = async () => {
+    const token = await getToken();
+    if (!token) {
+      const rootNav = navigation.getParent()?.getParent();
+      Alert.alert('Chưa đăng nhập', 'Vui lòng đăng nhập để lưu dự án yêu thích.', [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Đăng nhập', onPress: () => rootNav?.navigate('Auth', { screen: 'Login' }) },
+      ]);
+      return;
+    }
+
+    setWishlistLoading(true);
+    try {
+      if (isWishlisted) {
+        await wishlistApi.removeFromWishlist(project.id);
+        setIsWishlisted(false);
+      } else {
+        await wishlistApi.addToWishlist(project.id);
+        setIsWishlisted(true);
+      }
+    } catch (e: any) {
+      Alert.alert('Lỗi', e?.response?.data?.message || 'Không thể cập nhật danh sách yêu thích.');
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
   const handleRegister = async () => {
     try {
       const rootNav = navigation.getParent()?.getParent();
+
+      // 1. Check login
       const accessToken = await getToken();
       if (!accessToken) {
         Alert.alert('Chưa đăng nhập', 'Vui lòng đăng nhập để đăng ký nhà ở xã hội.', [
@@ -102,16 +143,25 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
         ]);
         return;
       }
-      const verified = await AsyncStorage.getItem(VERIFIED_KEY);
-      if (verified !== 'true') {
-        Alert.alert('Chưa xác minh danh tính', 'Bạn cần xác thực danh tính trước khi đăng ký.', [
+
+      // 2. Check identity verified (qua API thực tế, không dùng AsyncStorage cache)
+      const profileRes = await userApi.getProfile();
+      if (!profileRes?.success || !profileRes?.user?.citizenId) {
+        Alert.alert('Chưa xác minh danh tính', 'Bạn cần xác thực danh tính (eKYC) trước khi đăng ký nhà ở.', [
           { text: 'Huỷ', style: 'cancel' },
           { text: 'Xác minh ngay', onPress: () => rootNav?.navigate('EKyc') },
         ]);
         return;
       }
-      Alert.alert('Thông báo', 'Tính năng tạo đơn đăng ký đang được phát triển.');
-    } catch { Alert.alert('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.'); }
+
+      // 3. OK → chuyển sang form tạo hồ sơ
+      navigation.navigate('BasicInformation', {
+        projectId: project.id,
+        projectName: project.projectName,
+      });
+    } catch {
+      Alert.alert('Lỗi', 'Không thể kiểm tra trạng thái tài khoản. Vui lòng thử lại.');
+    }
   };
 
   const onScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -163,7 +213,13 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           <Feather name="arrow-left" size={22} color="#fff"/>
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>Chi tiết dự án</Text>
-        <View style={{ width: 36 }}/>
+        <TouchableOpacity onPress={toggleWishlist} disabled={wishlistLoading} style={styles.wishlistBtn}>
+          {wishlistLoading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Feather name={isWishlisted ? 'heart' : 'heart'} size={20} color={isWishlisted ? '#FF5252' : '#fff'} />
+          )}
+        </TouchableOpacity>
       </LinearGradient>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -249,6 +305,7 @@ const styles = StyleSheet.create({
   stripe: { height: '100%' },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12 },
   backBtn: { padding: 4, marginRight: 10 },
+  wishlistBtn: { padding: 4 },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' },
   scroll: { flex: 1 },
   carouselWrap: { width: '100%', height: 260, position: 'relative' },

@@ -69,18 +69,39 @@ export const EKycScreen = () => {
     setStep('liveness');
   };
 
-  /* 1. Chụp CCCD + OCR */
+  /* 1. Chụp CCCD + OCR → Kiểm tra CCCD trùng → Qua bước facematch */
   const shootCccd = async () => {
     await ImagePicker.requestCameraPermissionsAsync();
     const r = await ImagePicker.launchCameraAsync({ mediaTypes: 'images', quality: 0.8, allowsEditing: false });
     if (r.canceled || !r.assets?.length) return;
     setBusy(true);
     try {
+      // B1: OCR
       const o = await eKycApi.ocr(r.assets[0].uri);
       setOcr(o);
       setCccdUri(r.assets[0].uri);
+
+      // B2: Kiểm tra CCCD đã tồn tại trong hệ thống chưa
+      if (o.id) {
+        const check = await eKycApi.checkCitizenId(o.id);
+        if (!check.available) {
+          setBusy(false);
+          Alert.alert(
+            'CCCD không khả dụng',
+            check.message,
+            [
+              { text: 'Quay lại', style: 'cancel' },
+              { text: 'Chụp lại', onPress: () => { setOcr(null); setCccdUri(null); } },
+            ]
+          );
+          return;
+        }
+      }
+
       setStep('facematch');
-    } catch { Alert.alert('Lỗi OCR'); }
+    } catch (e: any) {
+      Alert.alert('Lỗi OCR', e?.message ?? 'Vui lòng thử lại.');
+    }
     finally { setBusy(false); }
   };
 

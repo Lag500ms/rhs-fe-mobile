@@ -148,6 +148,26 @@ export const eKycApi = {
   },
 
   /**
+   * Kiểm tra CCCD đã tồn tại trong hệ thống chưa.
+   * Gọi sau bước OCR, trước khi chuyển sang face-match.
+   * Trả về true nếu CCCD chưa có ai dùng hoặc thuộc về chính user hiện tại.
+   */
+  checkCitizenId: async (citizenId: string): Promise<{ available: boolean; message: string }> => {
+    try {
+      const response = await apiClient.get('/EKyc/check-citizen-id', {
+        params: { citizenId },
+      });
+      return { available: true, message: response?.data?.message || 'CCCD hợp lệ' };
+    } catch (e: any) {
+      if (e?.response?.status === 409) {
+        const msg = e?.response?.data?.message || 'Số CCCD này đã được xác thực bởi tài khoản khác.';
+        return { available: false, message: msg };
+      }
+      throw new Error('Không thể kiểm tra CCCD. Vui lòng thử lại.');
+    }
+  },
+
+  /**
    * Sau khi xác minh thành công: cập nhật profile từ dữ liệu OCR.
    * Fetch profile hiện tại trước để giữ lại phoneNumber, sau đó merge với dữ liệu OCR.
    */
