@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   Modal,
-  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -187,7 +186,7 @@ export const MyApplicationsScreen = () => {
       </Text>
       <TouchableOpacity
         style={styles.exploreBtn}
-        onPress={() => navigation.navigate('HomeList')}
+        onPress={() => navigation.getParent()?.navigate('Home', { screen: 'HomeList' })}
         activeOpacity={0.8}
       >
         <Feather name="search" size={16} color="#fff" />

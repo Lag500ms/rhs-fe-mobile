@@ -19,14 +19,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
 import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
 import { HousingProjectResponse } from '../api/housingApi';
-import { HomeStackParamList } from '../navigation/HomeNavigator';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { getToken } from '../../../lib/tokenStorage';
 import { wishlistApi } from '../../saved/api/wishlistApi';
 import { userApi } from '../../user/api/userApi';
 
-type DetailNavProp = NativeStackNavigationProp<HomeStackParamList, 'HousingProjectDetail'>;
 
 const VERIFIED_KEY = 'identityVerified';
 const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2lyeGlhb2xpbjJrNCIsImEiOiJjbXE2NXI3aXIwMWdqMnRwdTloemM4am9zIn0.AQVt7JOUOcycgp-G49qwOA';
@@ -39,7 +36,7 @@ interface LatLng { latitude: number; longitude: number; }
 const VIETNAM_FALLBACK: LatLng = { latitude: 21.0285, longitude: 105.8542 };
 
 export const HousingProjectDetailScreen = ({ route }: Props) => {
-  const navigation = useNavigation<DetailNavProp>();
+  const navigation = useNavigation<any>();
   const { project } = route.params;
   const carouselRef = useRef<FlatList>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -154,11 +151,22 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
         return;
       }
 
-      // 3. OK → chuyển sang form tạo hồ sơ
-      navigation.navigate('BasicInformation', {
-        projectId: project.id,
-        projectName: project.projectName,
-      });
+      // 3. OK → chuyển sang Application tab → BasicInformation
+      navigation.dispatch(
+        CommonActions.navigate({
+          name: 'MainTabs',
+          params: {
+            screen: 'Applications',
+            params: {
+              screen: 'BasicInformation',
+              params: {
+                projectId: project.id,
+                projectName: project.projectName,
+              },
+            },
+          },
+        })
+      );
     } catch {
       Alert.alert('Lỗi', 'Không thể kiểm tra trạng thái tài khoản. Vui lòng thử lại.');
     }

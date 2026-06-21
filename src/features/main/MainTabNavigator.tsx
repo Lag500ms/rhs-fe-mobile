@@ -4,8 +4,8 @@ import { Feather } from '@expo/vector-icons';
 import { RHSColors } from '../../lib/theme';
 
 import { HomeNavigator } from '../home/navigation/HomeNavigator';
+import { ApplicationNavigator } from '../application/navigation/ApplicationNavigator';
 import { SavedScreen } from '../saved/screens/SavedScreen';
-import { MyApplicationsScreen } from '../home/screens/MyApplicationsScreen';
 import { AccountScreen } from '../account/screens/AccountScreen';
 
 export type MainTabParamList = {
@@ -50,7 +50,7 @@ export const MainTabNavigator = () => {
       />
       <Tab.Screen
         name="Applications"
-        component={MyApplicationsScreen}
+        component={ApplicationNavigator}
         options={{
           tabBarLabel: 'Hồ sơ của tôi',
           tabBarIcon: ({ color, size }) => (
