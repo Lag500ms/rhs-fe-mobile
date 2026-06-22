@@ -159,10 +159,11 @@ export const ProfileScreen = () => {
     <SafeAreaView style={styles.safe}>
       <ScreenHeader
         title="Hồ sơ cá nhân"
+        isWhite
         rightAction={
           <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('EditProfile', { profile })}>
-            <Feather name="edit-2" size={15} color="#fff" style={{ marginRight: 4 }} />
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Sửa</Text>
+            <Feather name="edit-2" size={15} color="#1565C0" style={{ marginRight: 4 }} />
+            <Text style={{ color: '#1565C0', fontSize: 12, fontWeight: '700' }}>Sửa</Text>
           </TouchableOpacity>
         }
       />

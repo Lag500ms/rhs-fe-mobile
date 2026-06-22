@@ -10,10 +10,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
-import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme';
+import { BrandBar } from '../../../components/BrandBar';
+import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { housingDocumentApi, UploadDocumentResponse } from '../api/housingDocumentApi';
 
 const DOC_TYPES = [
@@ -137,32 +137,23 @@ export const UploadDocumentsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Brand bar stripes */}
-      <View style={styles.bar}>
-        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.red600 }]} />
-        <View style={[styles.stripe, { flex: 0.4, backgroundColor: RHSColors.amber600 }]} />
-        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.blue700 }]} />
-      </View>
+      {/* Thin brand bar at top */}
+      <BrandBar />
 
-      {/* Header */}
-      <LinearGradient
-        colors={['#0A3A85', '#1565C0', '#1E88E5']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerGrad}
-      >
+      {/* White header */}
+      <View style={styles.whiteHeader}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={22} color="#fff" />
+          <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Tải lên giấy tờ</Text>
         <View style={{ width: 36 }} />
-      </LinearGradient>
+      </View>
 
       {/* Stepper */}
       <View style={styles.stepper}>
         <View style={styles.stepItem}>
           <View style={[styles.stepCircle, styles.stepCircleDone]}>
-            <Feather name="check" size={16} color="#fff" />
+            <Feather name="check" size={14} color="#fff" />
           </View>
           <Text style={[styles.stepLabel, styles.stepLabelDone]}>Thông tin</Text>
         </View>
@@ -207,7 +198,7 @@ export const UploadDocumentsScreen = () => {
                 <View style={styles.fileCard}>
                   <View style={styles.fileCardLeft}>
                     <View style={styles.pdfIconWrap}>
-                      <Feather name="file" size={28} color={RHSColors.red600} />
+                      <Feather name="file" size={28} color={RHSColors.blue700} />
                       <Text style={styles.pdfLabel}>PDF</Text>
                     </View>
                     <View style={styles.fileInfo}>
@@ -230,9 +221,9 @@ export const UploadDocumentsScreen = () => {
                   )}
                 </View>
               ) : (
-                // Dashed upload zone
+                // Dashed upload zone - new style: white bg, #B0BEC5 border
                 <TouchableOpacity
-                  style={styles.dashedZone}
+                  style={[styles.dashedZone, isUploading && styles.dashedZoneActive]}
                   onPress={() => pickAndUpload(key)}
                   disabled={isUploading}
                   activeOpacity={0.7}
@@ -244,7 +235,7 @@ export const UploadDocumentsScreen = () => {
                     </View>
                   ) : (
                     <View style={styles.uploadingContent}>
-                      <Feather name="upload" size={24} color={RHSColors.blue700} />
+                      <Feather name="upload" size={24} color="#B0BEC5" />
                       <Text style={styles.dashedZoneText}>Chạm để chọn file PDF</Text>
                       <Text style={styles.dashedZoneHint}>Chỉ chấp nhận định dạng .pdf</Text>
                     </View>
@@ -255,19 +246,14 @@ export const UploadDocumentsScreen = () => {
           );
         })}
 
-        {/* Continue Button */}
+        {/* Continue Button - BLUE */}
         <TouchableOpacity
           style={styles.continueBtn}
           onPress={handleContinue}
           disabled={submitting}
           activeOpacity={0.9}
         >
-          <LinearGradient
-            colors={[RHSColors.blue700, '#1565C0', '#1E88E5']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.continueGrad}
-          >
+          <View style={styles.continueGrad}>
             {submitting ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
@@ -276,7 +262,7 @@ export const UploadDocumentsScreen = () => {
                 <Feather name="arrow-right" size={18} color="#fff" />
               </>
             )}
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -287,11 +273,20 @@ export const UploadDocumentsScreen = () => {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
 
-  // Brand bar stripes
-  bar: { flexDirection: 'row', height: 4 },
-  stripe: { height: '100%' },
+  // White header
+  whiteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E6ED',
+  },
+  backBtn: { padding: 4, marginRight: 10 },
+  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: RHSColors.blue700 },
 
-  // Stepper
+  // Stepper - refined circles
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -304,38 +299,31 @@ const styles = StyleSheet.create({
   },
   stepItem: { alignItems: 'center', gap: 4 },
   stepCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: RHSColors.grey300,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: RHSColors.grey300,
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  stepCircleActive: { backgroundColor: RHSColors.blue700 },
-  stepCircleDone: { backgroundColor: RHSColors.green600 },
-  stepCircleText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  stepCircleTextInactive: { fontSize: 14, fontWeight: '700', color: RHSColors.grey600 },
-  stepLabel: { fontSize: 12, fontWeight: '500', color: RHSColors.grey500 },
+  stepCircleActive: { backgroundColor: RHSColors.blue700, borderColor: RHSColors.blue700 },
+  stepCircleDone: { backgroundColor: RHSColors.green600, borderColor: RHSColors.green600 },
+  stepCircleText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  stepCircleTextInactive: { fontSize: 13, fontWeight: '700', color: RHSColors.grey500 },
+  stepLabel: { fontSize: 11, fontWeight: '500', color: RHSColors.grey500 },
   stepLabelActive: { color: RHSColors.blue700, fontWeight: '700' },
   stepLabelDone: { color: RHSColors.green600, fontWeight: '700' },
   stepLine: {
     flex: 1,
-    height: 2,
+    height: 1.5,
     backgroundColor: RHSColors.grey300,
     marginHorizontal: 8,
     marginBottom: 16,
   },
   stepLineActive: { backgroundColor: RHSColors.blue700 },
 
-  // Header
-  headerGrad: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  backBtn: { padding: 4, marginRight: 10 },
-  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 40 },
   description: {
@@ -349,10 +337,11 @@ const styles = StyleSheet.create({
   // Upload Zones
   uploadZone: {
     backgroundColor: '#fff',
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.md,
     padding: 16,
     marginBottom: 18,
-    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
   },
   uploadLabel: {
     fontSize: 15,
@@ -366,16 +355,20 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  // Dashed Zone
+  // Dashed Zone - white bg, grey-blue border
   dashedZone: {
     borderWidth: 2,
-    borderColor: RHSColors.blue200,
+    borderColor: '#B0BEC5',
     borderStyle: 'dashed',
     borderRadius: borderRadius.md,
     paddingVertical: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: RHSColors.blue50,
+    backgroundColor: '#fff',
+  },
+  dashedZoneActive: {
+    borderColor: RHSColors.blue700,
+    backgroundColor: '#F5FAFF',
   },
   uploadingContent: {
     alignItems: 'center',
@@ -384,7 +377,7 @@ const styles = StyleSheet.create({
   dashedZoneText: {
     fontSize: 14,
     fontWeight: '600',
-    color: RHSColors.blue700,
+    color: '#90A4AE',
   },
   dashedZoneHint: {
     fontSize: 12,
@@ -401,10 +394,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: RHSColors.grey50,
+    backgroundColor: '#F5FAFF',
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: RHSColors.grey200,
+    borderColor: RHSColors.blue200,
     padding: 12,
   },
   fileCardLeft: {
@@ -417,14 +410,14 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 8,
-    backgroundColor: RHSColors.red50,
+    backgroundColor: RHSColors.blue50,
     justifyContent: 'center',
     alignItems: 'center',
   },
   pdfLabel: {
     fontSize: 9,
     fontWeight: '800',
-    color: RHSColors.red600,
+    color: RHSColors.blue700,
     marginTop: -2,
   },
   fileInfo: {
@@ -451,12 +444,11 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 
-  // Continue
+  // Continue - BLUE
   continueBtn: {
     marginTop: 12,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     overflow: 'hidden',
-    ...shadows.floating,
   },
   continueGrad: {
     flexDirection: 'row',
@@ -464,6 +456,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 18,
     gap: 8,
+    backgroundColor: RHSColors.blue700,
   },
   continueText: { ...typography.button, color: '#fff' },
 });

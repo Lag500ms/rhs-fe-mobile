@@ -15,9 +15,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
-import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
+import { BrandBar } from '../../../components/BrandBar';
+import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme';
 import { HousingProjectResponse } from '../api/housingApi';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { getToken } from '../../../lib/tokenStorage';
@@ -141,7 +141,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
         return;
       }
 
-      // 2. Check identity verified (qua API thực tế, không dùng AsyncStorage cache)
+      // 2. Check identity verified
       const profileRes = await userApi.getProfile();
       if (!profileRes?.success || !profileRes?.user?.citizenId) {
         Alert.alert('Chưa xác minh danh tính', 'Bạn cần xác thực danh tính (eKYC) trước khi đăng ký nhà ở.', [
@@ -151,7 +151,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
         return;
       }
 
-      // 3. OK → chuyển sang Application tab → BasicInformation
+      // 3. OK → chuyển sang Application tab
       navigation.dispatch(
         CommonActions.navigate({
           name: 'MainTabs',
@@ -180,13 +180,14 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
     <Image source={{ uri: item.imageUrl }} style={styles.carouselImage} />
   );
 
+  // Blue marker for map
   const mapHtml = coords ? `
     <!DOCTYPE html><html><head>
     <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet"/>
     <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:sans-serif}#map{width:100vw;height:100vh}
-    .marker{width:32px;height:32px;border-radius:50%;background:#D32F2F;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center}
+    .marker{width:32px;height:32px;border-radius:50%;background:#1565C0;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center}
     .marker svg{width:18px;height:18px;fill:#fff}</style></head><body><div id="map"></div><script>
     mapboxgl.accessToken='${MAPBOX_TOKEN}';
     const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/streets-v12',center:[${coords.longitude},${coords.latitude}],zoom:15,attributionControl:false});
@@ -211,27 +212,26 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.bar}>
-        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.red600 }]} />
-        <View style={[styles.stripe, { flex: 0.4, backgroundColor: RHSColors.amber600 }]} />
-        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.blue700 }]} />
-      </View>
-      <LinearGradient colors={['#0A3A85','#1565C0','#1E88E5']} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.header}>
+      {/* Thin brand bar at top */}
+      <BrandBar />
+
+      {/* White header for functional screens */}
+      <View style={styles.whiteHeader}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={22} color="#fff"/>
+          <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>Chi tiết dự án</Text>
         <TouchableOpacity onPress={toggleWishlist} disabled={wishlistLoading} style={styles.wishlistBtn}>
           {wishlistLoading ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={RHSColors.blue700} />
           ) : (
-            <Feather name={isWishlisted ? 'heart' : 'heart'} size={20} color={isWishlisted ? '#FF5252' : '#fff'} />
+            <Feather name={isWishlisted ? 'heart' : 'heart'} size={20} color={isWishlisted ? '#FF5252' : RHSColors.blue700} />
           )}
         </TouchableOpacity>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Carousel */}
+        {/* Full-width Carousel 300px */}
         <View style={styles.carouselWrap}>
           {sortedImages.length > 0 ? (
             <>
@@ -251,23 +251,23 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           )}
         </View>
 
-        {/* Info */}
+        {/* Info Card - refined chips without shadow */}
         <View style={styles.infoCard}>
           <Text style={styles.name}>{project.projectName}</Text>
           <View style={styles.row}>
-            <View style={styles.chip}>
-              <Feather name="dollar-sign" size={13} color={RHSColors.red600}/>
-              <Text style={[styles.chipText, {color: RHSColors.red600}]}>{fmtPrice(project.minPrice, project.maxPrice)}</Text>
+            <View style={[styles.chip, { backgroundColor: '#E3F2FD' }]}>
+              <Feather name="dollar-sign" size={13} color={RHSColors.blue700} />
+              <Text style={[styles.chipText, {color: RHSColors.blue700}]}>{fmtPrice(project.minPrice, project.maxPrice)}</Text>
             </View>
             {fmtArea(project.minArea, project.maxArea) ? (
-              <View style={[styles.chip, {backgroundColor: RHSColors.blue50}]}>
-                <Feather name="maximize" size={13} color={RHSColors.blue700}/>
+              <View style={[styles.chip, {backgroundColor: '#E3F2FD'}]}>
+                <Feather name="maximize" size={13} color={RHSColors.blue700} />
                 <Text style={[styles.chipText, {color: RHSColors.blue700}]}>{fmtArea(project.minArea, project.maxArea)}</Text>
               </View>
             ) : null}
           </View>
           <View style={styles.detailRow}><Feather name="map-pin" size={15} color={RHSColors.blue700}/><Text style={styles.detailText}>{fullAddress}</Text></View>
-          <View style={styles.detailRow}><Feather name="users" size={15} color={RHSColors.textMuted}/><Text style={styles.detailText}>Còn lại: <Text style={{color:RHSColors.red600, fontWeight:'700'}}>{project.availableUnits}</Text> căn hộ</Text></View>
+          <View style={styles.detailRow}><Feather name="users" size={15} color={RHSColors.textMuted}/><Text style={styles.detailText}>Còn lại: <Text style={{color:RHSColors.blue700, fontWeight:'700'}}>{project.availableUnits}</Text> căn hộ</Text></View>
         </View>
 
         {/* Description */}
@@ -294,12 +294,12 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           )}
         </View>
 
-        {/* Register */}
+        {/* Register button - BLUE */}
         <TouchableOpacity style={styles.registerBtn} onPress={handleRegister} activeOpacity={0.9}>
-          <LinearGradient colors={[RHSColors.red600,'#B71C1C']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.registerGrad}>
+          <View style={styles.registerGrad}>
             <Feather name="edit-3" size={18} color="#fff"/>
             <Text style={styles.registerText}>Đăng ký nhà ở</Text>
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
         <View style={{ height: 40 }}/>
       </ScrollView>
@@ -309,15 +309,25 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
-  bar: { flexDirection: 'row', height: 4 },
-  stripe: { height: '100%' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12 },
+
+  // White header
+  whiteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E6ED',
+  },
   backBtn: { padding: 4, marginRight: 10 },
   wishlistBtn: { padding: 4 },
-  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' },
+  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: RHSColors.blue700 },
   scroll: { flex: 1 },
-  carouselWrap: { width: '100%', height: 260, position: 'relative' },
-  carouselImage: { width: SCREEN_WIDTH, height: 260, resizeMode: 'cover' },
+
+  // Full-width carousel 300px
+  carouselWrap: { width: '100%', height: 300, position: 'relative' },
+  carouselImage: { width: SCREEN_WIDTH, height: 300, resizeMode: 'cover' },
   thumbPlace: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.grey100 },
   dotsWrap: { position: 'absolute', bottom: 14, alignSelf: 'center', flexDirection: 'row' },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)', marginHorizontal: 4 },
@@ -327,19 +337,22 @@ const styles = StyleSheet.create({
   statusBadge: { position: 'absolute', top: 10, left: 10, backgroundColor: RHSColors.green600, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 6 },
   statusText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
-  infoCard: { margin: 14, padding: 18, backgroundColor: '#fff', borderRadius: borderRadius.xl, ...shadows.md },
+  // Info card - no shadow, thin border
+  infoCard: { margin: 14, padding: 18, backgroundColor: '#fff', borderRadius: borderRadius.md, borderWidth: 1, borderColor: RHSColors.border },
   name: { ...typography.h2, color: RHSColors.text, marginBottom: 12, lineHeight: 28 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: RHSColors.red50, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 4 },
+  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 100, gap: 4 },
   chipText: { fontSize: 13, fontWeight: '700' },
   detailRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
   detailText: { ...typography.bodySmall, color: RHSColors.text, marginLeft: 8, flex: 1, lineHeight: 20 },
 
-  card: { marginHorizontal: 14, marginBottom: 14, padding: 18, backgroundColor: '#fff', borderRadius: borderRadius.xl, ...shadows.md },
+  // Cards
+  card: { marginHorizontal: 14, marginBottom: 14, padding: 18, backgroundColor: '#fff', borderRadius: borderRadius.md, borderWidth: 1, borderColor: RHSColors.border },
   sectionHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   sectionTitle: { ...typography.h3, color: RHSColors.text, marginLeft: 8 },
   desc: { ...typography.bodySmall, color: RHSColors.textSecondary, lineHeight: 22 },
 
+  // Map
   mapLoad: { height: 240, justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.grey100, borderRadius: borderRadius.md },
   mapLoadText: { marginTop: 8, ...typography.bodySmall, color: RHSColors.textMuted },
   mapOuter: { borderRadius: borderRadius.md, overflow: 'hidden' },
@@ -349,7 +362,15 @@ const styles = StyleSheet.create({
   openBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: RHSColors.blue700, paddingVertical: 12, gap: 6 },
   openText: { fontSize: 13, fontWeight: '600', color: '#fff' },
 
-  registerBtn: { marginHorizontal: 14, borderRadius: borderRadius.lg, overflow: 'hidden', ...shadows.floating },
-  registerGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 8 },
+  // Register button - BLUE no gradient
+  registerBtn: { marginHorizontal: 14, borderRadius: borderRadius.md, overflow: 'hidden' },
+  registerGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    gap: 8,
+    backgroundColor: RHSColors.blue700,
+  },
   registerText: { ...typography.button, color: '#fff' },
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { RHSColors, borderRadius, shadows } from '../lib/theme';
+import { RHSColors, borderRadius } from '../lib/theme';
 
 interface ActionButtonProps {
   icon: string;
@@ -101,9 +101,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingVertical: 15,
     paddingHorizontal: 16,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     marginBottom: 10,
-    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
   },
   text: {
     flex: 1,
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     height: 52,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,

@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme';
+import { BrandBar } from '../../../components/BrandBar';
+import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { userApi } from '../../user/api/userApi';
 import { housingApplicationApi, CreateApplicationRequest } from '../api/housingApplicationApi';
 
@@ -172,28 +172,19 @@ export const BasicInformationScreen = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Brand bar stripes */}
-      <View style={styles.bar}>
-        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.red600 }]} />
-        <View style={[styles.stripe, { flex: 0.4, backgroundColor: RHSColors.amber600 }]} />
-        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.blue700 }]} />
-      </View>
+      {/* Thin brand bar at top */}
+      <BrandBar />
 
-      {/* Header */}
-      <LinearGradient
-        colors={['#0A3A85', '#1565C0', '#1E88E5']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerGrad}
-      >
+      {/* White header */}
+      <View style={styles.whiteHeader}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={22} color="#fff" />
+          <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Thông tin đăng ký</Text>
         <View style={{ width: 36 }} />
-      </LinearGradient>
+      </View>
 
-      {/* Stepper */}
+      {/* Stepper - refined */}
       <View style={styles.stepper}>
         <View style={styles.stepItem}>
           <View style={[styles.stepCircle, styles.stepCircleActive]}>
@@ -405,19 +396,14 @@ export const BasicInformationScreen = () => {
             ) : null}
           </View>
 
-          {/* Submit Button */}
+          {/* Submit Button - BLUE */}
           <TouchableOpacity
             style={styles.submitBtn}
             onPress={handleSaveAndContinue}
             disabled={submitting}
             activeOpacity={0.9}
           >
-            <LinearGradient
-              colors={[RHSColors.red600, '#B71C1C']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.submitGrad}
-            >
+            <View style={styles.submitGrad}>
               {submitting ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
@@ -426,7 +412,7 @@ export const BasicInformationScreen = () => {
                   <Text style={styles.submitText}>Lưu & Tiếp tục</Text>
                 </>
               )}
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -439,11 +425,20 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.surface },
 
-  // Brand bar stripes
-  bar: { flexDirection: 'row', height: 4 },
-  stripe: { height: '100%' },
+  // White header
+  whiteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E6ED',
+  },
+  backBtn: { padding: 4, marginRight: 10 },
+  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: RHSColors.blue700 },
 
-  // Stepper
+  // Stepper - refined
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -456,21 +451,23 @@ const styles = StyleSheet.create({
   },
   stepItem: { alignItems: 'center', gap: 4 },
   stepCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: RHSColors.grey300,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: RHSColors.grey300,
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  stepCircleActive: { backgroundColor: RHSColors.blue700 },
-  stepCircleText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  stepCircleTextInactive: { fontSize: 14, fontWeight: '700', color: RHSColors.grey600 },
-  stepLabel: { fontSize: 12, fontWeight: '500', color: RHSColors.grey500 },
+  stepCircleActive: { backgroundColor: RHSColors.blue700, borderColor: RHSColors.blue700 },
+  stepCircleText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  stepCircleTextInactive: { fontSize: 13, fontWeight: '700', color: RHSColors.grey500 },
+  stepLabel: { fontSize: 11, fontWeight: '500', color: RHSColors.grey500 },
   stepLabelActive: { color: RHSColors.blue700, fontWeight: '700' },
   stepLine: {
     flex: 1,
-    height: 2,
+    height: 1.5,
     backgroundColor: RHSColors.grey300,
     marginHorizontal: 8,
     marginBottom: 16,
@@ -484,8 +481,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
-  backBtn: { padding: 4, marginRight: 10 },
-  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 40 },
 
@@ -495,7 +490,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: RHSColors.blue50,
     padding: 14,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     marginBottom: 20,
     gap: 10,
     borderLeftWidth: 4,
@@ -512,10 +507,11 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.md,
     padding: 16,
     marginBottom: 18,
-    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
   },
 
   // ── eKYC Sync Badge ──
@@ -525,7 +521,7 @@ const styles = StyleSheet.create({
     backgroundColor: RHSColors.green50,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.xs,
     marginBottom: 12,
     gap: 8,
   },
@@ -542,7 +538,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: RHSColors.grey100,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.xs,
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 10,
@@ -561,7 +557,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', color: RHSColors.textSecondary, marginBottom: 6, marginTop: 10 },
   input: {
     backgroundColor: RHSColors.grey50,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.xs,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
@@ -610,7 +606,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 14,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.xs,
     borderWidth: 1.5,
     borderColor: RHSColors.grey200,
     marginBottom: 8,
@@ -639,14 +635,15 @@ const styles = StyleSheet.create({
   incomeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   incomeHint: { fontSize: 12, color: RHSColors.blue700, marginTop: 4, fontWeight: '500' },
 
-  // Submit
-  submitBtn: { marginTop: 8, borderRadius: borderRadius.lg, overflow: 'hidden', ...shadows.floating },
+  // Submit - BLUE
+  submitBtn: { marginTop: 8, borderRadius: borderRadius.md, overflow: 'hidden' },
   submitGrad: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 18,
     gap: 8,
+    backgroundColor: RHSColors.blue700,
   },
   submitText: { ...typography.button, color: '#fff' },
 });

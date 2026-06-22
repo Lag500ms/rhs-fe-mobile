@@ -12,9 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme';
+import { BrandBar } from '../../../components/BrandBar';
+import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import {
   housingApplicationApi,
   ApplicationSummary,
@@ -127,13 +127,11 @@ export const MyApplicationsScreen = () => {
 
     switch (item.applicationStatus) {
       case 'DRAFT':
-        // Navigate to UploadDocuments to let user upload PDFs
         navigation.navigate('UploadDocuments', {
           applicationId: item.applicationId,
         });
         break;
       case 'NEED_MORE_DOCUMENTS':
-        // Navigate to UploadDocuments to update documents
         navigation.navigate('UploadDocuments', {
           applicationId: item.applicationId,
         });
@@ -217,20 +215,19 @@ export const MyApplicationsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <LinearGradient
-        colors={['#0A3A85', '#1565C0', '#1E88E5']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerGrad}
-      >
-        <Text style={styles.headerTitle}>Hồ sơ của tôi</Text>
+      {/* Thin brand bar at top */}
+      <BrandBar />
+
+      {/* White header */}
+      <View style={styles.whiteHeader}>
+        <Text style={styles.whiteHeaderTitle}>Hồ sơ của tôi</Text>
         <TouchableOpacity
           style={styles.headerRefresh}
           onPress={() => fetchData(true)}
         >
-          <Feather name="refresh-cw" size={20} color="#fff" />
+          <Feather name="refresh-cw" size={20} color={RHSColors.blue700} />
         </TouchableOpacity>
-      </LinearGradient>
+      </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -330,7 +327,7 @@ export const MyApplicationsScreen = () => {
                         selectedDetail.documents.map((doc: ApplicationDocument) => (
                           <View key={doc.documentId} style={styles.docRow}>
                             <View style={styles.docRowIcon}>
-                              <Feather name="file" size={14} color={RHSColors.red600} />
+                              <Feather name="file" size={14} color={RHSColors.blue700} />
                               <Text style={styles.docRowIconLabel}>PDF</Text>
                             </View>
                             <Text style={styles.docRowName} numberOfLines={1}>
@@ -383,14 +380,17 @@ const DetailRow = ({ label, value }: { label: string; value: string }) => (
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
 
-  // Header
-  headerGrad: {
+  // White header
+  whiteHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E6ED',
   },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: '#fff' },
+  whiteHeaderTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: RHSColors.blue700 },
   headerRefresh: { padding: 6 },
 
   loadingContainer: {
@@ -404,13 +404,14 @@ const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 24 },
   emptyContainer: { flex: 1 },
 
-  // Card
+  // Card - no shadow, thin border
   card: {
     backgroundColor: '#fff',
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.md,
     padding: 16,
     marginBottom: 12,
-    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -432,13 +433,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Badge
+  // Badge - 6px border radius
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 6,
     gap: 5,
   },
   badgeDot: {
@@ -501,9 +502,8 @@ const styles = StyleSheet.create({
     backgroundColor: RHSColors.blue700,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     gap: 8,
-    ...shadows.sm,
   },
   exploreBtnText: {
     fontSize: 14,
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 6,
     gap: 6,
   },
   detailBadgeText: {
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: RHSColors.grey50,
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.xs,
     padding: 8,
     marginBottom: 6,
     gap: 8,
@@ -639,14 +639,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 4,
-    backgroundColor: RHSColors.red50,
+    backgroundColor: RHSColors.blue50,
     justifyContent: 'center',
     alignItems: 'center',
   },
   docRowIconLabel: {
     fontSize: 6,
     fontWeight: '800',
-    color: RHSColors.red600,
+    color: RHSColors.blue700,
     marginTop: -1,
   },
   docRowName: {

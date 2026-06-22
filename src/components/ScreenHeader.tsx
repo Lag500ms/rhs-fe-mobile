@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { RHSColors, shadows } from '../lib/theme';
+import { RHSColors } from '../lib/theme';
 
 interface ScreenHeaderProps {
   title: string;
@@ -11,6 +11,11 @@ interface ScreenHeaderProps {
   backIcon?: 'arrow-left' | 'x';
   rightAction?: React.ReactNode;
   onBack?: () => void;
+  /** 
+   * false = Gradient blue header for brand/auth screens
+   * true = White header for functional screens (detail, form, profile...)
+   */
+  isWhite?: boolean;
 }
 
 export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
@@ -19,10 +24,27 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   backIcon = 'arrow-left',
   rightAction,
   onBack,
+  isWhite = false,
 }) => {
   const navigation = useNavigation<any>();
 
   const handleBack = () => (onBack ? onBack() : navigation.goBack());
+
+  if (isWhite) {
+    return (
+      <View style={styles.whiteHeader}>
+        {showBack ? (
+          <TouchableOpacity onPress={handleBack} style={styles.backButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Feather name={backIcon} size={22} color={RHSColors.blue700} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.spacer} />
+        )}
+        <Text style={styles.whiteHeaderTitle} numberOfLines={1}>{title}</Text>
+        {rightAction || <View style={styles.spacer} />}
+      </View>
+    );
+  }
 
   return (
     <LinearGradient
@@ -52,7 +74,15 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
-    ...shadows.md,
+  },
+  whiteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E6ED',
   },
   backButton: {
     padding: 4,
@@ -63,6 +93,12 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: '#fff',
+  },
+  whiteHeaderTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1565C0',
   },
   spacer: {
     width: 36,

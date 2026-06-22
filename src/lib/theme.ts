@@ -50,8 +50,8 @@ export const RHSColors = {
   textSecondary: '#546E7A',     // Secondary text
   textMuted: '#90A4AE',         // Muted/disabled text
   border: '#E0E6ED',            // Subtle border
-  borderFocus: '#42A5F5',       // Focused border
-  shadow: 'rgba(0,0,0,0.08)',  // Standard shadow
+  borderFocus: '#1565C0',       // Focused border
+  shadow: 'rgba(15, 23, 42, 0.06)',  // Cool grey shadow
 
   // ── Legacy (backward compat) ──
   govRed: '#D32F2F',
@@ -104,23 +104,23 @@ export const typography = {
 // ─── Shadow Presets ─────────────────────────────────────────────
 export const shadows = {
   sm: {
-    shadowColor: '#000',
+    shadowColor: 'rgba(15, 23, 42, 0.06)',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 1,
     shadowRadius: 3,
     elevation: 2,
   },
   md: {
-    shadowColor: '#000',
+    shadowColor: 'rgba(15, 23, 42, 0.06)',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 1,
     shadowRadius: 6,
     elevation: 4,
   },
   lg: {
-    shadowColor: '#000',
+    shadowColor: 'rgba(15, 23, 42, 0.06)',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 1,
     shadowRadius: 12,
     elevation: 8,
   },
@@ -138,7 +138,7 @@ export const commonStyles = StyleSheet.create({
   // Cards
   card: {
     backgroundColor: RHSColors.surfaceCard,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     padding: spacing.lg,
     ...shadows.sm,
     borderWidth: 1,
@@ -146,7 +146,7 @@ export const commonStyles = StyleSheet.create({
   },
   cardFlat: {
     backgroundColor: RHSColors.surfaceCard,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: RHSColors.border,
@@ -155,7 +155,7 @@ export const commonStyles = StyleSheet.create({
   // Buttons
   buttonPrimary: {
     backgroundColor: RHSColors.blue700,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     paddingVertical: 16,
     paddingHorizontal: 24,
     alignItems: 'center' as const,
@@ -164,7 +164,7 @@ export const commonStyles = StyleSheet.create({
   },
   buttonDestructive: {
     backgroundColor: RHSColors.red600,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     paddingVertical: 16,
     paddingHorizontal: 24,
     alignItems: 'center' as const,
@@ -174,7 +174,7 @@ export const commonStyles = StyleSheet.create({
   buttonOutline: {
     borderWidth: 2,
     borderColor: RHSColors.blue700,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     paddingVertical: 14,
     paddingHorizontal: 24,
     alignItems: 'center' as const,
@@ -186,7 +186,7 @@ export const commonStyles = StyleSheet.create({
     backgroundColor: RHSColors.white,
     borderWidth: 1.5,
     borderColor: RHSColors.border,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.xs,
     paddingHorizontal: spacing.lg,
     paddingVertical: 14,
     fontSize: 16,

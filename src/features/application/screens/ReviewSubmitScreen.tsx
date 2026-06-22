@@ -12,9 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
-import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme';
+import { BrandBar } from '../../../components/BrandBar';
+import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { housingApplicationApi, ApplicationDetail, ApplicationDocument } from '../api/housingApplicationApi';
 import { getHousingStatusLabel } from '../utils/statusConfig';
 
@@ -119,25 +119,30 @@ export const ReviewSubmitScreen = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Brand bar stripes */}
-      <View style={styles.bar}>
-        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.red600 }]} />
-        <View style={[styles.stripe, { flex: 0.4, backgroundColor: RHSColors.amber600 }]} />
-        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.blue700 }]} />
+      {/* Thin brand bar at top */}
+      <BrandBar />
+
+      {/* White header */}
+      <View style={styles.whiteHeader}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Kiểm tra & Nộp hồ sơ</Text>
+        <View style={{ width: 36 }} />
       </View>
 
-      {/* Stepper */}
+      {/* Stepper - refined */}
       <View style={styles.stepper}>
         <View style={styles.stepItem}>
           <View style={[styles.stepCircle, styles.stepCircleDone]}>
-            <Feather name="check" size={16} color="#fff" />
+            <Feather name="check" size={14} color="#fff" />
           </View>
           <Text style={[styles.stepLabel, styles.stepLabelDone]}>Thông tin</Text>
         </View>
         <View style={[styles.stepLine, styles.stepLineDone]} />
         <View style={styles.stepItem}>
           <View style={[styles.stepCircle, styles.stepCircleDone]}>
-            <Feather name="check" size={16} color="#fff" />
+            <Feather name="check" size={14} color="#fff" />
           </View>
           <Text style={[styles.stepLabel, styles.stepLabelDone]}>Giấy tờ</Text>
         </View>
@@ -162,7 +167,7 @@ export const ReviewSubmitScreen = () => {
         </View>
 
         {/* Personal Info Section */}
-        <View style={styles.card}>
+        <View style={styles.sectionCard}>
           <Text style={styles.cardTitle}>Thông tin cá nhân</Text>
           <InfoRow icon="user" label="Họ và tên" value={detail.fullName} />
           <InfoRow icon="credit-card" label="Số CCCD" value={detail.citizenId} />
@@ -171,14 +176,14 @@ export const ReviewSubmitScreen = () => {
         </View>
 
         {/* Address Section */}
-        <View style={styles.card}>
+        <View style={styles.sectionCard}>
           <Text style={styles.cardTitle}>Địa chỉ</Text>
           <InfoRow icon="home" label="Nơi ở hiện tại" value={detail.currentResidence} />
           <InfoRow icon="bookmark" label="Thường trú" value={detail.permanentAddress} />
         </View>
 
         {/* Housing & Income */}
-        <View style={styles.card}>
+        <View style={styles.sectionCard}>
           <Text style={styles.cardTitle}>Thực trạng nhà ở & Thu nhập</Text>
           <InfoRow
             icon="layers"
@@ -193,7 +198,7 @@ export const ReviewSubmitScreen = () => {
         </View>
 
         {/* Documents */}
-        <View style={styles.card}>
+        <View style={styles.sectionCard}>
           <Text style={styles.cardTitle}>Giấy tờ đính kèm</Text>
           {detail.documents.length === 0 ? (
             <View style={styles.noDocs}>
@@ -204,7 +209,7 @@ export const ReviewSubmitScreen = () => {
             detail.documents.map((doc: ApplicationDocument) => (
               <View key={doc.documentId} style={styles.docItem}>
                 <View style={styles.docIconSmall}>
-                  <Feather name="file" size={16} color={RHSColors.red600} />
+                  <Feather name="file" size={16} color={RHSColors.blue700} />
                   <Text style={styles.docIconSmallLabel}>PDF</Text>
                 </View>
                 <View style={styles.docInfoSmall}>
@@ -223,23 +228,14 @@ export const ReviewSubmitScreen = () => {
           )}
         </View>
 
-        {/* Submit Button */}
+        {/* Submit Button - BLUE */}
         <TouchableOpacity
           style={[styles.submitBtn, isDisabled && styles.submitBtnDisabled]}
           onPress={handleSubmit}
           disabled={isDisabled}
           activeOpacity={0.9}
         >
-          <LinearGradient
-            colors={
-              isDisabled
-                ? [RHSColors.grey400, RHSColors.grey500]
-                : [RHSColors.red600, '#B71C1C']
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.submitGrad}
-          >
+          <View style={[styles.submitGrad, isDisabled && { backgroundColor: RHSColors.grey400 }]}>
             {submitting ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
@@ -248,7 +244,7 @@ export const ReviewSubmitScreen = () => {
                 <Text style={styles.submitText}>Nộp hồ sơ</Text>
               </>
             )}
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
         {isDisabled && totalFiles === 0 && (
           <Text style={styles.disabledHint}>
@@ -275,15 +271,10 @@ export const ReviewSubmitScreen = () => {
               onPress={handleBackToDashboard}
               activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={[RHSColors.blue700, '#1565C0']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.successBtnGrad}
-              >
+              <View style={styles.successBtnGrad}>
                 <Feather name="list" size={18} color="#fff" />
                 <Text style={styles.successBtnText}>Về quản lý hồ sơ</Text>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -314,14 +305,9 @@ export const ReviewSubmitScreen = () => {
               }}
               activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={[RHSColors.blue700, '#1565C0']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.sheetBtnGrad}
-              >
+              <View style={styles.sheetBtnGrad}>
                 <Text style={styles.sheetBtnText}>Đến Hồ sơ của tôi</Text>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.sheetClose}
@@ -348,11 +334,20 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.surface },
 
-  // Brand bar stripes
-  bar: { flexDirection: 'row', height: 4 },
-  stripe: { height: '100%' },
+  // White header
+  whiteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E6ED',
+  },
+  backBtn: { padding: 4, marginRight: 10 },
+  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: RHSColors.blue700 },
 
-  // Stepper
+  // Stepper - refined
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -365,23 +360,25 @@ const styles = StyleSheet.create({
   },
   stepItem: { alignItems: 'center', gap: 4 },
   stepCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: RHSColors.grey300,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: RHSColors.grey300,
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  stepCircleActive: { backgroundColor: RHSColors.blue700 },
-  stepCircleDone: { backgroundColor: RHSColors.green600 },
-  stepCircleText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  stepCircleTextInactive: { fontSize: 14, fontWeight: '700', color: RHSColors.grey600 },
-  stepLabel: { fontSize: 12, fontWeight: '500', color: RHSColors.grey500 },
+  stepCircleActive: { backgroundColor: RHSColors.blue700, borderColor: RHSColors.blue700 },
+  stepCircleDone: { backgroundColor: RHSColors.green600, borderColor: RHSColors.green600 },
+  stepCircleText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  stepCircleTextInactive: { fontSize: 13, fontWeight: '700', color: RHSColors.grey500 },
+  stepLabel: { fontSize: 11, fontWeight: '500', color: RHSColors.grey500 },
   stepLabelActive: { color: RHSColors.blue700, fontWeight: '700' },
   stepLabelDone: { color: RHSColors.green600, fontWeight: '700' },
   stepLine: {
     flex: 1,
-    height: 2,
+    height: 1.5,
     backgroundColor: RHSColors.grey300,
     marginHorizontal: 8,
     marginBottom: 16,
@@ -398,30 +395,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: RHSColors.blue50,
     padding: 14,
-    borderRadius: borderRadius.lg,
-    marginBottom: 18,
+    borderRadius: borderRadius.md,
+    marginBottom: 24,
     gap: 10,
     borderLeftWidth: 4,
     borderLeftColor: RHSColors.blue700,
   },
   summaryTitle: { flex: 1, fontSize: 14, fontWeight: '600', color: RHSColors.blue700, lineHeight: 20 },
 
-  // Cards
-  card: {
+  // Cards - reduced borders, using spacing instead
+  sectionCard: {
     backgroundColor: '#fff',
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.md,
     padding: 16,
-    marginBottom: 14,
-    ...shadows.sm,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
   },
   cardTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: RHSColors.text,
     marginBottom: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: RHSColors.grey100,
   },
 
   // Info Rows
@@ -460,7 +455,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: RHSColors.grey50,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.xs,
     padding: 10,
     marginBottom: 8,
     gap: 10,
@@ -469,26 +464,25 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 6,
-    backgroundColor: RHSColors.red50,
+    backgroundColor: RHSColors.blue50,
     justifyContent: 'center',
     alignItems: 'center',
   },
   docIconSmallLabel: {
     fontSize: 7,
     fontWeight: '800',
-    color: RHSColors.red600,
+    color: RHSColors.blue700,
     marginTop: -2,
   },
   docInfoSmall: { flex: 1, gap: 2 },
   docNameSmall: { fontSize: 12, fontWeight: '600', color: RHSColors.text },
   docTypeSmall: { fontSize: 11, color: RHSColors.textMuted },
 
-  // Submit
+  // Submit - BLUE
   submitBtn: {
     marginTop: 8,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     overflow: 'hidden',
-    ...shadows.floating,
   },
   submitBtnDisabled: { opacity: 0.6 },
   submitGrad: {
@@ -497,6 +491,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 18,
     gap: 8,
+    backgroundColor: RHSColors.blue700,
   },
   submitText: { ...typography.button, color: '#fff' },
   disabledHint: {
@@ -517,7 +512,7 @@ const styles = StyleSheet.create({
   },
   successContainer: {
     backgroundColor: '#fff',
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.lg,
     padding: 32,
     alignItems: 'center',
     width: '100%',
@@ -547,9 +542,8 @@ const styles = StyleSheet.create({
   },
   successBtn: {
     width: '100%',
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     overflow: 'hidden',
-    ...shadows.md,
   },
   successBtnGrad: {
     flexDirection: 'row',
@@ -557,6 +551,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     gap: 8,
+    backgroundColor: RHSColors.blue700,
   },
   successBtnText: { ...typography.button, color: '#fff' },
 
@@ -607,9 +602,8 @@ const styles = StyleSheet.create({
   },
   sheetBtn: {
     width: '100%',
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     overflow: 'hidden',
-    ...shadows.md,
   },
   sheetBtnGrad: {
     flexDirection: 'row',
@@ -617,6 +611,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     gap: 8,
+    backgroundColor: RHSColors.blue700,
   },
   sheetBtnText: { ...typography.button, color: '#fff' },
   sheetClose: {

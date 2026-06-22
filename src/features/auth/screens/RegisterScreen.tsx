@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { RHSColors, spacing, borderRadius, shadows, typography } from '../../../lib/theme';
+import { RHSColors, spacing, borderRadius, typography } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
 import { authApi, RegisterDto } from '../api/authApi';
 
@@ -87,15 +87,22 @@ export const RegisterScreen = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <LinearGradient colors={['#0D47A1', '#1565C0', '#1E88E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerBg}>
+      {/* Split Screen: gradient top with logo */}
+      <LinearGradient
+        colors={['#0A3A85', '#1565C0', '#1E88E5']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.topGradient}
+      >
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Feather name="arrow-left" size={22} color="#fff" />
         </TouchableOpacity>
-        <RHSLogo size={36} />
-        <Text style={styles.headerTitle}>Đăng ký tài khoản</Text>
-        <View style={{ width: 36 }} />
+        <RHSLogo size={48} />
+        <Text style={styles.brandTitle}>Đăng ký tài khoản</Text>
+        <Text style={styles.brandSubtitle}>Tham gia cộng đồng RHS</Text>
       </LinearGradient>
 
+      {/* Bottom white card with form */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.card}>
@@ -171,7 +178,7 @@ export const RegisterScreen = () => {
               {errors.phoneNumber ? <Text style={styles.errorText}>{errors.phoneNumber}</Text> : null}
             </View>
 
-            {/* Register button */}
+            {/* Register button - BLUE */}
             <TouchableOpacity
               style={[styles.registerBtn, isFormValid && styles.registerBtnActive]}
               disabled={!isFormValid || loading}
@@ -206,19 +213,22 @@ export const RegisterScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: RHSColors.grey50 },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
   flex: { flex: 1 },
   scroll: { flexGrow: 1, paddingBottom: 40 },
-  headerBg: {
-    flexDirection: 'row',
+
+  // Split screen: gradient top
+  topGradient: {
+    paddingTop: 20,
+    paddingBottom: 40,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    justifyContent: 'center',
+    position: 'relative',
   },
   backBtn: {
+    position: 'absolute',
+    top: 8,
+    left: 16,
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -226,14 +236,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  brandTitle: { fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: 0.5, marginTop: 8 },
+  brandSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
+
+  // White card overlapping
   card: {
     backgroundColor: '#fff',
     marginHorizontal: 20,
-    marginTop: 20,
-    borderRadius: borderRadius.xl,
+    marginTop: -24,
+    borderRadius: borderRadius.xxl,
     padding: 24,
-    ...shadows.md,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
   },
   fieldGroup: { marginBottom: 14 },
   label: { ...typography.caption, color: RHSColors.textSecondary, marginBottom: 6, fontWeight: '600' },
@@ -254,15 +268,14 @@ const styles = StyleSheet.create({
   errorText: { color: RHSColors.error, fontSize: 12, marginTop: 4, marginLeft: 4 },
   registerBtn: {
     backgroundColor: RHSColors.grey300,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     height: 54,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
     marginBottom: 16,
-    ...shadows.sm,
   },
-  registerBtnActive: { backgroundColor: RHSColors.blue700, ...shadows.md },
+  registerBtnActive: { backgroundColor: RHSColors.blue700 },
   registerBtnText: { ...typography.button, color: RHSColors.white, letterSpacing: 0.5 },
   note: {
     ...typography.caption,
