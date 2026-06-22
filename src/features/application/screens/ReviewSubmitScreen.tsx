@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -37,6 +37,19 @@ export const ReviewSubmitScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { applicationId } = route.params;
+
+  // Hide bottom tab bar when in creation flow
+  useLayoutEffect(() => {
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.setOptions({ tabBarStyle: { display: 'none' } });
+    }
+    return () => {
+      if (parent) {
+        parent.setOptions({ tabBarStyle: undefined });
+      }
+    };
+  }, [navigation]);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -106,6 +119,13 @@ export const ReviewSubmitScreen = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* Brand bar stripes */}
+      <View style={styles.bar}>
+        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.red600 }]} />
+        <View style={[styles.stripe, { flex: 0.4, backgroundColor: RHSColors.amber600 }]} />
+        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.blue700 }]} />
+      </View>
+
       {/* Stepper */}
       <View style={styles.stepper}>
         <View style={styles.stepItem}>
@@ -327,6 +347,10 @@ const InfoRow = ({ icon, label, value }: { icon: string; label: string; value: s
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.surface },
+
+  // Brand bar stripes
+  bar: { flexDirection: 'row', height: 4 },
+  stripe: { height: '100%' },
 
   // Stepper
   stepper: {

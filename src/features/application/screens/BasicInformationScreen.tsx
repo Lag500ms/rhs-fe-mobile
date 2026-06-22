@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -38,6 +38,19 @@ export const BasicInformationScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { projectId, projectName } = route.params;
+
+  // Hide bottom tab bar when entering creation flow
+  useLayoutEffect(() => {
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.setOptions({ tabBarStyle: { display: 'none' } });
+    }
+    return () => {
+      if (parent) {
+        parent.setOptions({ tabBarStyle: undefined });
+      }
+    };
+  }, [navigation]);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -159,6 +172,27 @@ export const BasicInformationScreen = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* Brand bar stripes */}
+      <View style={styles.bar}>
+        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.red600 }]} />
+        <View style={[styles.stripe, { flex: 0.4, backgroundColor: RHSColors.amber600 }]} />
+        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.blue700 }]} />
+      </View>
+
+      {/* Header */}
+      <LinearGradient
+        colors={['#0A3A85', '#1565C0', '#1E88E5']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGrad}
+      >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Feather name="arrow-left" size={22} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Thông tin đăng ký</Text>
+        <View style={{ width: 36 }} />
+      </LinearGradient>
+
       {/* Stepper */}
       <View style={styles.stepper}>
         <View style={styles.stepItem}>
@@ -182,20 +216,6 @@ export const BasicInformationScreen = () => {
           <Text style={styles.stepLabel}>Nộp hồ sơ</Text>
         </View>
       </View>
-
-      {/* Header */}
-      <LinearGradient
-        colors={['#0A3A85', '#1565C0', '#1E88E5']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerGrad}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={22} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Thông tin đăng ký</Text>
-        <View style={{ width: 36 }} />
-      </LinearGradient>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -418,6 +438,10 @@ export const BasicInformationScreen = () => {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.surface },
+
+  // Brand bar stripes
+  bar: { flexDirection: 'row', height: 4 },
+  stripe: { height: '100%' },
 
   // Stepper
   stepper: {

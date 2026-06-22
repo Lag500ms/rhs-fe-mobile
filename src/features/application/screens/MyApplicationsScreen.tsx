@@ -83,9 +83,24 @@ export const MyApplicationsScreen = () => {
     }, [fetchData])
   );
 
+  const hideTabBar = () => {
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.setOptions({ tabBarStyle: { display: 'none' } });
+    }
+  };
+
+  const showTabBar = () => {
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.setOptions({ tabBarStyle: undefined });
+    }
+  };
+
   const handleViewDetail = async (applicationId: string) => {
     setLoadingDetail(true);
     setShowDetail(true);
+    hideTabBar();
     try {
       const detail = await housingApplicationApi.getApplicationDetail(applicationId);
       setSelectedDetail(detail);
@@ -96,6 +111,11 @@ export const MyApplicationsScreen = () => {
     } finally {
       setLoadingDetail(false);
     }
+  };
+
+  const handleCloseDetail = () => {
+    setShowDetail(false);
+    showTabBar();
   };
 
   const handleAction = (item: ApplicationSummary) => {
@@ -242,13 +262,13 @@ export const MyApplicationsScreen = () => {
         <TouchableOpacity
           style={styles.detailOverlay}
           activeOpacity={1}
-          onPress={() => setShowDetail(false)}
+          onPress={handleCloseDetail}
         >
           <View style={styles.detailContainer}>
             <View style={styles.detailHandle} />
             <View style={styles.detailHeader}>
               <Text style={styles.detailTitle}>Chi tiết hồ sơ</Text>
-              <TouchableOpacity onPress={() => setShowDetail(false)}>
+              <TouchableOpacity onPress={handleCloseDetail}>
                 <Feather name="x" size={22} color={RHSColors.textSecondary} />
               </TouchableOpacity>
             </View>

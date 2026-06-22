@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme';
 import { userApi } from '../../user/api/userApi';
-import { housingApplicationApi, CreateApplicationRequest } from '../api/housingApplicationApi';
+import { housingApplicationApi, CreateApplicationRequest } from '../../application/api/housingApplicationApi';
 import { getToken } from '../../../lib/tokenStorage';
 
 const HOUSING_STATUS_OPTIONS: { value: string; label: string; desc: string }[] = [

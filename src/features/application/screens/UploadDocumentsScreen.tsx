@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -48,6 +48,19 @@ export const UploadDocumentsScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { applicationId } = route.params;
+
+  // Hide bottom tab bar when in creation flow
+  useLayoutEffect(() => {
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.setOptions({ tabBarStyle: { display: 'none' } });
+    }
+    return () => {
+      if (parent) {
+        parent.setOptions({ tabBarStyle: undefined });
+      }
+    };
+  }, [navigation]);
 
   const [uploadedFiles, setUploadedFiles] = useState<Record<DocKey, UploadedFile | null>>({
     HOUSING_CONDITION_PROOF: null,
@@ -124,6 +137,27 @@ export const UploadDocumentsScreen = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* Brand bar stripes */}
+      <View style={styles.bar}>
+        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.red600 }]} />
+        <View style={[styles.stripe, { flex: 0.4, backgroundColor: RHSColors.amber600 }]} />
+        <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.blue700 }]} />
+      </View>
+
+      {/* Header */}
+      <LinearGradient
+        colors={['#0A3A85', '#1565C0', '#1E88E5']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGrad}
+      >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Feather name="arrow-left" size={22} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Tải lên giấy tờ</Text>
+        <View style={{ width: 36 }} />
+      </LinearGradient>
+
       {/* Stepper */}
       <View style={styles.stepper}>
         <View style={styles.stepItem}>
@@ -147,20 +181,6 @@ export const UploadDocumentsScreen = () => {
           <Text style={styles.stepLabel}>Nộp hồ sơ</Text>
         </View>
       </View>
-
-      {/* Header */}
-      <LinearGradient
-        colors={['#0A3A85', '#1565C0', '#1E88E5']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerGrad}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={22} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tải lên giấy tờ</Text>
-        <View style={{ width: 36 }} />
-      </LinearGradient>
 
       <ScrollView
         style={styles.scroll}
@@ -266,6 +286,10 @@ export const UploadDocumentsScreen = () => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
+
+  // Brand bar stripes
+  bar: { flexDirection: 'row', height: 4 },
+  stripe: { height: '100%' },
 
   // Stepper
   stepper: {
