@@ -139,7 +139,7 @@ export const MyApplicationsScreen = () => {
     if (!actionSheetApp) return;
     const item = actionSheetApp;
     setShowActionSheet(false);
-    showTabBar();
+    // Tab bar will be hidden by destination screen's useLayoutEffect
     navigation.navigate('EditInformation', {
       applicationId: item.applicationId,
     });
@@ -150,7 +150,7 @@ export const MyApplicationsScreen = () => {
     if (!actionSheetApp) return;
     const item = actionSheetApp;
     setShowActionSheet(false);
-    showTabBar();
+    // Tab bar will be hidden by destination screen's useLayoutEffect
     navigation.navigate('UploadDocuments', {
       applicationId: item.applicationId,
     });
@@ -161,7 +161,7 @@ export const MyApplicationsScreen = () => {
     if (!actionSheetApp) return;
     const item = actionSheetApp;
     setShowActionSheet(false);
-    showTabBar();
+    // Tab bar will be hidden by destination screen's useLayoutEffect
     navigation.navigate('ReviewSubmit', {
       applicationId: item.applicationId,
     });
@@ -170,9 +170,6 @@ export const MyApplicationsScreen = () => {
   // ── Re-apply for REJECTED ──
   const handleReApply = async () => {
     if (!selectedDetail) return;
-    // In a real scenario, we'd call an API to clone the application.
-    // For now, we navigate to BasicInformation with a flag.
-    handleCloseDetail();
     Alert.alert(
       'Tạo lại hồ sơ',
       'Bạn có muốn tạo hồ sơ mới dựa trên thông tin của hồ sơ bị từ chối?',
@@ -181,8 +178,11 @@ export const MyApplicationsScreen = () => {
         {
           text: 'Tạo mới',
           onPress: () => {
+            handleCloseDetail();
             // Navigate to Home to pick a project, since we need projectId
-            navigation.getParent()?.navigate('Home', { screen: 'HomeList' });
+            setTimeout(() => {
+              navigation.getParent()?.navigate('Home', { screen: 'HomeList' });
+            }, 300);
           },
         },
       ]
