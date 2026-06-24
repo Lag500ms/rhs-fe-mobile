@@ -9,7 +9,28 @@ export interface UploadDocumentResponse {
   status: string;
 }
 
+export interface DocumentItem {
+  documentId: string;
+  documentType: string;
+  fileName: string;
+  fileUrl: string;
+  fileSizeBytes: number;
+  uploadedAt: string;
+  verificationStatus: string;
+}
+
 export const housingDocumentApi = {
+  /**
+   * Lấy danh sách tài liệu của hồ sơ.
+   * GET /api/housing-applications/{applicationId}/documents
+   */
+  getDocuments: async (applicationId: string): Promise<DocumentItem[]> => {
+    const response = await apiClient.get<DocumentItem[]>(
+      `/housing-applications/${applicationId}/documents`
+    );
+    return response.data;
+  },
+
   /**
    * Upload tài liệu PDF vào hồ sơ.
    * POST /api/housing-applications/{applicationId}/documents

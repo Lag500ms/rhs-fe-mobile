@@ -35,7 +35,7 @@ function formatDate(dateStr: string): string {
 function getActionForStatus(status: string): { label: string; icon: string; color: string } | null {
   switch (status) {
     case 'DRAFT':
-      return { label: 'Sửa hồ sơ', icon: 'edit-2', color: RHSColors.blue700 };
+      return { label: 'Tiếp tục hồ sơ', icon: 'edit-2', color: RHSColors.blue700 };
     case 'NEED_MORE_DOCUMENTS':
       return { label: 'Cập nhật giấy tờ', icon: 'upload', color: RHSColors.amber700 };
     case 'SUBMITTED':
@@ -60,6 +60,10 @@ export const MyApplicationsScreen = () => {
   const [selectedDetail, setSelectedDetail] = useState<ApplicationDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+
+  // ── ActionSheet state ──
+  const [showActionSheet, setShowActionSheet] = useState(false);
+  const [actionSheetApp, setActionSheetApp] = useState<ApplicationSummary | null>(null);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     try {
@@ -118,6 +122,74 @@ export const MyApplicationsScreen = () => {
     showTabBar();
   };
 
+  // ── Action for DRAFT: Show ActionSheet ──
+  const handleDraftAction = (item: ApplicationSummary) => {
+    setActionSheetApp(item);
+    setShowActionSheet(true);
+    hideTabBar();
+  };
+
+  const handleCloseActionSheet = () => {
+    setShowActionSheet(false);
+    showTabBar();
+  };
+
+  // ── Navigate EditInformation ──
+  const handleEditInfo = () => {
+    if (!actionSheetApp) return;
+    const item = actionSheetApp;
+    setShowActionSheet(false);
+    showTabBar();
+    navigation.navigate('EditInformation', {
+      applicationId: item.applicationId,
+    });
+  };
+
+  // ── Navigate UploadDocuments ──
+  const handleManageDocs = () => {
+    if (!actionSheetApp) return;
+    const item = actionSheetApp;
+    setShowActionSheet(false);
+    showTabBar();
+    navigation.navigate('UploadDocuments', {
+      applicationId: item.applicationId,
+    });
+  };
+
+  // ── Navigate ReviewSubmit ──
+  const handleReviewSubmit = () => {
+    if (!actionSheetApp) return;
+    const item = actionSheetApp;
+    setShowActionSheet(false);
+    showTabBar();
+    navigation.navigate('ReviewSubmit', {
+      applicationId: item.applicationId,
+    });
+  };
+
+  // ── Re-apply for REJECTED ──
+  const handleReApply = async () => {
+    if (!selectedDetail) return;
+    // In a real scenario, we'd call an API to clone the application.
+    // For now, we navigate to BasicInformation with a flag.
+    handleCloseDetail();
+    Alert.alert(
+      'Tạo lại hồ sơ',
+      'Bạn có muốn tạo hồ sơ mới dựa trên thông tin của hồ sơ bị từ chối?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Tạo mới',
+          onPress: () => {
+            // Navigate to Home to pick a project, since we need projectId
+            navigation.getParent()?.navigate('Home', { screen: 'HomeList' });
+          },
+        },
+      ]
+    );
+  };
+
+  // ── Main action handler ──
   const handleAction = (item: ApplicationSummary) => {
     const action = getActionForStatus(item.applicationStatus);
     if (!action) {
@@ -127,13 +199,12 @@ export const MyApplicationsScreen = () => {
 
     switch (item.applicationStatus) {
       case 'DRAFT':
-        navigation.navigate('UploadDocuments', {
-          applicationId: item.applicationId,
-        });
+        handleDraftAction(item);
         break;
       case 'NEED_MORE_DOCUMENTS':
         navigation.navigate('UploadDocuments', {
           applicationId: item.applicationId,
+          applicationStatus: item.applicationStatus,
         });
         break;
       default:
@@ -345,11 +416,99 @@ export const MyApplicationsScreen = () => {
                         <DetailRow label="Cập nhật" value={formatDate(selectedDetail.updatedAt)} />
                       )}
                     </DetailSection>
+
+                    {/* ── REJECTED: Re-apply button ── */}
+                    {selectedDetail.applicationStatus === 'REJECTED' && (
+                      <TouchableOpacity
+                        style={styles.reApplyBtn}
+                        onPress={handleReApply}
+                        activeOpacity={0.9}
+                      >
+                        <View style={styles.reApplyGrad}>
+                          <Feather name="refresh-cw" size={16} color="#fff" />
+                          <Text style={styles.reApplyText}>Tạo lại hồ sơ mới</Text>
+                        </View>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )}
                 showsVerticalScrollIndicator={false}
               />
             ) : null}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Action Sheet for DRAFT ── */}
+      <Modal visible={showActionSheet} transparent animationType="slide">
+        <TouchableOpacity
+          style={styles.sheetOverlay}
+          activeOpacity={1}
+          onPress={handleCloseActionSheet}
+        >
+          <View style={styles.sheetContainer}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Quản lý hồ sơ nháp</Text>
+            <Text style={styles.sheetDesc}>
+              Chọn thao tác bạn muốn thực hiện với hồ sơ này
+            </Text>
+
+            {/* Edit Info */}
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={handleEditInfo}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.sheetOptionIcon, { backgroundColor: RHSColors.blue50 }]}>
+                <Feather name="edit-2" size={20} color={RHSColors.blue700} />
+              </View>
+              <View style={styles.sheetOptionContent}>
+                <Text style={styles.sheetOptionTitle}>Chỉnh sửa thông tin</Text>
+                <Text style={styles.sheetOptionDesc}>Cập nhật thông tin cá nhân, địa chỉ, thu nhập</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={RHSColors.grey400} />
+            </TouchableOpacity>
+
+            {/* Manage Documents */}
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={handleManageDocs}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.sheetOptionIcon, { backgroundColor: RHSColors.amber50 }]}>
+                <Feather name="upload" size={20} color={RHSColors.amber700} />
+              </View>
+              <View style={styles.sheetOptionContent}>
+                <Text style={styles.sheetOptionTitle}>Quản lý giấy tờ</Text>
+                <Text style={styles.sheetOptionDesc}>Tải lên, xóa hoặc thay thế giấy tờ PDF</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={RHSColors.grey400} />
+            </TouchableOpacity>
+
+            {/* Review & Submit */}
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={handleReviewSubmit}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.sheetOptionIcon, { backgroundColor: RHSColors.green50 }]}>
+                <Feather name="eye" size={20} color={RHSColors.green600} />
+              </View>
+              <View style={styles.sheetOptionContent}>
+                <Text style={styles.sheetOptionTitle}>Xem & Nộp hồ sơ</Text>
+                <Text style={styles.sheetOptionDesc}>Kiểm tra lại toàn bộ và nộp cho thẩm định</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={RHSColors.grey400} />
+            </TouchableOpacity>
+
+            {/* Cancel */}
+            <TouchableOpacity
+              style={styles.sheetCancel}
+              onPress={handleCloseActionSheet}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.sheetCancelText}>Hủy</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -380,7 +539,6 @@ const DetailRow = ({ label, value }: { label: string; value: string }) => (
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
 
-  // White header
   whiteHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -400,11 +558,9 @@ const styles = StyleSheet.create({
     backgroundColor: RHSColors.surface,
   },
 
-  // List
   listContent: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 24 },
   emptyContainer: { flex: 1 },
 
-  // Card - no shadow, thin border
   card: {
     backgroundColor: '#fff',
     borderRadius: borderRadius.md,
@@ -433,7 +589,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Badge - 6px border radius
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -452,12 +607,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Card Body
   cardBody: { gap: 6, marginBottom: 12 },
   cardRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   cardRowText: { fontSize: 12, color: RHSColors.textSecondary },
 
-  // Card Footer
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -476,7 +629,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Empty
   empty: {
     flex: 1,
     justifyContent: 'center',
@@ -567,7 +719,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Note
   noteCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -591,7 +742,18 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // Detail Sections
+  // Re-Apply Button for REJECTED
+  reApplyBtn: { marginTop: 8, borderRadius: borderRadius.md, overflow: 'hidden' },
+  reApplyGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+    backgroundColor: RHSColors.blue700,
+  },
+  reApplyText: { ...typography.buttonSmall, color: '#fff' },
+
   detailSection: { marginBottom: 16 },
   detailSectionTitle: {
     fontSize: 14,
@@ -620,7 +782,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Documents
   noDocText: {
     fontSize: 13,
     color: RHSColors.textMuted,
@@ -654,5 +815,80 @@ const styles = StyleSheet.create({
     color: RHSColors.text,
     flex: 1,
     fontWeight: '500',
+  },
+
+  // ── Action Sheet Styles ──
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: borderRadius.xxl,
+    borderTopRightRadius: borderRadius.xxl,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    paddingTop: 12,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: RHSColors.grey300,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: RHSColors.text,
+    marginBottom: 6,
+  },
+  sheetDesc: {
+    fontSize: 14,
+    color: RHSColors.textSecondary,
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  sheetOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: RHSColors.grey100,
+    gap: 14,
+  },
+  sheetOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sheetOptionContent: { flex: 1, gap: 2 },
+  sheetOptionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: RHSColors.text,
+  },
+  sheetOptionDesc: {
+    fontSize: 12,
+    color: RHSColors.textMuted,
+    lineHeight: 16,
+  },
+  sheetCancel: {
+    marginTop: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: RHSColors.grey300,
+  },
+  sheetCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: RHSColors.textSecondary,
   },
 });

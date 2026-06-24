@@ -52,6 +52,8 @@ export interface ApplicationDetail {
   documents: ApplicationDocument[];
   reviewNote: string | null;
   rejectionReason: string | null;
+  /** Danh sách loại giấy tờ cần bổ sung (chỉ có khi status = NEED_MORE_DOCUMENTS) */
+  requiredDocumentTypes?: string[];
 }
 
 export interface PagedResponse<T> {
@@ -102,5 +104,16 @@ export const housingApplicationApi = {
       `/housing-applications/${applicationId}`
     );
     return response.data;
+  },
+
+  /**
+   * Cập nhật thông tin hồ sơ (dùng cho EditInformation).
+   * PUT /api/housing-applications/{id}
+   */
+  updateApplication: async (
+    applicationId: string,
+    data: Partial<CreateApplicationRequest>
+  ): Promise<void> => {
+    await apiClient.put(`/housing-applications/${applicationId}`, data);
   },
 };

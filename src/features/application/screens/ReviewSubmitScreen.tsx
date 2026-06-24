@@ -96,11 +96,11 @@ export const ReviewSubmitScreen = () => {
 
   const handleBackToDashboard = () => {
     setShowSuccess(false);
-    // Navigate to the "My Applications" tab
+    // Reset stack to MyApplications screen (triggers useFocusEffect refresh)
     navigation.dispatch(
-      CommonActions.navigate({
-        name: 'MainTabs',
-        params: { screen: 'Applications' },
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'MyApplications' }],
       })
     );
   };
@@ -191,7 +191,7 @@ export const ReviewSubmitScreen = () => {
             value={getHousingStatusLabel(detail.housingStatus)}
           />
           <InfoRow
-            icon="dollar-sign"
+            icon="trending-up"
             label="Thu nhập"
             value={`${formatCurrency(detail.estimatedMonthlyIncome)} VNĐ/tháng`}
           />

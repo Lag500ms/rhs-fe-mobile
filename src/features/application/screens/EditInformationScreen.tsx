@@ -16,8 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
-import { userApi } from '../../user/api/userApi';
-import { housingApplicationApi, CreateApplicationRequest } from '../api/housingApplicationApi';
+import { housingApplicationApi, ApplicationDetail } from '../api/housingApplicationApi';
 
 const HOUSING_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'NO_HOUSE', label: 'Chưa có nhà ở' },
@@ -34,12 +33,16 @@ function parseCurrency(value: string): number {
   return Number(value.replace(/[^0-9]/g, '')) || 0;
 }
 
-export const BasicInformationScreen = () => {
+function formatNumber(num: number): string {
+  return num.toLocaleString('vi-VN');
+}
+
+export const EditInformationScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { projectId, projectName } = route.params;
+  const { applicationId } = route.params;
 
-  // Hide bottom tab bar when entering creation flow
+  // Hide bottom tab bar
   useLayoutEffect(() => {
     const parent = navigation.getParent();
     if (parent) {
@@ -55,12 +58,10 @@ export const BasicInformationScreen = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // ── Locked fields from eKYC ──
+  // ── Fields loaded from detail ──
   const [fullName, setFullName] = useState('');
   const [citizenId, setCitizenId] = useState('');
   const [permanentAddress, setPermanentAddress] = useState('');
-
-  // ── User-entered fields ──
   const [currentResidence, setCurrentResidence] = useState('');
   const [sameAsPermanent, setSameAsPermanent] = useState(false);
   const [occupation, setOccupation] = useState('');
@@ -71,6 +72,31 @@ export const BasicInformationScreen = () => {
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Load existing application detail
+  useEffect(() => {
+    (async () => {
+      try {
+        const detail: ApplicationDetail = await housingApplicationApi.getApplicationDetail(applicationId);
+        setFullName(detail.fullName || '');
+        setCitizenId(detail.citizenId || '');
+        setPermanentAddress(detail.permanentAddress || '');
+        setCurrentResidence(detail.currentResidence || '');
+        setOccupation(detail.occupation || '');
+        setWorkPlace(detail.workPlace || '');
+        setHousingStatus(detail.housingStatus || '');
+        if (detail.estimatedMonthlyIncome) {
+          setIncomeDisplay(formatNumber(detail.estimatedMonthlyIncome));
+        }
+      } catch (e: any) {
+        const msg = e?.response?.data?.message || 'Không thể tải thông tin hồ sơ.';
+        Alert.alert('Lỗi', msg);
+        navigation.goBack();
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [applicationId]);
+
   // Sync currentResidence when checkbox is toggled
   useEffect(() => {
     if (sameAsPermanent && permanentAddress) {
@@ -80,22 +106,6 @@ export const BasicInformationScreen = () => {
       setCurrentResidence('');
     }
   }, [sameAsPermanent, permanentAddress]);
-
-  // Load profile from eKYC
-  useEffect(() => {
-    (async () => {
-      try {
-        const result = await userApi.getProfile();
-        if (result.success && result.user) {
-          setFullName(result.user.fullName || '');
-          setCitizenId(result.user.citizenId || '');
-          setPermanentAddress(result.user.address || '');
-        }
-      } catch {} finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
 
   const validateField = (field: string, value: string) => {
     const newErrors = { ...errors };
@@ -130,28 +140,21 @@ export const BasicInformationScreen = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSaveAndContinue = async () => {
+  const handleSave = async () => {
     if (!validate()) return;
 
     setSubmitting(true);
     try {
-      const payload: CreateApplicationRequest = {
-        projectId,
-        fullName: fullName.trim(),
-        citizenId: citizenId.replace(/\s/g, ''),
-        permanentAddress: permanentAddress.trim(),
+      await housingApplicationApi.updateApplication(applicationId, {
         currentResidence: currentResidence.trim(),
         occupation: occupation.trim() || undefined,
         workPlace: workPlace.trim() || undefined,
         housingStatus,
         estimatedMonthlyIncome: parseCurrency(incomeDisplay),
-      };
-
-      const result = await housingApplicationApi.createApplication(payload);
-      navigation.replace('UploadDocuments', {
-        applicationId: result.applicationId,
-        projectName,
       });
+      Alert.alert('Thành công', 'Thông tin hồ sơ đã được cập nhật.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Có lỗi xảy ra.';
       Alert.alert('Lỗi', msg);
@@ -172,7 +175,6 @@ export const BasicInformationScreen = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Thin brand bar at top */}
       <BrandBar />
 
       {/* White header */}
@@ -180,32 +182,8 @@ export const BasicInformationScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Thông tin đăng ký</Text>
+        <Text style={styles.headerTitle}>Chỉnh sửa thông tin</Text>
         <View style={{ width: 36 }} />
-      </View>
-
-      {/* Stepper - refined */}
-      <View style={styles.stepper}>
-        <View style={styles.stepItem}>
-          <View style={[styles.stepCircle, styles.stepCircleActive]}>
-            <Text style={styles.stepCircleText}>1</Text>
-          </View>
-          <Text style={[styles.stepLabel, styles.stepLabelActive]}>Thông tin</Text>
-        </View>
-        <View style={[styles.stepLine, styles.stepLineActive]} />
-        <View style={styles.stepItem}>
-          <View style={styles.stepCircle}>
-            <Text style={styles.stepCircleTextInactive}>2</Text>
-          </View>
-          <Text style={styles.stepLabel}>Giấy tờ</Text>
-        </View>
-        <View style={styles.stepLine} />
-        <View style={styles.stepItem}>
-          <View style={styles.stepCircle}>
-            <Text style={styles.stepCircleTextInactive}>3</Text>
-          </View>
-          <Text style={styles.stepLabel}>Nộp hồ sơ</Text>
-        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -218,18 +196,9 @@ export const BasicInformationScreen = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Project Card */}
-          <View style={styles.projectCard}>
-            <Feather name="home" size={18} color={RHSColors.blue700} />
-            <Text style={styles.projectName} numberOfLines={2}>
-              {projectName}
-            </Text>
-          </View>
-
           {/* ── IDENTITY INFO – LOCKED FROM eKYC ── */}
           <Text style={styles.sectionTitle}>Thông tin định danh</Text>
           <View style={styles.card}>
-            {/* Sync badge */}
             <View style={styles.syncBadge}>
               <Feather name="check-circle" size={14} color={RHSColors.green600} />
               <Text style={styles.syncBadgeText}>
@@ -237,19 +206,19 @@ export const BasicInformationScreen = () => {
               </Text>
             </View>
 
-            <Text style={styles.label}>Họ và tên *</Text>
+            <Text style={styles.label}>Họ và tên</Text>
             <View style={styles.lockedInput}>
               <Feather name="user" size={16} color={RHSColors.textMuted} />
               <Text style={styles.lockedText}>{fullName || '—'}</Text>
             </View>
 
-            <Text style={styles.label}>Số CCCD *</Text>
+            <Text style={styles.label}>Số CCCD</Text>
             <View style={styles.lockedInput}>
               <Feather name="credit-card" size={16} color={RHSColors.textMuted} />
               <Text style={styles.lockedText}>{citizenId || '—'}</Text>
             </View>
 
-            <Text style={styles.label}>Địa chỉ thường trú *</Text>
+            <Text style={styles.label}>Địa chỉ thường trú</Text>
             <View style={styles.lockedInput}>
               <Feather name="bookmark" size={16} color={RHSColors.textMuted} />
               <Text style={styles.lockedText} numberOfLines={3}>
@@ -258,10 +227,9 @@ export const BasicInformationScreen = () => {
             </View>
           </View>
 
-          {/* ── CURRENT INFO – USER ENTERS ── */}
+          {/* ── CURRENT INFO – USER CAN EDIT ── */}
           <Text style={styles.sectionTitle}>Thông tin hiện tại</Text>
           <View style={styles.card}>
-            {/* Current Residence */}
             <Text style={styles.label}>Chỗ ở hiện tại *</Text>
             <TextInput
               style={[
@@ -290,7 +258,6 @@ export const BasicInformationScreen = () => {
               <Text style={styles.errorText}>{errors.currentResidence}</Text>
             )}
 
-            {/* Same as permanent address checkbox */}
             <TouchableOpacity
               style={styles.checkboxRow}
               onPress={() => setSameAsPermanent(!sameAsPermanent)}
@@ -311,7 +278,6 @@ export const BasicInformationScreen = () => {
               </Text>
             </TouchableOpacity>
 
-            {/* Occupation */}
             <Text style={styles.label}>Nghề nghiệp</Text>
             <TextInput
               style={styles.input}
@@ -321,7 +287,6 @@ export const BasicInformationScreen = () => {
               placeholderTextColor={RHSColors.textMuted}
             />
 
-            {/* Workplace */}
             <Text style={styles.label}>Nơi làm việc</Text>
             <TextInput
               style={styles.input}
@@ -374,7 +339,7 @@ export const BasicInformationScreen = () => {
 
             <Text style={[styles.label, { marginTop: 16 }]}>Thu nhập hàng tháng (VNĐ) *</Text>
             <View style={styles.incomeRow}>
-              <Feather name="trending-up" size={18} color={RHSColors.blue700} />
+              <Feather name="dollar-sign" size={18} color={RHSColors.blue700} />
               <TextInput
                 style={[styles.input, { flex: 1 }, errors.income && styles.inputError]}
                 value={incomeDisplay}
@@ -396,10 +361,10 @@ export const BasicInformationScreen = () => {
             ) : null}
           </View>
 
-          {/* Submit Button - BLUE */}
+          {/* Save Button */}
           <TouchableOpacity
             style={styles.submitBtn}
-            onPress={handleSaveAndContinue}
+            onPress={handleSave}
             disabled={submitting}
             activeOpacity={0.9}
           >
@@ -409,7 +374,7 @@ export const BasicInformationScreen = () => {
               ) : (
                 <>
                   <Feather name="save" size={18} color="#fff" />
-                  <Text style={styles.submitText}>Lưu & Tiếp tục</Text>
+                  <Text style={styles.submitText}>Lưu thay đổi</Text>
                 </>
               )}
             </View>
@@ -425,7 +390,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.surface },
 
-  // White header
   whiteHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -438,67 +402,9 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4, marginRight: 10 },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: RHSColors.blue700 },
 
-  // Stepper - refined
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: RHSColors.grey200,
-  },
-  stepItem: { alignItems: 'center', gap: 4 },
-  stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: RHSColors.grey300,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stepCircleActive: { backgroundColor: RHSColors.blue700, borderColor: RHSColors.blue700 },
-  stepCircleText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  stepCircleTextInactive: { fontSize: 13, fontWeight: '700', color: RHSColors.grey500 },
-  stepLabel: { fontSize: 11, fontWeight: '500', color: RHSColors.grey500 },
-  stepLabelActive: { color: RHSColors.blue700, fontWeight: '700' },
-  stepLine: {
-    flex: 1,
-    height: 1.5,
-    backgroundColor: RHSColors.grey300,
-    marginHorizontal: 8,
-    marginBottom: 16,
-  },
-  stepLineActive: { backgroundColor: RHSColors.blue700 },
-
-  // Header
-  headerGrad: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 40 },
 
-  // Project Card
-  projectCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: RHSColors.blue50,
-    padding: 14,
-    borderRadius: borderRadius.md,
-    marginBottom: 20,
-    gap: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: RHSColors.blue700,
-  },
-  projectName: { flex: 1, fontSize: 15, fontWeight: '700', color: RHSColors.text, lineHeight: 22 },
-
-  // Sections
   sectionTitle: {
     ...typography.h3,
     color: RHSColors.text,
@@ -514,7 +420,6 @@ const styles = StyleSheet.create({
     borderColor: RHSColors.border,
   },
 
-  // ── eKYC Sync Badge ──
   syncBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -533,7 +438,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 
-  // ── Locked Input (read-only) ──
   lockedInput: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -553,7 +457,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // ── Inputs ──
   label: { fontSize: 13, fontWeight: '600', color: RHSColors.textSecondary, marginBottom: 6, marginTop: 10 },
   input: {
     backgroundColor: RHSColors.grey50,
@@ -571,7 +474,6 @@ const styles = StyleSheet.create({
   charCount: { fontSize: 11, color: RHSColors.textMuted, textAlign: 'right', marginTop: 2 },
   errorText: { fontSize: 12, color: RHSColors.red600, marginTop: 4, fontWeight: '500' },
 
-  // ── Checkbox ──
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -600,7 +502,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // ── Radio ──
   radio: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -631,11 +532,9 @@ const styles = StyleSheet.create({
   radioLabel: { fontSize: 15, fontWeight: '600', color: RHSColors.text, flex: 1 },
   radioLabelActive: { color: RHSColors.blue700 },
 
-  // Income
   incomeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   incomeHint: { fontSize: 12, color: RHSColors.blue700, marginTop: 4, fontWeight: '500' },
 
-  // Submit - BLUE
   submitBtn: { marginTop: 8, borderRadius: borderRadius.md, overflow: 'hidden' },
   submitGrad: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useState, useLayoutEffect, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
-import { housingDocumentApi, UploadDocumentResponse } from '../api/housingDocumentApi';
+import { housingDocumentApi, UploadDocumentResponse, DocumentItem } from '../api/housingDocumentApi';
+import { housingApplicationApi } from '../api/housingApplicationApi';
 
 const DOC_TYPES = [
   {
@@ -36,6 +37,7 @@ interface UploadedFile {
   fileName: string;
   fileSize: number;
   documentType: DocKey;
+  verificationStatus?: string; // PENDING | VERIFIED | REJECTED
 }
 
 function formatFileSize(bytes: number): string {
@@ -44,10 +46,15 @@ function formatFileSize(bytes: number): string {
   return mb < 1 ? `${(bytes / 1024).toFixed(0)} KB` : `${mb.toFixed(1)} MB`;
 }
 
+function isNeedMoreDocsMode(status?: string): boolean {
+  return status === 'NEED_MORE_DOCUMENTS';
+}
+
 export const UploadDocumentsScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { applicationId } = route.params;
+  const { applicationId, applicationStatus } = route.params;
+  const isSupplementMode = isNeedMoreDocsMode(applicationStatus);
 
   // Hide bottom tab bar when in creation flow
   useLayoutEffect(() => {
@@ -75,6 +82,53 @@ export const UploadDocumentsScreen = () => {
     POVERTY_HOUSEHOLD_CERTIFICATE: false,
   });
   const [submitting, setSubmitting] = useState(false);
+  const [reviewNote, setReviewNote] = useState<string | null>(null);
+  const [requiredDocTypes, setRequiredDocTypes] = useState<DocKey[] | null>(null);
+  const [loading, setLoading] = useState(isSupplementMode);
+
+  const displayedDocTypes = isSupplementMode && requiredDocTypes
+    ? DOC_TYPES.filter(dt => requiredDocTypes.includes(dt.key))
+    : DOC_TYPES;
+
+  // Load existing documents + reviewNote nếu đang ở chế độ bổ sung
+  useEffect(() => {
+    if (!isSupplementMode) return;
+
+    (async () => {
+      try {
+        // 1. Fetch detail để lấy reviewNote + requiredDocumentTypes
+        const detail = await housingApplicationApi.getApplicationDetail(applicationId);
+        setReviewNote(detail.reviewNote);
+        if (detail.requiredDocumentTypes && detail.requiredDocumentTypes.length > 0) {
+          setRequiredDocTypes(detail.requiredDocumentTypes as DocKey[]);
+        }
+
+        // 2. Fetch danh sách documents đã upload
+        const docs = await housingDocumentApi.getDocuments(applicationId);
+        const fileMap: Record<DocKey, UploadedFile | null> = {
+          HOUSING_CONDITION_PROOF: null,
+          POVERTY_HOUSEHOLD_CERTIFICATE: null,
+        };
+        for (const doc of docs) {
+          if (doc.documentType === 'HOUSING_CONDITION_PROOF' || doc.documentType === 'POVERTY_HOUSEHOLD_CERTIFICATE') {
+            fileMap[doc.documentType] = {
+              documentId: doc.documentId,
+              fileName: doc.fileName,
+              fileSize: doc.fileSizeBytes,
+              documentType: doc.documentType,
+              verificationStatus: doc.verificationStatus,
+            };
+          }
+        }
+        setUploadedFiles(fileMap);
+      } catch (e: any) {
+        const msg = e?.response?.data?.message || 'Không thể tải thông tin hồ sơ.';
+        Alert.alert('Lỗi', msg);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [applicationId, isSupplementMode]);
 
   const totalFiles = Object.values(uploadedFiles).filter(Boolean).length;
 
@@ -135,6 +189,24 @@ export const UploadDocumentsScreen = () => {
     });
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <BrandBar />
+        <View style={styles.whiteHeader}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Bổ sung giấy tờ</Text>
+          <View style={{ width: 36 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={RHSColors.blue700} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       {/* Thin brand bar at top */}
@@ -145,45 +217,71 @@ export const UploadDocumentsScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tải lên giấy tờ</Text>
+        <Text style={styles.headerTitle}>
+          {isSupplementMode ? 'Bổ sung giấy tờ' : 'Tải lên giấy tờ'}
+        </Text>
         <View style={{ width: 36 }} />
       </View>
 
-      {/* Stepper */}
-      <View style={styles.stepper}>
-        <View style={styles.stepItem}>
-          <View style={[styles.stepCircle, styles.stepCircleDone]}>
-            <Feather name="check" size={14} color="#fff" />
+      {/* Hiển thị stepper chỉ khi tạo mới, ẩn khi bổ sung */}
+      {!isSupplementMode && (
+        <View style={styles.stepper}>
+          <View style={styles.stepItem}>
+            <View style={[styles.stepCircle, styles.stepCircleDone]}>
+              <Feather name="check" size={14} color="#fff" />
+            </View>
+            <Text style={[styles.stepLabel, styles.stepLabelDone]}>Thông tin</Text>
           </View>
-          <Text style={[styles.stepLabel, styles.stepLabelDone]}>Thông tin</Text>
-        </View>
-        <View style={[styles.stepLine, styles.stepLineActive]} />
-        <View style={styles.stepItem}>
-          <View style={[styles.stepCircle, styles.stepCircleActive]}>
-            <Text style={styles.stepCircleText}>2</Text>
+          <View style={[styles.stepLine, styles.stepLineActive]} />
+          <View style={styles.stepItem}>
+            <View style={[styles.stepCircle, styles.stepCircleActive]}>
+              <Text style={styles.stepCircleText}>2</Text>
+            </View>
+            <Text style={[styles.stepLabel, styles.stepLabelActive]}>Giấy tờ</Text>
           </View>
-          <Text style={[styles.stepLabel, styles.stepLabelActive]}>Giấy tờ</Text>
-        </View>
-        <View style={styles.stepLine} />
-        <View style={styles.stepItem}>
-          <View style={styles.stepCircle}>
-            <Text style={styles.stepCircleTextInactive}>3</Text>
+          <View style={styles.stepLine} />
+          <View style={styles.stepItem}>
+            <View style={styles.stepCircle}>
+              <Text style={styles.stepCircleTextInactive}>3</Text>
+            </View>
+            <Text style={styles.stepLabel}>Nộp hồ sơ</Text>
           </View>
-          <Text style={styles.stepLabel}>Nộp hồ sơ</Text>
         </View>
-      </View>
+      )}
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Banner cho chế độ bổ sung */}
+        {isSupplementMode && (
+          <View style={styles.supplementBanner}>
+            <Feather name="alert-circle" size={18} color={RHSColors.amber700} />
+            <Text style={styles.supplementBannerText}>
+              Hồ sơ của bạn đang được yêu cầu bổ sung giấy tờ. Vui lòng kiểm tra ghi chú bên dưới và tải lên giấy tờ còn thiếu.
+            </Text>
+          </View>
+        )}
+
+        {/* Ghi chú từ officer (chỉ hiển thị khi có) */}
+        {reviewNote && (
+          <View style={styles.noteCard}>
+            <Feather name="message-square" size={16} color={RHSColors.amber700} />
+            <View style={styles.noteContent}>
+              <Text style={styles.noteLabel}>Ghi chú từ cán bộ thẩm định:</Text>
+              <Text style={styles.noteText}>{reviewNote}</Text>
+            </View>
+          </View>
+        )}
+
         <Text style={styles.description}>
-          Tải lên file PDF (tối đa 10MB mỗi file) cho từng loại giấy tờ bên dưới.
-          Bạn chỉ cần 1 file cho mỗi loại.
+          {isSupplementMode
+            ? 'Tải lên file PDF (tối đa 10MB mỗi file) cho các giấy tờ còn thiếu hoặc thay thế giấy tờ cũ.'
+            : 'Tải lên file PDF (tối đa 10MB mỗi file) cho từng loại giấy tờ bên dưới. Bạn chỉ cần 1 file cho mỗi loại.'}
         </Text>
 
-        {DOC_TYPES.map(({ key, label, subtitle }) => {
+        {displayedDocTypes.map(({ key, label, subtitle }) => {
           const file = uploadedFiles[key];
           const isUploading = uploading[key];
           const isDeleting = deleting[key];
@@ -194,34 +292,68 @@ export const UploadDocumentsScreen = () => {
               <Text style={styles.uploadSubtitle}>{subtitle}</Text>
 
               {file ? (
-                // File Card - after successful upload
-                <View style={styles.fileCard}>
-                  <View style={styles.fileCardLeft}>
-                    <View style={styles.pdfIconWrap}>
-                      <Feather name="file" size={28} color={RHSColors.blue700} />
-                      <Text style={styles.pdfLabel}>PDF</Text>
-                    </View>
-                    <View style={styles.fileInfo}>
-                      <Text style={styles.fileName} numberOfLines={1}>
-                        {file.fileName}
+                <View>
+                  {/* Verification status badge (chỉ hiển thị khi có) */}
+                  {file.verificationStatus && file.verificationStatus === 'REJECTED' && (
+                    <View style={styles.rejectedBanner}>
+                      <Feather name="alert-triangle" size={14} color={RHSColors.red600} />
+                      <Text style={styles.rejectedBannerText}>
+                        Giấy tờ này bị từ chối. Vui lòng xóa và tải lên giấy tờ mới.
                       </Text>
-                      <Text style={styles.fileSize}>{formatFileSize(file.fileSize)}</Text>
                     </View>
-                  </View>
-                  {isDeleting ? (
-                    <ActivityIndicator size="small" color={RHSColors.red600} />
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.deleteBtn}
-                      onPress={() => handleDelete(key)}
-                      activeOpacity={0.7}
-                    >
-                      <Feather name="x" size={18} color={RHSColors.red600} />
-                    </TouchableOpacity>
                   )}
+                  {file.verificationStatus && file.verificationStatus === 'PENDING' && (
+                    <View style={styles.pendingBanner}>
+                      <Feather name="clock" size={14} color={RHSColors.amber700} />
+                      <Text style={styles.pendingBannerText}>
+                        Đang chờ xác minh. Bạn có thể thay thế bằng giấy tờ khác nếu cần.
+                      </Text>
+                    </View>
+                  )}
+                  {file.verificationStatus && file.verificationStatus === 'VERIFIED' && (
+                    <View style={styles.verifiedBanner}>
+                      <Feather name="check-circle" size={14} color={RHSColors.green600} />
+                      <Text style={styles.verifiedBannerText}>
+                        Đã được xác minh. Bạn có thể thay thế nếu cần.
+                      </Text>
+                    </View>
+                  )}
+                  <View style={styles.fileCard}>
+                    <View style={styles.fileCardLeft}>
+                      <View style={[styles.pdfIconWrap, file.verificationStatus === 'REJECTED' && styles.pdfIconWrapRejected]}>
+                        <Feather name="file" size={28} color={file.verificationStatus === 'REJECTED' ? RHSColors.red600 : RHSColors.blue700} />
+                        <Text style={[styles.pdfLabel, file.verificationStatus === 'REJECTED' && { color: RHSColors.red600 }]}>PDF</Text>
+                      </View>
+                      <View style={styles.fileInfo}>
+                        <Text style={styles.fileName} numberOfLines={1}>
+                          {file.fileName}
+                        </Text>
+                        <Text style={styles.fileSize}>{formatFileSize(file.fileSize)}</Text>
+                      </View>
+                    </View>
+                    {isDeleting ? (
+                      <ActivityIndicator size="small" color={RHSColors.red600} />
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.deleteBtn}
+                        onPress={() => {
+                          Alert.alert(
+                            'Xóa tài liệu',
+                            'Bạn có chắc muốn xóa tài liệu này?',
+                            [
+                              { text: 'Hủy', style: 'cancel' },
+                              { text: 'Xóa', style: 'destructive', onPress: () => handleDelete(key) },
+                            ]
+                          );
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="x" size={18} color={RHSColors.red600} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               ) : (
-                // Dashed upload zone - new style: white bg, #B0BEC5 border
                 <TouchableOpacity
                   style={[styles.dashedZone, isUploading && styles.dashedZoneActive]}
                   onPress={() => pickAndUpload(key)}
@@ -258,7 +390,9 @@ export const UploadDocumentsScreen = () => {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <Text style={styles.continueText}>Tiếp tục</Text>
+                <Text style={styles.continueText}>
+                  {isSupplementMode ? 'Lưu thay đổi' : 'Tiếp tục'}
+                </Text>
                 <Feather name="arrow-right" size={18} color="#fff" />
               </>
             )}
@@ -442,6 +576,110 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
+  },
+
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: RHSColors.surface,
+  },
+
+  // Supplement banner
+  supplementBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF8E1',
+    padding: 12,
+    borderRadius: borderRadius.md,
+    marginBottom: 16,
+    gap: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: RHSColors.amber700,
+  },
+  supplementBannerText: {
+    fontSize: 13,
+    color: RHSColors.amber700,
+    flex: 1,
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+
+  // Verification status banners
+  rejectedBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: RHSColors.red50,
+    padding: 8,
+    borderRadius: borderRadius.xs,
+    marginBottom: 8,
+    gap: 6,
+  },
+  rejectedBannerText: {
+    fontSize: 12,
+    color: RHSColors.red600,
+    flex: 1,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  pendingBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: RHSColors.amber50,
+    padding: 8,
+    borderRadius: borderRadius.xs,
+    marginBottom: 8,
+    gap: 6,
+  },
+  pendingBannerText: {
+    fontSize: 12,
+    color: RHSColors.amber700,
+    flex: 1,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  verifiedBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: RHSColors.green50,
+    padding: 8,
+    borderRadius: borderRadius.xs,
+    marginBottom: 8,
+    gap: 6,
+  },
+  verifiedBannerText: {
+    fontSize: 12,
+    color: RHSColors.green700,
+    flex: 1,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  pdfIconWrapRejected: {
+    backgroundColor: RHSColors.red50,
+  },
+
+  // Note card from officer
+  noteCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: RHSColors.amber50,
+    padding: 12,
+    borderRadius: borderRadius.md,
+    marginBottom: 16,
+    gap: 8,
+  },
+  noteContent: { flex: 1, gap: 4 },
+  noteLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: RHSColors.amber700,
+  },
+  noteText: {
+    fontSize: 13,
+    color: RHSColors.amber700,
+    lineHeight: 18,
+    fontWeight: '500',
   },
 
   // Continue - BLUE
