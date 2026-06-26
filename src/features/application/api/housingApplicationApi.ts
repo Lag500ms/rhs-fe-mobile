@@ -14,6 +14,8 @@ export interface CreateApplicationRequest {
 
 export interface CreateApplicationResponse {
   applicationId: string;
+  applicationStatus: string;
+  createdAt: string;
   message: string;
 }
 
@@ -22,8 +24,10 @@ export interface ApplicationDocument {
   documentType: string;
   fileName: string;
   fileUrl: string;
+  fileSizeBytes: number;
+  verificationStatus: string;
   uploadedAt: string;
-  status: string;
+  uploadedBy?: string;
 }
 
 export interface ApplicationSummary {
@@ -35,9 +39,30 @@ export interface ApplicationSummary {
   documentCount: number;
 }
 
+export interface ReviewHistory {
+  historyId: string;
+  action: string;
+  oldStatus: string;
+  newStatus: string;
+  note: string | null;
+  changedAt: string;
+  changedBy: string;
+  changedByFullName: string;
+}
+
 export interface ApplicationDetail {
   applicationId: string;
+  applicationStatus: string;
+  priorityScore: number;
+  createdAt: string;
+  submittedAt: string | null;
+  updatedAt: string | null;
+  finalDecisionDate: string | null;
+
+  projectId: string;
   projectName: string;
+
+  applicantId: string;
   fullName: string;
   citizenId: string;
   occupation: string | null;
@@ -46,14 +71,12 @@ export interface ApplicationDetail {
   permanentAddress: string;
   housingStatus: string;
   estimatedMonthlyIncome: number;
-  applicationStatus: string;
-  createdAt: string;
-  updatedAt: string | null;
+
+  officerId: string | null;
+  officerFullName: string | null;
+
   documents: ApplicationDocument[];
-  reviewNote: string | null;
-  rejectionReason: string | null;
-  /** Danh sách loại giấy tờ cần bổ sung (chỉ có khi status = NEED_MORE_DOCUMENTS) */
-  requiredDocumentTypes?: string[];
+  reviewHistories: ReviewHistory[];
 }
 
 export interface PagedResponse<T> {

@@ -46,7 +46,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
-  const fullAddress = [project.province, project.district, project.address].filter(Boolean).join(', ');
+  const fullAddress = [project.street, project.ward, project.district, project.province].filter(Boolean).join(', ');
   const sortedImages = project.images?.length
     ? [...project.images].sort((a, b) => a.displayOrder - b.displayOrder)
     : [];
@@ -268,6 +268,15 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           </View>
           <View style={styles.detailRow}><Feather name="map-pin" size={15} color={RHSColors.blue700}/><Text style={styles.detailText}>{fullAddress}</Text></View>
           <View style={styles.detailRow}><Feather name="users" size={15} color={RHSColors.textMuted}/><Text style={styles.detailText}>Còn lại: <Text style={{color:RHSColors.blue700, fontWeight:'700'}}>{project.availableUnits}</Text> căn hộ</Text></View>
+          {project.depositAmount > 0 && (
+            <View style={styles.detailRow}><Feather name="dollar-sign" size={15} color={RHSColors.amber700}/><Text style={styles.detailText}>Tiền cọc: <Text style={{color:RHSColors.amber700, fontWeight:'700'}}>{project.depositAmount.toLocaleString('vi-VN')} VNĐ</Text></Text></View>
+          )}
+          {project.lotteryDate && (
+            <View style={styles.detailRow}><Feather name="calendar" size={15} color={RHSColors.amber700}/><Text style={styles.detailText}>Ngày bốc thăm: <Text style={{color:RHSColors.text, fontWeight:'600'}}>{new Date(project.lotteryDate).toLocaleDateString('vi-VN')}</Text></Text></View>
+          )}
+          {project.lotteryLocation && (
+            <View style={styles.detailRow}><Feather name="map" size={15} color={RHSColors.amber700}/><Text style={styles.detailText}>Địa điểm bốc thăm: <Text style={{color:RHSColors.text, fontWeight:'600'}}>{project.lotteryLocation}</Text></Text></View>
+          )}
         </View>
 
         {/* Description */}

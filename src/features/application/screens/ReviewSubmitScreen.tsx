@@ -219,7 +219,9 @@ export const ReviewSubmitScreen = () => {
                   <Text style={styles.docTypeSmall}>
                     {doc.documentType === 'HOUSING_CONDITION_PROOF'
                       ? 'Minh chứng nhà ở'
-                      : 'Hộ nghèo/cận nghèo'}
+                      : doc.documentType === 'POVERTY_HOUSEHOLD_CERTIFICATE'
+                        ? 'Hộ nghèo/cận nghèo'
+                        : doc.documentType}
                   </Text>
                 </View>
                 <Feather name="check-circle" size={18} color={RHSColors.green600} />

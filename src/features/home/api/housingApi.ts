@@ -12,13 +12,17 @@ export interface HousingProjectResponse {
   description: string;
   province: string;
   district: string;
-  address: string;
+  ward: string;
+  street: string;
   minPrice: number;
   maxPrice: number;
   minArea: number;
   maxArea: number;
   availableUnits: number;
   thumbnailUrl?: string;
+  lotteryDate?: string;
+  lotteryLocation?: string;
+  depositAmount: number;
   createdAt: string;
   updatedAt?: string;
   status?: string;

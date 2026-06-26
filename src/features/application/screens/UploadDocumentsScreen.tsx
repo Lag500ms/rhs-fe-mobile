@@ -15,7 +15,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { housingDocumentApi, UploadDocumentResponse, DocumentItem } from '../api/housingDocumentApi';
-import { housingApplicationApi } from '../api/housingApplicationApi';
+import { housingApplicationApi, ReviewHistory } from '../api/housingApplicationApi';
 
 const DOC_TYPES = [
   {
@@ -48,6 +48,14 @@ function formatFileSize(bytes: number): string {
 
 function isNeedMoreDocsMode(status?: string): boolean {
   return status === 'NEED_MORE_DOCUMENTS';
+}
+
+/**
+ * Lấy ghi chú mới nhất từ lịch sử xét duyệt (action = REQUEST_MORE_DOCUMENTS).
+ */
+function findLatestReviewNote(histories: ReviewHistory[]): string | null {
+  const requestNotes = histories.filter(h => h.action === 'REQUEST_MORE_DOCUMENTS' && h.note);
+  return requestNotes.length > 0 ? requestNotes[0].note : null;
 }
 
 export const UploadDocumentsScreen = () => {
@@ -83,12 +91,7 @@ export const UploadDocumentsScreen = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [reviewNote, setReviewNote] = useState<string | null>(null);
-  const [requiredDocTypes, setRequiredDocTypes] = useState<DocKey[] | null>(null);
   const [loading, setLoading] = useState(isSupplementMode);
-
-  const displayedDocTypes = isSupplementMode && requiredDocTypes
-    ? DOC_TYPES.filter(dt => requiredDocTypes.includes(dt.key))
-    : DOC_TYPES;
 
   // Load existing documents + reviewNote nếu đang ở chế độ bổ sung
   useEffect(() => {
@@ -96,12 +99,10 @@ export const UploadDocumentsScreen = () => {
 
     (async () => {
       try {
-        // 1. Fetch detail để lấy reviewNote + requiredDocumentTypes
+        // 1. Fetch detail để lấy reviewHistories và tìm reviewNote
         const detail = await housingApplicationApi.getApplicationDetail(applicationId);
-        setReviewNote(detail.reviewNote);
-        if (detail.requiredDocumentTypes && detail.requiredDocumentTypes.length > 0) {
-          setRequiredDocTypes(detail.requiredDocumentTypes as DocKey[]);
-        }
+        const note = findLatestReviewNote(detail.reviewHistories);
+        setReviewNote(note);
 
         // 2. Fetch danh sách documents đã upload
         const docs = await housingDocumentApi.getDocuments(applicationId);
@@ -281,7 +282,7 @@ export const UploadDocumentsScreen = () => {
             : 'Tải lên file PDF (tối đa 10MB mỗi file) cho từng loại giấy tờ bên dưới. Bạn chỉ cần 1 file cho mỗi loại.'}
         </Text>
 
-        {displayedDocTypes.map(({ key, label, subtitle }) => {
+        {DOC_TYPES.map(({ key, label, subtitle }) => {
           const file = uploadedFiles[key];
           const isUploading = uploading[key];
           const isDeleting = deleting[key];

@@ -47,6 +47,18 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     textColor: '#C62828',
     dotColor: '#EF5350',
   },
+  DEPOSIT_PAID: {
+    label: 'Đã đặt cọc',
+    bg: '#E8F5E9',
+    textColor: '#1B5E20',
+    dotColor: '#2E7D32',
+  },
+  WAITING_PAYMENT: {
+    label: 'Đang chờ thanh toán',
+    bg: '#FFF8E1',
+    textColor: '#E65100',
+    dotColor: '#FF9800',
+  },
 };
 
 export function getStatusConfig(status: string): StatusConfig {

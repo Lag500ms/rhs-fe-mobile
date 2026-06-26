@@ -22,6 +22,7 @@ import {
   ApplicationDocument,
 } from '../api/housingApplicationApi';
 import { getStatusConfig } from '../utils/statusConfig';
+import { paymentApi } from '../../payment/api/paymentApi';
 
 function formatDate(dateStr: string): string {
   try {
@@ -166,6 +167,45 @@ export const MyApplicationsScreen = () => {
       applicationId: item.applicationId,
     });
   };
+
+  // ── Payment flow for APPROVED ──
+  const [processingPayment, setProcessingPayment] = useState(false);
+
+  const handleStartPayment = useCallback(async () => {
+    if (!selectedDetail) return;
+    setProcessingPayment(true);
+    try {
+      const result = await paymentApi.createPaymentUrl(selectedDetail.applicationId);
+      if (result.success && result.data?.paymentUrl) {
+        handleCloseDetail();
+        navigation.navigate('PaymentWebView', {
+          paymentUrl: result.data.paymentUrl,
+          orderId: result.data.orderId,
+          applicationId: selectedDetail.applicationId,
+        });
+      } else {
+        Alert.alert('Lỗi', result.message || 'Không thể tạo URL thanh toán');
+      }
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || 'Không thể tạo thanh toán';
+      Alert.alert('Lỗi', msg);
+    } finally {
+      setProcessingPayment(false);
+    }
+  }, [selectedDetail, navigation]);
+
+  // ── View Contract for DEPOSIT_PAID ──
+  const handleViewContract = useCallback(() => {
+    if (!selectedDetail) return;
+    // For DEPOSIT_PAID, we navigate to payment info first to get pdfUrl
+    handleCloseDetail();
+    // Go to payment success screen which has contract viewer access
+    Alert.alert(
+      'Xem hợp đồng',
+      'Vui lòng kiểm tra trong mục "Thanh toán" để xem hợp đồng của bạn.',
+      [{ text: 'Đóng', style: 'cancel' }]
+    );
+  }, [selectedDetail, navigation]);
 
   // ── Re-apply for REJECTED ──
   const handleReApply = async () => {
@@ -366,19 +406,33 @@ export const MyApplicationsScreen = () => {
                       })()}
                     </View>
 
-                    {/* Review Note / Rejection Reason */}
-                    {selectedDetail.reviewNote && (
-                      <View style={styles.noteCard}>
-                        <Feather name="message-square" size={16} color={RHSColors.amber700} />
-                        <Text style={styles.noteText}>{selectedDetail.reviewNote}</Text>
-                      </View>
-                    )}
-                    {selectedDetail.rejectionReason && (
-                      <View style={[styles.noteCard, styles.rejectionCard]}>
-                        <Feather name="alert-triangle" size={16} color={RHSColors.red600} />
-                        <Text style={styles.rejectionText}>{selectedDetail.rejectionReason}</Text>
-                      </View>
-                    )}
+                    {/* Review Note / Rejection Reason (lấy từ reviewHistories) */}
+                    {(() => {
+                      const requestNote = selectedDetail.reviewHistories
+                        .filter(h => h.action === 'REQUEST_MORE_DOCUMENTS' && h.note)
+                        .slice(0, 1)
+                        .map(h => h.note);
+                      const rejectNote = selectedDetail.reviewHistories
+                        .filter(h => h.action === 'REJECT' && h.note)
+                        .slice(0, 1)
+                        .map(h => h.note);
+                      return (
+                        <>
+                          {requestNote.length > 0 && (
+                            <View style={styles.noteCard}>
+                              <Feather name="message-square" size={16} color={RHSColors.amber700} />
+                              <Text style={styles.noteText}>{requestNote[0]}</Text>
+                            </View>
+                          )}
+                          {rejectNote.length > 0 && (
+                            <View style={[styles.noteCard, styles.rejectionCard]}>
+                              <Feather name="alert-triangle" size={16} color={RHSColors.red600} />
+                              <Text style={styles.rejectionText}>{rejectNote[0]}</Text>
+                            </View>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     {/* Info */}
                     <DetailSection title="Thông tin cá nhân">
@@ -416,6 +470,58 @@ export const MyApplicationsScreen = () => {
                         <DetailRow label="Cập nhật" value={formatDate(selectedDetail.updatedAt)} />
                       )}
                     </DetailSection>
+
+                    {/* ── APPROVED: "Đang chờ thanh toán" & Pay button ── */}
+                    {selectedDetail.applicationStatus === 'APPROVED' && (
+                      <View style={styles.paymentSection}>
+                        <View style={styles.waitingPaymentBadge}>
+                          <Feather name="clock" size={16} color={RHSColors.govGoldDark} />
+                          <Text style={styles.waitingPaymentText}>Đang chờ thanh toán</Text>
+                        </View>
+                        <Text style={styles.depositInfoText}>
+                          Hồ sơ của bạn đã được duyệt. Vui lòng tiến hành đặt cọc để giữ suất tham gia bốc thăm.
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.payNowBtn}
+                          onPress={handleStartPayment}
+                          activeOpacity={0.9}
+                          disabled={processingPayment}
+                        >
+                          {processingPayment ? (
+                            <>
+                              <ActivityIndicator size="small" color="#fff" />
+                              <Text style={styles.payNowText}>Đang xử lý...</Text>
+                            </>
+                          ) : (
+                            <>
+                              <Feather name="credit-card" size={18} color="#fff" />
+                              <Text style={styles.payNowText}>Thanh toán ngay</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {/* ── DEPOSIT_PAID: Show SlotCode & View Contract ── */}
+                    {selectedDetail.applicationStatus === 'DEPOSIT_PAID' && (
+                      <View style={styles.depositPaidSection}>
+                        <View style={styles.depositPaidBadge}>
+                          <Feather name="check-circle" size={16} color={RHSColors.green600} />
+                          <Text style={styles.depositPaidText}>Đã đặt cọc thành công</Text>
+                        </View>
+                        <Text style={styles.readyForLotteryText}>
+                          Bạn đã hoàn tất đặt cọc. Hãy chờ ngày bốc thăm để nhận kết quả.
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.viewContractBtn}
+                          onPress={handleViewContract}
+                          activeOpacity={0.9}
+                        >
+                          <Feather name="file-text" size={18} color={RHSColors.blue700} />
+                          <Text style={styles.viewContractBtnText}>Xem hợp đồng</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
 
                     {/* ── REJECTED: Re-apply button ── */}
                     {selectedDetail.applicationStatus === 'REJECTED' && (
@@ -890,5 +996,86 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: RHSColors.textSecondary,
+  },
+
+  // ── Payment / Deposit Styles ──
+  paymentSection: {
+    marginTop: 8,
+    padding: 16,
+    backgroundColor: RHSColors.amber50,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: RHSColors.govGold,
+    gap: 12,
+  },
+  waitingPaymentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  waitingPaymentText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: RHSColors.govGoldDark,
+  },
+  depositInfoText: {
+    fontSize: 13,
+    color: RHSColors.textSecondary,
+    lineHeight: 18,
+  },
+  payNowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: RHSColors.red600,
+    paddingVertical: 14,
+    borderRadius: borderRadius.md,
+    gap: 8,
+  },
+  payNowText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  depositPaidSection: {
+    marginTop: 8,
+    padding: 16,
+    backgroundColor: RHSColors.green50,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: RHSColors.green600,
+    gap: 12,
+  },
+  depositPaidBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  depositPaidText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: RHSColors.green700,
+  },
+  readyForLotteryText: {
+    fontSize: 13,
+    color: RHSColors.textSecondary,
+    lineHeight: 18,
+  },
+  viewContractBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 14,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: RHSColors.blue700,
+    gap: 8,
+  },
+  viewContractBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: RHSColors.blue700,
   },
 });

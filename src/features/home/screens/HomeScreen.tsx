@@ -198,7 +198,9 @@ export const HomeScreen = () => {
                       </View>
                       <View style={styles.locationRow}>
                         <Feather name="map-pin" size={12} color={RHSColors.textMuted} />
-                        <Text style={styles.locationText} numberOfLines={1}>{project.province}, {project.district}</Text>
+                        <Text style={styles.locationText} numberOfLines={1}>
+                          {[project.street, project.ward, project.district, project.province].filter(Boolean).join(', ')}
+                        </Text>
                       </View>
                     </View>
                   </TouchableOpacity>
