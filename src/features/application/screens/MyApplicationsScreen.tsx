@@ -21,6 +21,7 @@ import {
   ApplicationDetail,
   ApplicationDocument,
 } from '../api/housingApplicationApi';
+import { housingDocumentApi } from '../api/housingDocumentApi';
 import { getStatusConfig } from '../utils/statusConfig';
 import { paymentApi } from '../../payment/api/paymentApi';
 
@@ -130,6 +131,8 @@ export const MyApplicationsScreen = () => {
     try {
       const detail = await housingApplicationApi.getApplicationDetail(applicationId);
       setSelectedDetail(detail);
+
+      // Không cần fetch verification results nữa
     } catch (e: any) {
       setShowDetail(false);
       const msg = e?.response?.data?.message || 'Không thể tải chi tiết hồ sơ.';
@@ -514,10 +517,13 @@ export const MyApplicationsScreen = () => {
                               <Feather name="file" size={14} color={RHSColors.blue700} />
                               <Text style={styles.docRowIconLabel}>PDF</Text>
                             </View>
-                            <Text style={styles.docRowName} numberOfLines={1}>
-                              {doc.fileName}
-                            </Text>
-                            <Feather name="check-circle" size={16} color={RHSColors.green600} />
+                            <View style={styles.docRowNameContainer}>
+                              <Text style={styles.docRowName} numberOfLines={1}>
+                                {doc.fileName}
+                              </Text>
+                              {/* Không hiển thị verification status nữa */}
+                            </View>
+                            <Feather name="file" size={16} color={RHSColors.blue700} />
                           </View>
                         ))
                       )}
@@ -1073,6 +1079,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: RHSColors.text,
     flex: 1,
+    fontWeight: '500',
+  },
+  docRowNameContainer: {
+    flex: 1,
+    gap: 2,
+  },
+  docStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 1,
+  },
+  docStatusVerified: {
+    fontSize: 10,
+    color: RHSColors.green600,
+    fontWeight: '600',
+  },
+  docStatusRejected: {
+    fontSize: 10,
+    color: RHSColors.red600,
+    fontWeight: '600',
+    flex: 1,
+  },
+  docStatusPending: {
+    fontSize: 10,
+    color: RHSColors.amber700,
+    fontWeight: '600',
+  },
+  docStatusNone: {
+    fontSize: 10,
+    color: RHSColors.grey500,
     fontWeight: '500',
   },
 

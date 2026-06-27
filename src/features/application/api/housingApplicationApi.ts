@@ -25,7 +25,8 @@ export interface ApplicationDocument {
   fileName: string;
   fileUrl: string;
   fileSizeBytes: number;
-  verificationStatus: string;
+  verificationStatus: string; // PENDING | VERIFIED | REJECTED
+  aiRejectedReason?: string;  // Lý do từ chối từ AI (nếu có)
   uploadedAt: string;
   uploadedBy?: string;
 }

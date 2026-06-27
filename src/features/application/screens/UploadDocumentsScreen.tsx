@@ -104,8 +104,9 @@ export const UploadDocumentsScreen = () => {
         const note = findLatestReviewNote(detail.reviewHistories);
         setReviewNote(note);
 
-        // 2. Fetch danh sách documents đã upload
-        const docs = await housingDocumentApi.getDocuments(applicationId);
+        // 2. Fetch danh sách documents từ application detail
+        // (BE không có endpoint GET documents riêng — documents nằm trong detail)
+        const docs = detail.documents || [];
         const fileMap: Record<DocKey, UploadedFile | null> = {
           HOUSING_CONDITION_PROOF: null,
           POVERTY_HOUSEHOLD_CERTIFICATE: null,

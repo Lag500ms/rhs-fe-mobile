@@ -5,8 +5,9 @@ export interface UploadDocumentResponse {
   documentType: string;
   fileName: string;
   fileUrl: string;
+  fileSizeBytes: number;
   uploadedAt: string;
-  status: string;
+  verificationStatus?: string; // PENDING | VERIFIED | REJECTED
 }
 
 export interface DocumentItem {
@@ -16,7 +17,19 @@ export interface DocumentItem {
   fileUrl: string;
   fileSizeBytes: number;
   uploadedAt: string;
-  verificationStatus: string;
+  verificationStatus: string; // PENDING | VERIFIED | REJECTED
+}
+
+export interface VerificationResultResponse {
+  verificationId: string;
+  documentId: string;
+  validationResult: string; // MATCH, MISMATCH, ERROR
+  extractedFullName: string | null;
+  extractedCitizenId: string | null;
+  extractedAddress: string | null;
+  extractedDateOfBirth: string | null;
+  errorDetails: string | null;
+  verifiedAt: string;
 }
 
 export const housingDocumentApi = {
@@ -73,5 +86,22 @@ export const housingDocumentApi = {
    */
   deleteDocument: async (applicationId: string, documentId: string): Promise<void> => {
     await apiClient.delete(`/housing-applications/${applicationId}/documents/${documentId}`);
+  },
+
+  /**
+   * Lấy kết quả xác minh AI của tài liệu.
+   * GET /api/housing-applications/{applicationId}/documents/{documentId}/verification
+   *
+   * @param applicationId - ID hồ sơ
+   * @param documentId - ID tài liệu
+   */
+  getVerificationResult: async (
+    applicationId: string,
+    documentId: string
+  ): Promise<VerificationResultResponse> => {
+    const response = await apiClient.get<VerificationResultResponse>(
+      `/housing-applications/${applicationId}/documents/${documentId}/verification`
+    );
+    return response.data;
   },
 };

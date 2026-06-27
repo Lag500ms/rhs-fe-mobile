@@ -16,6 +16,7 @@ import { useNavigation, useRoute, CommonActions } from '@react-navigation/native
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { housingApplicationApi, ApplicationDetail, ApplicationDocument } from '../api/housingApplicationApi';
+import { housingDocumentApi } from '../api/housingDocumentApi';
 import { getHousingStatusLabel } from '../utils/statusConfig';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -60,8 +61,10 @@ export const ReviewSubmitScreen = () => {
   useEffect(() => {
     (async () => {
       try {
-        const result = await housingApplicationApi.getApplicationDetail(applicationId);
+      const result = await housingApplicationApi.getApplicationDetail(applicationId);
         setDetail(result);
+
+        // Không cần fetch verification results nữa
       } catch (e: any) {
         const msg = e?.response?.data?.message || 'Không thể tải thông tin hồ sơ.';
         Alert.alert('Lỗi', msg);
@@ -223,8 +226,9 @@ export const ReviewSubmitScreen = () => {
                         ? 'Hộ nghèo/cận nghèo'
                         : doc.documentType}
                   </Text>
+                  {/* Không hiển thị verification status nữa */}
                 </View>
-                <Feather name="check-circle" size={18} color={RHSColors.green600} />
+                <Feather name="file" size={18} color={RHSColors.blue700} />
               </View>
             ))
           )}
@@ -479,6 +483,33 @@ const styles = StyleSheet.create({
   docInfoSmall: { flex: 1, gap: 2 },
   docNameSmall: { fontSize: 12, fontWeight: '600', color: RHSColors.text },
   docTypeSmall: { fontSize: 11, color: RHSColors.textMuted },
+  docStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  docStatusVerified: {
+    fontSize: 11,
+    color: RHSColors.green600,
+    fontWeight: '600',
+  },
+  docStatusRejected: {
+    fontSize: 11,
+    color: RHSColors.red600,
+    fontWeight: '600',
+    flex: 1,
+  },
+  docStatusPending: {
+    fontSize: 11,
+    color: RHSColors.amber700,
+    fontWeight: '600',
+  },
+  docStatusNone: {
+    fontSize: 11,
+    color: RHSColors.grey500,
+    fontWeight: '500',
+  },
 
   // Submit - BLUE
   submitBtn: {

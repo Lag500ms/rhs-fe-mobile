@@ -18,7 +18,7 @@ import { Feather } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme';
-import { HousingProjectResponse } from '../api/housingApi';
+import { HousingProjectResponse, housingApi } from '../api/housingApi';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { getToken } from '../../../lib/tokenStorage';
 import { wishlistApi } from '../../saved/api/wishlistApi';
@@ -45,13 +45,37 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
   const [error, setError] = useState<string | null>(null);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [suggestedProjects, setSuggestedProjects] = useState<HousingProjectResponse[]>([]);
+  const [loadingSuggested, setLoadingSuggested] = useState(false);
 
   const fullAddress = [project.street, project.ward, project.district, project.province].filter(Boolean).join(', ');
   const sortedImages = project.images?.length
     ? [...project.images].sort((a, b) => a.displayOrder - b.displayOrder)
     : [];
 
-  useEffect(() => { geocode(fullAddress); checkWishlist(); }, []);
+  useEffect(() => {
+    geocode(fullAddress);
+    checkWishlist();
+    fetchSuggestedProjects();
+  }, []);
+
+  const fetchSuggestedProjects = async () => {
+    if (!project.ward) return;
+    setLoadingSuggested(true);
+    try {
+      const result = await housingApi.getSuggestedProjects(
+        project.id,
+        project.ward,
+        [],
+        5
+      );
+      setSuggestedProjects(result);
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingSuggested(false);
+    }
+  };
 
   const checkWishlist = async () => {
     try {
@@ -310,6 +334,59 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
             <Text style={styles.registerText}>Đăng ký nhà ở</Text>
           </View>
         </TouchableOpacity>
+
+        {/* Suggested projects - same ward */}
+        {loadingSuggested ? (
+          <View style={styles.suggestedWrap}>
+            <ActivityIndicator size="small" color={RHSColors.blue700} />
+          </View>
+        ) : suggestedProjects.length > 0 ? (
+          <View style={styles.suggestedWrap}>
+            <View style={styles.suggestedHead}>
+              <View style={styles.suggestedBadge}>
+                <Feather name="map-pin" size={14} color="#fff" />
+              </View>
+              <Text style={styles.suggestedTitle}>Dự án cùng phường</Text>
+            </View>
+            {suggestedProjects.map(sp => {
+              const thumb = sp.images?.length
+                ? [...sp.images].sort((a, b) => a.displayOrder - b.displayOrder)[0].imageUrl
+                : sp.thumbnailUrl || null;
+              return (
+                <TouchableOpacity
+                  key={sp.id}
+                  style={styles.suggestedCard}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.push('HousingProjectDetail', { project: sp })}
+                >
+                  {thumb ? (
+                    <Image source={{ uri: thumb }} style={styles.suggestedThumb} />
+                  ) : (
+                    <View style={styles.suggestedThumbPlace}>
+                      <Feather name="home" size={22} color={RHSColors.grey400} />
+                    </View>
+                  )}
+                  <View style={styles.suggestedInfo}>
+                    <Text style={styles.suggestedName} numberOfLines={2}>{sp.projectName}</Text>
+                    <Text style={styles.suggestedAddr} numberOfLines={1}>
+                      {[sp.street, sp.ward].filter(Boolean).join(', ')}
+                    </Text>
+                    <View style={styles.suggestedMeta}>
+                      <View style={styles.suggestedChip}>
+                        <Feather name="dollar-sign" size={10} color={RHSColors.red600} />
+                        <Text style={styles.suggestedChipText}>
+                          {fmtPrice(sp.minPrice, sp.maxPrice)}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Feather name="chevron-right" size={16} color={RHSColors.grey400} style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : null}
+
         <View style={{ height: 40 }}/>
       </ScrollView>
     </SafeAreaView>
@@ -370,6 +447,53 @@ const styles = StyleSheet.create({
   errText: { fontSize: 12, color: RHSColors.textMuted, marginLeft: 6 },
   openBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: RHSColors.blue700, paddingVertical: 12, gap: 6 },
   openText: { fontSize: 13, fontWeight: '600', color: '#fff' },
+
+  // Suggested projects section
+  suggestedWrap: { marginHorizontal: 14, marginBottom: 14, marginTop: 18 },
+  suggestedHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  suggestedBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: RHSColors.blue700,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  suggestedTitle: { ...typography.h3, color: RHSColors.text, flex: 1 },
+  suggestedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
+    padding: 10,
+    marginBottom: 10,
+  },
+  suggestedThumb: { width: 62, height: 62, borderRadius: 8, resizeMode: 'cover' },
+  suggestedThumbPlace: {
+    width: 62,
+    height: 62,
+    borderRadius: 8,
+    backgroundColor: RHSColors.grey100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  suggestedInfo: { flex: 1, marginLeft: 10 },
+  suggestedName: { fontSize: 13, fontWeight: '700', color: RHSColors.text, lineHeight: 18 },
+  suggestedAddr: { fontSize: 11, color: RHSColors.textMuted, marginTop: 2 },
+  suggestedMeta: { flexDirection: 'row', marginTop: 4 },
+  suggestedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: RHSColors.red50,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 3,
+  },
+  suggestedChipText: { fontSize: 10, fontWeight: '700', color: RHSColors.red600 },
 
   // Register button - BLUE no gradient
   registerBtn: { marginHorizontal: 14, borderRadius: borderRadius.md, overflow: 'hidden' },

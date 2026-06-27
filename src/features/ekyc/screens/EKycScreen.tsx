@@ -16,17 +16,6 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const MAX_FILE_SIZE_BYTES = 8_000_000;
 const RECORD_DURATION_SEC = 4; // giây
 
-// ⚠️ DEV ONLY – bật để hiện nút bỏ qua bước 1 & 2 khi test
-const DEV_SKIP_TO_LIVENESS = true;
-const DEV_FAKE_OCR: OcrResult = {
-  id: '079123456789',
-  name: 'NGUYỄN VĂN TEST',
-  dob: '01/01/1990',
-  sex: 'Nam',
-  nationality: 'Việt Nam',
-  address: '123 Đường Test, TP.HCM',
-};
-
 type EKycStep = 'welcome' | 'ocr' | 'facematch' | 'liveness' | 'complete' | 'failed';
 
 /* ── Component chính ──────────────────────────────────────── */
@@ -59,14 +48,6 @@ export const EKycScreen = () => {
     const m = await Camera.requestMicrophonePermissionsAsync();
     if (m.status !== 'granted') { Alert.alert('Cần quyền ghi âm'); setCamPerm(false); return; }
     setCamPerm(true);
-  };
-
-  /* ── DEV: Bỏ qua bước 1 & 2, nhảy thẳng đến Liveness ── */
-  const devSkipToLiveness = () => {
-    setOcr(DEV_FAKE_OCR);
-    setCccdUri('skip');
-    setSelfieUri('skip');
-    setStep('liveness');
   };
 
   /* 1. Chụp CCCD + OCR → Kiểm tra CCCD trùng → Qua bước facematch */
@@ -278,12 +259,6 @@ export const EKycScreen = () => {
                   <TouchableOpacity style={st.primaryBtn} onPress={shootCccd} activeOpacity={0.85}>
                     <Text style={st.primaryBtnText}>Chụp CCCD</Text>
                   </TouchableOpacity>
-                  {DEV_SKIP_TO_LIVENESS && (
-                    <TouchableOpacity style={st.devSkipBtn} onPress={devSkipToLiveness} activeOpacity={0.75}>
-                      <Feather name="zap" size={14} color="#fff" />
-                      <Text style={st.devSkipText}>DEV: Bỏ qua bước 1 & 2 → Test Liveness</Text>
-                    </TouchableOpacity>
-                  )}
                 </>
             }
           </View>
@@ -332,13 +307,6 @@ export const EKycScreen = () => {
                   </TouchableOpacity>
                 )}
               </View>
-            )}
-
-            {DEV_SKIP_TO_LIVENESS && (
-              <TouchableOpacity style={[st.devSkipBtn, { marginTop: 16 }]} onPress={devSkipToLiveness} activeOpacity={0.75}>
-                <Feather name="zap" size={14} color="#fff" />
-                <Text style={st.devSkipText}>DEV: Bỏ qua bước 2 → Test Liveness</Text>
-              </TouchableOpacity>
             )}
           </View>
         )}
@@ -457,8 +425,6 @@ const st = StyleSheet.create({
   primaryBtnText: { ...typography.button, color: '#fff' },
   loadBox: { alignItems: 'center', paddingVertical: 36 },
   loadText: { marginTop: 10, ...typography.bodySmall, color: RHSColors.textMuted },
-  devSkipBtn: { marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FF6B35', paddingHorizontal: 20, paddingVertical: 12, borderRadius: borderRadius.lg },
-  devSkipText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   sectionCard: { width: '100%', backgroundColor: '#fff', borderRadius: borderRadius.lg, padding: 14, ...shadows.sm },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   sectionBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: RHSColors.blue700, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
