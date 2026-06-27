@@ -13,8 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { BrandBar } from '../../../components/BrandBar';
-import { RHSColors, borderRadius, typography } from '../../../lib/theme';
+import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme';
+import { getToken } from '../../../lib/tokenStorage';
 import {
   housingApplicationApi,
   ApplicationSummary,
@@ -61,6 +61,7 @@ export const MyApplicationsScreen = () => {
   const [selectedDetail, setSelectedDetail] = useState<ApplicationDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // ── ActionSheet state ──
   const [showActionSheet, setShowActionSheet] = useState(false);
@@ -82,10 +83,30 @@ export const MyApplicationsScreen = () => {
     }
   }, []);
 
+  const checkAuthAndLoad = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) {
+        setIsLoggedIn(false);
+        setApplications([]);
+        setLoading(false);
+        return;
+      }
+      
+      setIsLoggedIn(true);
+      await fetchData(false);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || 'Không thể tải danh sách hồ sơ.';
+      Alert.alert('Lỗi', msg);
+      setLoading(false);
+    }
+  }, [fetchData]);
+
   useFocusEffect(
     useCallback(() => {
-      fetchData();
-    }, [fetchData])
+      checkAuthAndLoad();
+    }, [checkAuthAndLoad])
   );
 
   const hideTabBar = () => {
@@ -140,7 +161,6 @@ export const MyApplicationsScreen = () => {
     if (!actionSheetApp) return;
     const item = actionSheetApp;
     setShowActionSheet(false);
-    // Tab bar will be hidden by destination screen's useLayoutEffect
     navigation.navigate('EditInformation', {
       applicationId: item.applicationId,
     });
@@ -151,7 +171,6 @@ export const MyApplicationsScreen = () => {
     if (!actionSheetApp) return;
     const item = actionSheetApp;
     setShowActionSheet(false);
-    // Tab bar will be hidden by destination screen's useLayoutEffect
     navigation.navigate('UploadDocuments', {
       applicationId: item.applicationId,
     });
@@ -162,7 +181,6 @@ export const MyApplicationsScreen = () => {
     if (!actionSheetApp) return;
     const item = actionSheetApp;
     setShowActionSheet(false);
-    // Tab bar will be hidden by destination screen's useLayoutEffect
     navigation.navigate('ReviewSubmit', {
       applicationId: item.applicationId,
     });
@@ -197,9 +215,7 @@ export const MyApplicationsScreen = () => {
   // ── View Contract for DEPOSIT_PAID ──
   const handleViewContract = useCallback(() => {
     if (!selectedDetail) return;
-    // For DEPOSIT_PAID, we navigate to payment info first to get pdfUrl
     handleCloseDetail();
-    // Go to payment success screen which has contract viewer access
     Alert.alert(
       'Xem hợp đồng',
       'Vui lòng kiểm tra trong mục "Thanh toán" để xem hợp đồng của bạn.',
@@ -219,7 +235,6 @@ export const MyApplicationsScreen = () => {
           text: 'Tạo mới',
           onPress: () => {
             handleCloseDetail();
-            // Navigate to Home to pick a project, since we need projectId
             setTimeout(() => {
               navigation.getParent()?.navigate('Home', { screen: 'HomeList' });
             }, 300);
@@ -306,38 +321,79 @@ export const MyApplicationsScreen = () => {
     );
   };
 
-  const renderEmpty = () => (
-    <View style={styles.empty}>
-      <Feather name="inbox" size={48} color={RHSColors.grey300} />
-      <Text style={styles.emptyTitle}>Chưa có hồ sơ nào</Text>
-      <Text style={styles.emptyDesc}>
-        Bạn chưa đăng ký hồ sơ mua nhà ở xã hội nào. Hãy khám phá các dự án và tạo hồ sơ mới!
-      </Text>
-      <TouchableOpacity
-        style={styles.exploreBtn}
-        onPress={() => navigation.getParent()?.navigate('Home', { screen: 'HomeList' })}
-        activeOpacity={0.8}
-      >
-        <Feather name="search" size={16} color="#fff" />
-        <Text style={styles.exploreBtnText}>Khám phá dự án</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  const handleLoginPress = () => {
+    navigation.navigate('Auth', { screen: 'Login', params: { returnTo: 'Account' } });
+  };
+
+  const renderEmpty = () => {
+    if (loading) return null;
+    
+    // Not logged in
+    if (!isLoggedIn) {
+      return (
+        <View style={styles.emptyContainer}>
+          <View style={styles.illustrationWrap}>
+            <View style={[styles.illustrationBox, { backgroundColor: '#FFF0F0' }]}>
+              <Feather name="file-text" size={72} color={RHSColors.govRed} />
+            </View>
+          </View>
+          <Text style={styles.emptyTitle}>Chưa đăng nhập</Text>
+          <Text style={styles.emptyDesc}>
+            Vui lòng đăng nhập để xem danh sách hồ sơ đăng ký của bạn
+          </Text>
+          <TouchableOpacity style={styles.actionButton} onPress={handleLoginPress} activeOpacity={0.85}>
+            <Feather name="log-in" size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.actionButtonText}>Đăng nhập ngay</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    
+    // Logged in but no applications
+    return (
+      <View style={styles.emptyContainer}>
+        <View style={styles.illustrationWrap}>
+          <View style={[styles.illustrationBox, { backgroundColor: '#EEF4FF' }]}>
+            <Feather name="inbox" size={72} color={RHSColors.blue700} />
+          </View>
+        </View>
+        <Text style={styles.emptyTitle}>Chưa có hồ sơ nào</Text>
+        <Text style={styles.emptyDesc}>
+          Bạn chưa đăng ký hồ sơ mua nhà ở xã hội nào. Hãy khám phá các dự án và tạo hồ sơ mới!
+        </Text>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => navigation.getParent()?.navigate('Home', { screen: 'HomeList' })}
+          activeOpacity={0.8}
+        >
+          <Feather name="search" size={18} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={styles.actionButtonText}>Khám phá dự án</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Thin brand bar at top */}
-      <BrandBar />
-
-      {/* White header */}
+      {/* Header */}
       <View style={styles.whiteHeader}>
-        <Text style={styles.whiteHeaderTitle}>Hồ sơ của tôi</Text>
-        <TouchableOpacity
-          style={styles.headerRefresh}
-          onPress={() => fetchData(true)}
-        >
-          <Feather name="refresh-cw" size={20} color={RHSColors.blue700} />
-        </TouchableOpacity>
+        <Text style={styles.whiteHeaderTitle}>Hồ sơ đăng ký</Text>
+        {applications.length > 0 && (
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{applications.length}</Text>
+          </View>
+        )}
+        <View style={{ flex: 1 }} />
+        
+        {/* CHỈ HIỂN THỊ NÚT REFRESH KHI ĐÃ ĐĂNG NHẬP */}
+        {isLoggedIn && (
+          <TouchableOpacity
+            style={styles.headerRefresh}
+            onPress={() => fetchData(true)}
+          >
+            <Feather name="refresh-cw" size={20} color={RHSColors.blue700} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {loading ? (
@@ -355,12 +411,15 @@ export const MyApplicationsScreen = () => {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={renderEmpty}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => fetchData(true)}
-              colors={[RHSColors.blue700]}
-              tintColor={RHSColors.blue700}
-            />
+            // CHỈ CHO PHÉP KÉO ĐỂ REFRESH KHI ĐÃ ĐĂNG NHẬP
+            isLoggedIn ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => fetchData(true)}
+                colors={[RHSColors.blue700]}
+                tintColor={RHSColors.blue700}
+              />
+            ) : undefined
           }
         />
       )}
@@ -406,7 +465,7 @@ export const MyApplicationsScreen = () => {
                       })()}
                     </View>
 
-                    {/* Review Note / Rejection Reason (lấy từ reviewHistories) */}
+                    {/* Review Note / Rejection Reason */}
                     {(() => {
                       const requestNote = selectedDetail.reviewHistories
                         .filter(h => h.action === 'REQUEST_MORE_DOCUMENTS' && h.note)
@@ -643,18 +702,36 @@ const DetailRow = ({ label, value }: { label: string; value: string }) => (
 );
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: RHSColors.surface },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
 
   whiteHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E6ED',
   },
-  whiteHeaderTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: RHSColors.blue700 },
+  whiteHeaderTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: RHSColors.text,
+    letterSpacing: -0.5,
+  },
+  countBadge: {
+    marginLeft: 10,
+    backgroundColor: RHSColors.blue700,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  countBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
   headerRefresh: { padding: 6 },
 
   loadingContainer: {
@@ -665,7 +742,39 @@ const styles = StyleSheet.create({
   },
 
   listContent: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 24 },
-  emptyContainer: { flex: 1 },
+  emptyContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  illustrationWrap: {
+    marginBottom: 28,
+    width: '100%',
+    alignItems: 'center',
+  },
+  illustrationBox: {
+    width: 200,
+    height: 180,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    backgroundColor: RHSColors.blue700,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.md,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
 
   card: {
     backgroundColor: '#fff',
@@ -735,24 +844,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  empty: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    gap: 8,
-  },
   emptyTitle: {
-    ...typography.h3,
+    fontSize: 22,
+    fontWeight: '700',
     color: RHSColors.text,
-    marginTop: 8,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   emptyDesc: {
-    ...typography.bodySmall,
+    fontSize: 15,
     color: RHSColors.textMuted,
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 16,
+    lineHeight: 22,
+    marginBottom: 28,
   },
   exploreBtn: {
     flexDirection: 'row',
@@ -766,6 +870,55 @@ const styles = StyleSheet.create({
   exploreBtnText: {
     fontSize: 14,
     fontWeight: '700',
+    color: '#fff',
+  },
+  loginPromptCard: {
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    shadowColor: RHSColors.black,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+    width: '100%',
+  },
+  loginIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#ffe5e7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  loginTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: RHSColors.text,
+    marginBottom: 8,
+  },
+  loginDesc: {
+    fontSize: 14,
+    color: RHSColors.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  loginButton: {
+    flexDirection: 'row',
+    backgroundColor: RHSColors.blue700,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 200,
+  },
+  loginButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#fff',
   },
 

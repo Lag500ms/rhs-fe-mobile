@@ -8,12 +8,13 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { RHSColors } from '../../../lib/theme';
+import { RHSColors, shadows, borderRadius, typography } from '../../../lib/theme';
+import { getToken } from '../../../lib/tokenStorage';
 import { wishlistApi, WishlistItemResponse, PagedResult } from '../api/wishlistApi';
 
 const PAGE_SIZE = 10;
@@ -41,6 +42,7 @@ export const SavedScreen = () => {
   const [pageIndex, setPageIndex] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const fetchWishlist = useCallback(async (page: number, append = false) => {
     try {
@@ -57,16 +59,29 @@ export const SavedScreen = () => {
     }
   }, []);
 
+  const checkAuthAndLoad = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) {
+        setIsLoggedIn(false);
+        setItems([]);
+        setLoading(false);
+        return;
+      }
+      setIsLoggedIn(true);
+      await fetchWishlist(1, false);
+    } catch (e: any) {
+      Alert.alert('Lỗi', 'Không thể tải danh sách yêu thích.');
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchWishlist]);
+
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      (async () => {
-        setLoading(true);
-        await fetchWishlist(1, false);
-        if (active) setLoading(false);
-      })();
-      return () => { active = false; };
-    }, [fetchWishlist])
+      checkAuthAndLoad();
+    }, [checkAuthAndLoad])
   );
 
   const onRefresh = async () => {
@@ -101,7 +116,6 @@ export const SavedScreen = () => {
   };
 
   const handleItemPress = (projectId: string) => {
-    // Navigate to project detail - adjust route name to match your navigator
     navigation.navigate('ProjectDetail', { id: projectId });
   };
 
@@ -116,9 +130,12 @@ export const SavedScreen = () => {
           <Text style={styles.projectName} numberOfLines={2}>
             {item.projectName}
           </Text>
-          <Text style={styles.projectLocation} numberOfLines={1}>
-            <Feather name="map-pin" size={12} color={RHSColors.textMuted} /> {item.address || `${item.district}, ${item.province}`}
-          </Text>
+          <View style={styles.locationRow}>
+            <Feather name="map-pin" size={12} color={RHSColors.textMuted} />
+            <Text style={styles.projectLocation} numberOfLines={1}>
+              {item.address || `${item.district}, ${item.province}`}
+            </Text>
+          </View>
         </View>
         <TouchableOpacity
           style={styles.removeBtn}
@@ -129,17 +146,21 @@ export const SavedScreen = () => {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.divider} />
+
       <View style={styles.cardMeta}>
         <View style={styles.metaItem}>
           <Feather name="dollar-sign" size={14} color={RHSColors.green600} />
           <Text style={styles.metaText}>{priceRange(item.minPrice, item.maxPrice)}</Text>
         </View>
+        <View style={styles.metaDot} />
         <View style={styles.metaItem}>
           <Feather name="maximize" size={14} color={RHSColors.blue700} />
           <Text style={styles.metaText}>
-            {item.minArea > 0 ? `${item.minArea} – ${item.maxArea} m²` : `${item.maxArea} m²`}
+            {item.minArea > 0 ? `${item.minArea}–${item.maxArea} m²` : `${item.maxArea} m²`}
           </Text>
         </View>
+        <View style={styles.metaDot} />
         <View style={styles.metaItem}>
           <Feather name="home" size={14} color={RHSColors.amber600} />
           <Text style={styles.metaText}>{item.availableUnits} căn</Text>
@@ -164,39 +185,69 @@ export const SavedScreen = () => {
     );
   };
 
+  const handleLoginPress = () => {
+    navigation.navigate('Auth', { screen: 'Login', params: { returnTo: 'Account' } });
+  };
+
   const renderEmpty = () => {
     if (loading) return null;
-    return (
-      <View style={styles.emptyCard}>
-        <View style={styles.emptyIconWrap}>
-          <Feather name="heart" size={40} color={RHSColors.govRed} />
+
+    if (!isLoggedIn) {
+      return (
+        <View style={styles.emptyContainer}>
+          {/* Illustration */}
+          <View style={styles.illustrationWrap}>
+            <View style={styles.illustrationBox}>
+              <Feather name="heart" size={72} color={RHSColors.govRed} />
+            </View>
+          </View>
+          <Text style={styles.emptyTitle}>Chưa đăng nhập</Text>
+          <Text style={styles.emptyDesc}>
+            Vui lòng đăng nhập để xem danh sách dự án quan tâm của bạn
+          </Text>
+          <TouchableOpacity style={styles.actionButton} onPress={handleLoginPress} activeOpacity={0.85}>
+            <Feather name="log-in" size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.actionButtonText}>Đăng nhập ngay</Text>
+          </TouchableOpacity>
         </View>
-        <Text style={styles.emptyTitle}>Chưa có dự án quan tâm</Text>
+      );
+    }
+
+    return (
+      <View style={styles.emptyContainer}>
+        {/* Illustration */}
+        <View style={styles.illustrationWrap}>
+          <View style={styles.illustrationBox}>
+            <Feather name="bookmark" size={72} color={RHSColors.govRed} />
+          </View>
+        </View>
+        <Text style={styles.emptyTitle}>Lưu lại dự án bạn quan tâm</Text>
         <Text style={styles.emptyDesc}>
-          Nhấn vào biểu tượng trái tim ở mỗi dự án để lưu lại tại đây
+          Nhấn vào biểu tượng trái tim khi lướt tìm kiếm để lưu lại dự án.
         </Text>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => navigation.getParent()?.navigate('Home', { screen: 'HomeList' })}
+          activeOpacity={0.85}
+        >
+          <Feather name="search" size={18} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={styles.actionButtonText}>Khám phá dự án</Text>
+        </TouchableOpacity>
       </View>
     );
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.brandBar}>
-        <View style={styles.brandBarStripeRed} />
-        <View style={styles.brandBarStripeGold} />
-        <View style={styles.brandBarStripeBlue} />
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Quan tâm</Text>
+        {items.length > 0 && (
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{items.length}</Text>
+          </View>
+        )}
       </View>
-      <LinearGradient
-        colors={[RHSColors.govBlueDark, RHSColors.govBlue, RHSColors.govTeal]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerGradient}
-      >
-        <Text style={styles.title}>Quan tâm</Text>
-        <Text style={styles.subtitle}>
-          {items.length > 0 ? `${items.length} dự án đã lưu` : 'Các dự án bạn đã lưu'}
-        </Text>
-      </LinearGradient>
 
       <View style={styles.container}>
         {loading ? (
@@ -228,42 +279,39 @@ export const SavedScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: RHSColors.surface,
+    backgroundColor: '#FFFFFF',
   },
-  brandBar: {
+  header: {
     flexDirection: 'row',
-    height: 4,
-  },
-  brandBarStripeRed: {
-    flex: 2,
-    backgroundColor: RHSColors.govRed,
-  },
-  brandBarStripeGold: {
-    flex: 0.4,
-    backgroundColor: RHSColors.govGold,
-  },
-  brandBarStripeBlue: {
-    flex: 2,
-    backgroundColor: RHSColors.govBlue,
-  },
-  headerGradient: {
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: RHSColors.border,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: RHSColors.white,
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: RHSColors.text,
+    letterSpacing: -0.5,
   },
-  subtitle: {
+  countBadge: {
+    marginLeft: 10,
+    backgroundColor: RHSColors.govRed,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  countBadgeText: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 4,
+    fontWeight: '700',
+    color: '#fff',
   },
   container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   loadingContainer: {
     flex: 1,
@@ -279,56 +327,69 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 32,
   },
   listContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 24,
   },
-  emptyCard: {
+  // ── Empty / Illustration State ──
+  emptyContainer: {
     alignItems: 'center',
-    padding: 40,
-    backgroundColor: RHSColors.white,
-    borderRadius: 20,
-    shadowColor: RHSColors.black,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
-    width: '100%',
+    paddingHorizontal: 24,
   },
-  emptyIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#ffe5e7',
+  illustrationWrap: {
+    marginBottom: 28,
+    width: '100%',
+    alignItems: 'center',
+  },
+  illustrationBox: {
+    width: 200,
+    height: 180,
+    borderRadius: 20,
+    backgroundColor: '#FFF0F0',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
     color: RHSColors.text,
-    marginBottom: 8,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   emptyDesc: {
-    fontSize: 14,
+    fontSize: 15,
     color: RHSColors.textMuted,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
+    marginBottom: 28,
   },
+  actionButton: {
+    flexDirection: 'row',
+    backgroundColor: RHSColors.blue700,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.md,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  // ── Card ──
   card: {
     backgroundColor: RHSColors.white,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    shadowColor: RHSColors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
+    ...shadows.sm,
     borderLeftWidth: 4,
     borderLeftColor: RHSColors.govRed,
   },
@@ -345,27 +406,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: RHSColors.text,
-    marginBottom: 4,
+    marginBottom: 6,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   projectLocation: {
     fontSize: 13,
     color: RHSColors.textMuted,
+    flex: 1,
   },
   removeBtn: {
     padding: 6,
     borderRadius: 8,
     backgroundColor: '#FFF0F0',
   },
+  divider: {
+    height: 1,
+    backgroundColor: RHSColors.border,
+    marginVertical: 12,
+  },
   cardMeta: {
     flexDirection: 'row',
-    marginTop: 12,
-    gap: 16,
+    alignItems: 'center',
     flexWrap: 'wrap',
+    gap: 8,
   },
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  metaDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: RHSColors.grey300,
   },
   metaText: {
     fontSize: 13,

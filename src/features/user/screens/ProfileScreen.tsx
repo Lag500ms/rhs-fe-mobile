@@ -13,10 +13,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
 import { userApi, UserProfileDto } from '../api/userApi';
-import { ScreenHeader } from '../../../components/ScreenHeader';
+import { getToken } from '../../../lib/tokenStorage';
 import { ActionButton } from '../../../components/ActionButton';
 import { InfoRow } from '../../../components/InfoRow';
 
@@ -25,16 +26,26 @@ export const ProfileScreen = () => {
   const [profile, setProfile] = useState<UserProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      loadProfile();
+      checkAuthAndLoad();
     }, [])
   );
 
-  const loadProfile = async () => {
+  const checkAuthAndLoad = async () => {
     setLoading(true);
     try {
+      const token = await getToken();
+      if (!token) {
+        setIsLoggedIn(false);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+      
+      setIsLoggedIn(true);
       const result = await userApi.getProfile();
       if (result.success && result.user) {
         setProfile(result.user);
@@ -46,6 +57,10 @@ export const ProfileScreen = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLoginPress = () => {
+    navigation.navigate('Auth', { screen: 'Login', params: { returnTo: 'Account' } });
   };
 
   const requestMediaPermission = async (): Promise<boolean> => {
@@ -103,7 +118,7 @@ export const ProfileScreen = () => {
       const result = await userApi.uploadProfileImage(asset);
       if (result.success) {
         Alert.alert('Thành công', 'Upload ảnh đại diện thành công');
-        loadProfile();
+        checkAuthAndLoad();
       } else {
         Alert.alert('Lỗi', result.message || 'Upload thất bại');
       }
@@ -144,31 +159,58 @@ export const ProfileScreen = () => {
     navigation.getParent()?.navigate('EKyc');
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <ScreenHeader title="Hồ sơ cá nhân" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={RHSColors.blue700} />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const renderNotLoggedIn = () => (
+    <View style={styles.loginPromptCard}>
+      <View style={styles.loginIconCircle}>
+        <Feather name="user" size={40} color={RHSColors.govBlue} />
+      </View>
+      <Text style={styles.loginTitle}>Chưa đăng nhập</Text>
+      <Text style={styles.loginDesc}>
+        Vui lòng đăng nhập để xem hồ sơ cá nhân của bạn
+      </Text>
+      <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress} activeOpacity={0.85}>
+        <Feather name="log-in" size={18} color="#fff" style={{ marginRight: 8 }} />
+        <Text style={styles.loginButtonText}>Đăng nhập</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScreenHeader
-        title="Hồ sơ cá nhân"
-        isWhite
-        rightAction={
+      <View style={styles.brandBar}>
+        <View style={styles.brandBarStripeRed} />
+        <View style={styles.brandBarStripeGold} />
+        <View style={styles.brandBarStripeBlue} />
+      </View>
+      <LinearGradient
+        colors={[RHSColors.govBlueDark, RHSColors.govBlue, RHSColors.govTeal]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <Text style={styles.title}>Hồ sơ cá nhân</Text>
+        <Text style={styles.subtitle}>
+          {profile?.fullName || 'Thông tin tài khoản của bạn'}
+        </Text>
+      </LinearGradient>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={RHSColors.blue700} />
+          <Text style={styles.loadingText}>Đang tải...</Text>
+        </View>
+      ) : !isLoggedIn ? (
+        <View style={styles.container}>
+          {renderNotLoggedIn()}
+        </View>
+      ) : (
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.headerActions}>
           <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('EditProfile', { profile })}>
             <Feather name="edit-2" size={15} color="#1565C0" style={{ marginRight: 4 }} />
             <Text style={{ color: '#1565C0', fontSize: 12, fontWeight: '700' }}>Sửa</Text>
           </TouchableOpacity>
-        }
-      />
-
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        </View>
         {/* Avatar */}
         <View style={styles.avatarCard}>
           <View style={styles.avatarWrapper}>
@@ -222,6 +264,7 @@ export const ProfileScreen = () => {
 
         <ActionButton icon="trash-2" text="Xóa tài khoản" isDestructive onPress={() => navigation.navigate('DeleteAccount')} last />
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -229,16 +272,64 @@ export const ProfileScreen = () => {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 40, paddingTop: 16 },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.surface },
-
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: RHSColors.textMuted,
+  },
+  brandBar: {
+    flexDirection: 'row',
+    height: 4,
+  },
+  brandBarStripeRed: {
+    flex: 2,
+    backgroundColor: RHSColors.govRed,
+  },
+  brandBarStripeGold: {
+    flex: 0.4,
+    backgroundColor: RHSColors.govGold,
+  },
+  brandBarStripeBlue: {
+    flex: 2,
+    backgroundColor: RHSColors.govBlue,
+  },
+  headerGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: RHSColors.white,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
   editBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: RHSColors.blue50,
   },
 
   // Avatar
@@ -285,5 +376,57 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     marginBottom: 16,
     ...shadows.md,
+  },
+
+  // Login prompt
+  loginPromptCard: {
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: RHSColors.white,
+    borderRadius: 20,
+    shadowColor: RHSColors.black,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+    width: '100%',
+  },
+  loginIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#e0f2fe',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  loginTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: RHSColors.text,
+    marginBottom: 8,
+  },
+  loginDesc: {
+    fontSize: 14,
+    color: RHSColors.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  loginButton: {
+    flexDirection: 'row',
+    backgroundColor: RHSColors.blue700,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 200,
+    ...shadows.md,
+  },
+  loginButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

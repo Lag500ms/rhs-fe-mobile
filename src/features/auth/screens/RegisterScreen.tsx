@@ -14,9 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { RHSColors, spacing, borderRadius, typography } from '../../../lib/theme';
-import { RHSLogo } from '../../../lib/Logo';
 import { authApi, RegisterDto } from '../api/authApi';
 
 export const RegisterScreen = () => {
@@ -87,25 +85,16 @@ export const RegisterScreen = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Split Screen: gradient top with logo */}
-      <LinearGradient
-        colors={['#0A3A85', '#1565C0', '#1E88E5']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.topGradient}
-      >
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Feather name="arrow-left" size={22} color="#fff" />
-        </TouchableOpacity>
-        <RHSLogo size={48} />
-        <Text style={styles.brandTitle}>Đăng ký tài khoản</Text>
-        <Text style={styles.brandSubtitle}>Tham gia cộng đồng RHS</Text>
-      </LinearGradient>
-
-      {/* Bottom white card with form */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={styles.card}>
+          
+          {/* Back button */}
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Feather name="arrow-left" size={22} color="#333" />
+          </TouchableOpacity>
+
+          <View style={styles.container}>
+            <Text style={styles.title}>Đăng ký tài khoản</Text>
 
             {/* Full name */}
             <View style={styles.fieldGroup}>
@@ -178,7 +167,7 @@ export const RegisterScreen = () => {
               {errors.phoneNumber ? <Text style={styles.errorText}>{errors.phoneNumber}</Text> : null}
             </View>
 
-            {/* Register button - BLUE */}
+            {/* Register button */}
             <TouchableOpacity
               style={[styles.registerBtn, isFormValid && styles.registerBtnActive]}
               disabled={!isFormValid || loading}
@@ -197,14 +186,20 @@ export const RegisterScreen = () => {
               <Text style={styles.link}>Điều khoản sử dụng</Text> và{' '}
               <Text style={styles.link}>Chính sách bảo mật</Text> của chúng tôi.
             </Text>
-          </View>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Bạn đã có tài khoản? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}>Đăng nhập</Text>
-            </TouchableOpacity>
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                Bạn đã có tài khoản?{' '}
+                <Text 
+                  style={styles.loginLink} 
+                  onPress={() => navigation.navigate('Login')}
+                >
+                  Đăng nhập
+                </Text>
+              </Text>
+            </View>
+
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -217,74 +212,86 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { flexGrow: 1, paddingBottom: 40 },
 
-  // Split screen: gradient top
-  topGradient: {
-    paddingTop: 20,
-    paddingBottom: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
   backBtn: {
-    position: 'absolute',
-    top: 8,
-    left: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginTop: 12,
+    marginLeft: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  brandTitle: { fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: 0.5, marginTop: 8 },
-  brandSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
 
-  // White card overlapping
-  card: {
-    backgroundColor: '#fff',
-    marginHorizontal: 20,
-    marginTop: -24,
-    borderRadius: borderRadius.xxl,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: RHSColors.border,
+  container: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
   },
-  fieldGroup: { marginBottom: 14 },
-  label: { ...typography.caption, color: RHSColors.textSecondary, marginBottom: 6, fontWeight: '600' },
-  required: { color: RHSColors.red600 },
+
+  title: {
+    ...typography.h1,
+    color: '#1A1A1A',
+    textAlign: 'center',
+    marginBottom: 40,
+    fontWeight: '700',
+  },
+
+  fieldGroup: { 
+    marginBottom: 16 
+  },
+  label: { 
+    ...typography.caption, 
+    color: RHSColors.textSecondary, 
+    marginBottom: 8, 
+    fontWeight: '600' 
+  },
+  required: { 
+    color: RHSColors.error 
+  },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: RHSColors.grey50,
+    backgroundColor: '#fff',
     borderWidth: 1.5,
-    borderColor: RHSColors.border,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: 14,
-    height: 50,
+    borderColor: '#E0E0E0',
+    borderRadius: 28,
+    paddingHorizontal: 18,
+    height: 56,
   },
   inputError: { borderColor: RHSColors.error },
-  textInputInner: { flex: 1, fontSize: 15, color: RHSColors.text, padding: 0 },
-  inputIcon: { marginRight: 10 },
-  errorText: { color: RHSColors.error, fontSize: 12, marginTop: 4, marginLeft: 4 },
+  textInputInner: { flex: 1, fontSize: 16, color: RHSColors.text, padding: 0 },
+  inputIcon: { marginRight: 12 },
+  errorText: { color: RHSColors.error, fontSize: 12, marginTop: 6, marginLeft: 18 },
+
   registerBtn: {
-    backgroundColor: RHSColors.grey300,
-    borderRadius: borderRadius.md,
-    height: 54,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 28,
+    height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 16,
+    marginTop: 20,
+    marginBottom: 20,
   },
   registerBtnActive: { backgroundColor: RHSColors.blue700 },
-  registerBtnText: { ...typography.button, color: RHSColors.white, letterSpacing: 0.5 },
+  registerBtnText: { ...typography.button, color: '#9E9E9E', fontSize: 17, fontWeight: '600' },
+
   note: {
     ...typography.caption,
     color: RHSColors.textMuted,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
+    paddingHorizontal: 10,
   },
   link: { color: RHSColors.blue700, fontWeight: '600' },
-  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 24 },
-  footerText: { ...typography.bodySmall, color: RHSColors.textSecondary },
-  loginLink: { ...typography.bodySmall, color: RHSColors.blue700, fontWeight: '700', textDecorationLine: 'underline' },
+
+  footer: { 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginTop: 32,
+    flexWrap: 'wrap'
+  },
+  footerText: { ...typography.body, color: '#333' },
+  loginLink: { ...typography.body, color: '#D32F2F', fontWeight: '600' },
 });
