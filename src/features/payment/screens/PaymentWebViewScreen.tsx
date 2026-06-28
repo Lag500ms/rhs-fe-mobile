@@ -12,6 +12,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { RHSColors, borderRadius } from '../../../lib/theme';
 import { PaymentStackParamList } from '../navigation/PaymentNavigator';
+import { paymentApi } from '../api/paymentApi';
 
 type PaymentWebViewRouteProp = RouteProp<PaymentStackParamList, 'PaymentWebView'>;
 
@@ -23,27 +24,72 @@ export const PaymentWebViewScreen = () => {
   const webViewRef = useRef<WebView>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const callbackHandledRef = useRef(false);
 
-  const handleNavigationChange = (navState: WebViewNavigation) => {
-    const { url } = navState;
+  /**
+   * Detect VNPay callback redirect.
+   * Note: Must check for `vnp_ResponseCode` specifically — the initial VNPay
+   * payment URL also contains `payment-callback` inside the `vnp_ReturnUrl`
+   * query param, which would cause a false positive on first load.
+   */
+  const isCallbackUrl = (url: string) => {
+    return url.includes('vnp_ResponseCode') && url.includes('payment-callback');
+  };
 
-    // Detect VNPay callback redirect patterns
-    const callbackPatterns = [
-      'payment-callback',
-      'vnp_ResponseCode',
-    ];
+  /** Call backend's payment-callback endpoint directly from mobile app. */
+  const processCallback = async (callbackUrl: string) => {
+    const queryString = callbackUrl.includes('?') ? callbackUrl.split('?')[1] : '';
 
-    const isCallback = callbackPatterns.some((pattern) => url.includes(pattern));
+    if (queryString) {
+      try {
+        // Call the backend's callback endpoint so the payment gets processed
+        // (bypassing VNPay's unreachable server-to-server IPN)
+        await paymentApi.processVnpayCallback(queryString);
+      } catch {
+        // Network error — fallback to PaymentProcessing polling
+      }
+    }
 
-    if (!isCallback) return;
-
-    // Navigate to processing screen
+    // Navigate to processing screen — the first poll should succeed since
+    // we just processed the callback above
     navigation.replace('PaymentProcessing', {
       orderId,
       applicationId,
       projectName: '',
       depositAmount: 0,
     });
+  };
+
+  /**
+   * Intercept and PREVENT the WebView from loading the callback URL
+   * (https://localhost:7085/...) on mobile, since localhost is unreachable.
+   * Instead, we call the backend directly from React Native code above.
+   */
+  const handleShouldStartLoad = (request: any) => {
+    if (callbackHandledRef.current) return true;
+
+    if (isCallbackUrl(request.url)) {
+      callbackHandledRef.current = true;
+      setLoading(true);
+      processCallback(request.url);
+      return false; // Prevent WebView from loading unreachable localhost URL
+    }
+    return true;
+  };
+
+  /**
+   * Fallback in case onShouldStartLoadWithRequest doesn't fire on some platforms
+   * (e.g., iOS for certain redirect types).
+   */
+  const handleNavigationStateChange = (navState: WebViewNavigation) => {
+    const { url } = navState;
+
+    if (callbackHandledRef.current) return;
+    if (!isCallbackUrl(url)) return;
+
+    callbackHandledRef.current = true;
+    setLoading(true);
+    processCallback(url);
   };
 
   const handleError = () => {
@@ -115,7 +161,8 @@ export const PaymentWebViewScreen = () => {
         ref={webViewRef}
         source={{ uri: paymentUrl }}
         style={styles.webView}
-        onNavigationStateChange={handleNavigationChange}
+        onNavigationStateChange={handleNavigationStateChange}
+        onShouldStartLoadWithRequest={handleShouldStartLoad}
         onLoad={() => setLoading(false)}
         onError={handleError}
         javaScriptEnabled

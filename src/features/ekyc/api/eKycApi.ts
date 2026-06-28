@@ -1,5 +1,42 @@
 import apiClient from '../../../lib/apiClient';
 import { userApi } from '../../user/api/userApi';
+import phuongData from '../../../../assets/phuong.json';
+
+type PhuongEntry = {
+  name: string;
+  type: string;
+  slug: string;
+  name_with_type: string;
+  path: string;
+  path_with_type: string;
+  code: string;
+  parent_code: string;
+};
+
+const phuongList: PhuongEntry[] = Object.values(phuongData);
+
+/** Trích xuất ResidentWard từ địa chỉ bằng cách so khớp với danh sách phường/xã */
+function extractWardFromAddress(address: string): string | undefined {
+  if (!address) return undefined;
+  const normalized = address.toLowerCase();
+
+  // Tìm tất cả các phường/xã có tên xuất hiện trong địa chỉ
+  const matches = phuongList.filter((p) => normalized.includes(p.name.toLowerCase()));
+
+  if (matches.length === 0) return undefined;
+  if (matches.length === 1) return matches[0].name;
+
+  // Nhiều kết quả → ưu tiên cái có path trùng với địa chỉ
+  // path format: "Tân Hưng Thuận, Hồ Chí Minh"
+  const byPath = matches.find((p) => {
+    const pathTokens = p.path.toLowerCase().split(',').map((t) => t.trim());
+    return pathTokens.some((token) => normalized.includes(token));
+  });
+  if (byPath) return byPath.name;
+
+  // Fallback: trả về kết quả đầu tiên (tên dài nhất để tránh trùng ngắn như "Tân An")
+  return matches.sort((a, b) => b.name.length - a.name.length)[0].name;
+}
 
 /** Trích xuất message chi tiết từ lỗi 400 của backend */
 function extractErrorMessage(e: any, fallback: string): string {
@@ -188,6 +225,7 @@ export const eKycApi = {
       dateOfBirth?: string;
       address?: string;
       citizenId?: string;
+      residentWard?: string;
     } = {
       fullName: ocr.name || '',
     };
@@ -214,8 +252,13 @@ export const eKycApi = {
     }
 
     if (ocr.address || ocr.home) payload.address = ocr.address || ocr.home;
-    // CCCD = ocr.id (ví dụ: "051204000297")
     if (ocr.id) payload.citizenId = ocr.id;
+
+    // Lấy ResidentWard từ địa chỉ (dùng phuong.json)
+    const residentWard = extractWardFromAddress(payload.address || '');
+    if (residentWard) {
+      payload.residentWard = residentWard;
+    }
 
     // 3. Gửi cập nhật
     const response = await apiClient.put('/users/profile', payload);

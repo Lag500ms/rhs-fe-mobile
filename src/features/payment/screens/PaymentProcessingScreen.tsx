@@ -16,7 +16,7 @@ import { paymentApi, DepositPaymentResult } from '../api/paymentApi';
 type PaymentProcessingRouteProp = RouteProp<PaymentStackParamList, 'PaymentProcessing'>;
 
 const POLL_INTERVAL_MS = 3000; // poll every 3 seconds
-const MAX_POLL_ATTEMPTS = 30; // max 90 seconds before giving up
+const MAX_POLL_ATTEMPTS = 45; // max ~2.25 minutes before giving up
 
 export const PaymentProcessingScreen = () => {
   const navigation = useNavigation<any>();
@@ -29,6 +29,8 @@ export const PaymentProcessingScreen = () => {
   const [attempts, setAttempts] = useState(0);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const startPolling = () => {
     pollingRef.current = setInterval(async () => {
       try {
@@ -40,6 +42,7 @@ export const PaymentProcessingScreen = () => {
           // Payment confirmed successfully
           clearInterval(pollingRef.current!);
           pollingRef.current = null;
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
           setResult(response.data);
           setStatus('success');
           return;
@@ -60,10 +63,11 @@ export const PaymentProcessingScreen = () => {
           if (
             infoResponse.success &&
             infoResponse.data &&
-            infoResponse.data.status === 'SUCCESS'
+            infoResponse.data.status === 'Success'
           ) {
             clearInterval(pollingRef.current!);
             pollingRef.current = null;
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
             // Try deposit result again as it may now be ready
             const retryResult = await paymentApi.getDepositResult(orderId);
             if (retryResult.success && retryResult.data) {
@@ -84,9 +88,10 @@ export const PaymentProcessingScreen = () => {
             return;
           }
 
-          if (infoResponse.data?.status === 'FAILED') {
+          if (infoResponse.data?.status === 'Failed') {
             clearInterval(pollingRef.current!);
             pollingRef.current = null;
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
             setErrorMessage('Giao dịch thất bại. Vui lòng thử lại.');
             setStatus('failed');
             return;
@@ -98,11 +103,9 @@ export const PaymentProcessingScreen = () => {
     }, POLL_INTERVAL_MS);
   };
 
-  useEffect(() => {
-    startPolling();
-
-    // Max attempts timeout
-    const timeoutRef = setTimeout(() => {
+  const startTimeout = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
         pollingRef.current = null;
@@ -110,12 +113,19 @@ export const PaymentProcessingScreen = () => {
         setErrorMessage('Không thể xác nhận giao dịch sau thời gian chờ. Vui lòng kiểm tra lại sau.');
       }
     }, POLL_INTERVAL_MS * MAX_POLL_ATTEMPTS);
+  };
+
+  useEffect(() => {
+    startPolling();
+    startTimeout();
 
     return () => {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
       }
-      clearTimeout(timeoutRef);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
   }, []);
 
@@ -145,6 +155,7 @@ export const PaymentProcessingScreen = () => {
     setErrorMessage('');
     setAttempts(0);
     startPolling();
+    startTimeout();
   };
 
   // ── Polling state ──

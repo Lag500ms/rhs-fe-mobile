@@ -16,6 +16,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RHSColors, shadows, borderRadius, typography } from '../../../lib/theme';
 import { getToken } from '../../../lib/tokenStorage';
 import { wishlistApi, WishlistItemResponse, PagedResult } from '../api/wishlistApi';
+import { housingApi } from '../../home/api/housingApi';
 
 const PAGE_SIZE = 10;
 
@@ -97,26 +98,25 @@ export const SavedScreen = () => {
     setLoadingMore(false);
   };
 
-  const handleRemove = (projectId: string, projectName: string) => {
-    Alert.alert('Xóa khỏi danh sách', `Bỏ "${projectName}" khỏi danh sách yêu thích?`, [
-      { text: 'Giữ lại', style: 'cancel' },
-      {
-        text: 'Xóa',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await wishlistApi.removeFromWishlist(projectId);
-            setItems((prev) => prev.filter((item) => item.projectId !== projectId));
-          } catch (e: any) {
-            Alert.alert('Lỗi', 'Không thể xóa dự án khỏi danh sách yêu thích.');
-          }
-        },
-      },
-    ]);
+  const handleRemove = async (projectId: string) => {
+    try {
+      await wishlistApi.removeFromWishlist(projectId);
+      setItems((prev) => prev.filter((item) => item.projectId !== projectId));
+    } catch {
+      // silently fail — the item will stay in the list
+    }
   };
 
-  const handleItemPress = (projectId: string) => {
-    navigation.navigate('ProjectDetail', { id: projectId });
+  const handleItemPress = async (projectId: string) => {
+    try {
+      const project = await housingApi.getHousingProjectById(projectId);
+      navigation.navigate('Home', {
+        screen: 'HousingProjectDetail',
+        params: { project },
+      });
+    } catch {
+      Alert.alert('Lỗi', 'Không thể tải thông tin dự án');
+    }
   };
 
   const renderItem = ({ item }: { item: WishlistItemResponse }) => (
@@ -139,10 +139,10 @@ export const SavedScreen = () => {
         </View>
         <TouchableOpacity
           style={styles.removeBtn}
-          onPress={() => handleRemove(item.projectId, item.projectName)}
+          onPress={() => handleRemove(item.projectId)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Feather name="trash-2" size={18} color={RHSColors.red600} />
+          <Feather name="heart" size={18} color="#FF5252" />
         </TouchableOpacity>
       </View>
 
@@ -227,7 +227,7 @@ export const SavedScreen = () => {
         </Text>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => navigation.getParent()?.navigate('Home', { screen: 'HomeList' })}
+          onPress={() => navigation.navigate('Home', { screen: 'HomeList' })}
           activeOpacity={0.85}
         >
           <Feather name="search" size={18} color="#fff" style={{ marginRight: 8 }} />

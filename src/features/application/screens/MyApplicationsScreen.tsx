@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+
 import {
   View,
   Text,
@@ -9,6 +10,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Modal,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -23,7 +25,8 @@ import {
 } from '../api/housingApplicationApi';
 import { housingDocumentApi } from '../api/housingDocumentApi';
 import { getStatusConfig } from '../utils/statusConfig';
-import { paymentApi } from '../../payment/api/paymentApi';
+import { paymentApi, PaymentInfo } from '../../payment/api/paymentApi';
+import * as Clipboard from 'expo-clipboard';
 
 function formatDate(dateStr: string): string {
   try {
@@ -191,11 +194,26 @@ export const MyApplicationsScreen = () => {
 
   // ── Payment flow for APPROVED ──
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [existingPayment, setExistingPayment] = useState<PaymentInfo | null>(null);
+  const [checkingPayment, setCheckingPayment] = useState(false);
 
   const handleStartPayment = useCallback(async () => {
     if (!selectedDetail) return;
     setProcessingPayment(true);
     try {
+      // If a pending payment exists, navigate directly to processing screen
+      if (existingPayment && existingPayment.status === 'Pending') {
+        handleCloseDetail();
+        navigation.navigate('PaymentProcessing', {
+          orderId: existingPayment.orderId,
+          applicationId: selectedDetail.applicationId,
+          projectName: '',
+          depositAmount: 0,
+        });
+        setProcessingPayment(false);
+        return;
+      }
+
       const result = await paymentApi.createPaymentUrl(selectedDetail.applicationId);
       if (result.success && result.data?.paymentUrl) {
         handleCloseDetail();
@@ -213,19 +231,132 @@ export const MyApplicationsScreen = () => {
     } finally {
       setProcessingPayment(false);
     }
-  }, [selectedDetail, navigation]);
+  }, [selectedDetail, navigation, existingPayment]);
+
+  // ── Check existing pending/success payment for APPROVED/DEPOSIT_PAID details ──
+  const checkExistingPayment = useCallback(async (appId: string) => {
+    setCheckingPayment(true);
+    try {
+      const result = await paymentApi.getMyPayments();
+      if (result.success && result.data) {
+        const payment = result.data.find((p: PaymentInfo) => p.applicationId === appId);
+        setExistingPayment(payment || null);
+        if (payment?.status === 'Success') {
+          setPaymentSlotCode(payment.slotCode || null);
+          setPaymentPdfUrl(payment.pdfUrl || null);
+        } else {
+          setPaymentSlotCode(null);
+          setPaymentPdfUrl(null);
+        }
+      } else {
+        setExistingPayment(null);
+        setPaymentSlotCode(null);
+        setPaymentPdfUrl(null);
+      }
+    } catch {
+      setExistingPayment(null);
+      setPaymentSlotCode(null);
+      setPaymentPdfUrl(null);
+    } finally {
+      setCheckingPayment(false);
+    }
+  }, []);
+
+  // When APPROVED/DEPOSIT_PAID detail modal opens, check payment
+  useEffect(() => {
+    if (showDetail && (selectedDetail?.applicationStatus === 'APPROVED' || selectedDetail?.applicationStatus === 'DEPOSIT_PAID')) {
+      checkExistingPayment(selectedDetail.applicationId);
+    } else {
+      setExistingPayment(null);
+      setPaymentSlotCode(null);
+      setPaymentPdfUrl(null);
+    }
+  }, [showDetail, selectedDetail?.applicationStatus]);
+
+  // ── Countdown Timer for APPROVED (24h from finalDecisionDate) ──
+  const [countdown, setCountdown] = useState<string | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearCountdown = useCallback(() => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    setCountdown(null);
+    setIsExpired(false);
+  }, []);
+
+  const startCountdown = useCallback((finalDecisionDate: string) => {
+    clearCountdown();
+    // Backend notification: "Vui lòng thanh toán đặt cọc trong vòng 24 giờ để giữ suất"
+    const expiry = new Date(finalDecisionDate).getTime() + 24 * 60 * 60 * 1000;
+    const update = () => {
+      const diff = expiry - Date.now();
+      if (diff <= 0) {
+        setCountdown('00:00:00');
+        setIsExpired(true);
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+    };
+    update();
+    countdownIntervalRef.current = setInterval(update, 1000);
+  }, [clearCountdown]);
+
+  // When APPROVED detail modal opens, start countdown dựa vào finalDecisionDate
+  useEffect(() => {
+    if (showDetail && selectedDetail?.applicationStatus === 'APPROVED' && selectedDetail?.finalDecisionDate) {
+      startCountdown(selectedDetail.finalDecisionDate);
+    } else {
+      clearCountdown();
+    }
+    return () => clearCountdown();
+  }, [showDetail, selectedDetail?.applicationStatus, selectedDetail?.finalDecisionDate, startCountdown, clearCountdown]);
+
+  // ── Lưu slotCode & pdfUrl từ payment để hiển thị ──
+  const [paymentSlotCode, setPaymentSlotCode] = useState<string | null>(null);
+  const [paymentPdfUrl, setPaymentPdfUrl] = useState<string | null>(null);
 
   // ── View Contract for DEPOSIT_PAID ──
   const handleViewContract = useCallback(() => {
-    if (!selectedDetail) return;
+    // Lưu pdfUrl trước khi close (handleCloseDetail sẽ clear state)
+    const pdfUrl = paymentPdfUrl;
+    const name = selectedDetail?.projectName;
     handleCloseDetail();
-    Alert.alert(
-      'Xem hợp đồng',
-      'Vui lòng kiểm tra trong mục "Thanh toán" để xem hợp đồng của bạn.',
-      [{ text: 'Đóng', style: 'cancel' }]
-    );
-  }, [selectedDetail, navigation]);
+    if (pdfUrl) {
+      setTimeout(() => {
+        navigation.navigate('ContractViewer', {
+          pdfUrl,
+          title: name ? `Hợp đồng - ${name}` : 'Hợp đồng nguyên tắc',
+        });
+      }, 300);
+    } else {
+      Alert.alert('Không có hợp đồng', 'Hợp đồng chưa được tạo. Vui lòng thử lại sau.');
+    }
+  }, [paymentPdfUrl, navigation, selectedDetail]);
 
+  // ── SlotCode copy handler ──
+  const [slotCodeCopied, setSlotCodeCopied] = useState(false);
+  const handleCopySlotCode = useCallback(async (code: string) => {
+    try {
+      await Clipboard.setStringAsync(code);
+      setSlotCodeCopied(true);
+      setTimeout(() => setSlotCodeCopied(false), 2500);
+    } catch {
+      setSlotCodeCopied(true);
+      setTimeout(() => setSlotCodeCopied(false), 2500);
+    }
+  }, []);
+
+  // ── Old View Contract fallback (removed) ──
   // ── Re-apply for REJECTED ──
   const handleReApply = async () => {
     if (!selectedDetail) return;
@@ -429,11 +560,12 @@ export const MyApplicationsScreen = () => {
 
       {/* Detail Modal */}
       <Modal visible={showDetail} transparent animationType="slide">
-        <TouchableOpacity
-          style={styles.detailOverlay}
-          activeOpacity={1}
-          onPress={handleCloseDetail}
-        >
+        <View style={styles.detailOverlay}>
+          <TouchableOpacity
+            style={styles.detailBackdrop}
+            activeOpacity={1}
+            onPress={handleCloseDetail}
+          />
           <View style={styles.detailContainer}>
             <View style={styles.detailHandle} />
             <View style={styles.detailHeader}>
@@ -448,10 +580,11 @@ export const MyApplicationsScreen = () => {
                 <ActivityIndicator size="large" color={RHSColors.blue700} />
               </View>
             ) : selectedDetail ? (
-              <FlatList
-                data={[]}
-                renderItem={null}
-                ListHeaderComponent={() => (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.detailScroll}
+                keyboardShouldPersistTaps="handled"
+              >
                   <View style={styles.detailBody}>
                     {/* Status Badge */}
                     <View style={styles.detailStatusRow}>
@@ -536,35 +669,147 @@ export const MyApplicationsScreen = () => {
                       )}
                     </DetailSection>
 
-                    {/* ── APPROVED: "Đang chờ thanh toán" & Pay button ── */}
+                    {/* ── APPROVED: Payment section ── */}
                     {selectedDetail.applicationStatus === 'APPROVED' && (
-                      <View style={styles.paymentSection}>
-                        <View style={styles.waitingPaymentBadge}>
-                          <Feather name="clock" size={16} color={RHSColors.govGoldDark} />
-                          <Text style={styles.waitingPaymentText}>Đang chờ thanh toán</Text>
-                        </View>
-                        <Text style={styles.depositInfoText}>
-                          Hồ sơ của bạn đã được duyệt. Vui lòng tiến hành đặt cọc để giữ suất tham gia bốc thăm.
-                        </Text>
-                        <TouchableOpacity
-                          style={styles.payNowBtn}
-                          onPress={handleStartPayment}
-                          activeOpacity={0.9}
-                          disabled={processingPayment}
-                        >
-                          {processingPayment ? (
-                            <>
-                              <ActivityIndicator size="small" color="#fff" />
-                              <Text style={styles.payNowText}>Đang xử lý...</Text>
-                            </>
-                          ) : (
-                            <>
-                              <Feather name="credit-card" size={18} color="#fff" />
-                              <Text style={styles.payNowText}>Thanh toán ngay</Text>
-                            </>
-                          )}
-                        </TouchableOpacity>
-                      </View>
+                      <>
+                        {/* Payment đã thành công → hiện SlotCode + Xem hợp đồng */}
+                        {existingPayment?.status === 'Success' ? (
+                          <View style={styles.depositPaidSection}>
+                            <View style={styles.depositPaidBadge}>
+                              <Feather name="check-circle" size={16} color={RHSColors.green600} />
+                              <Text style={styles.depositPaidText}>Đã thanh toán thành công</Text>
+                            </View>
+                            {paymentSlotCode ? (
+                              <View style={styles.slotCodeCard}>
+                                <View style={styles.slotCodeCardHeader}>
+                                  <Feather name="award" size={18} color={RHSColors.govGold} />
+                                  <Text style={styles.slotCodeCardTitle}>Mã số bốc thăm</Text>
+                                </View>
+                                <View style={styles.slotCodeContainer}>
+                                  <Text style={styles.slotCodeText}>{paymentSlotCode}</Text>
+                                </View>
+                                <TouchableOpacity
+                                  style={[styles.slotCopyBtn, slotCodeCopied && styles.slotCopyBtnCopied]}
+                                  onPress={() => handleCopySlotCode(paymentSlotCode)}
+                                  activeOpacity={0.8}
+                                >
+                                  <Feather
+                                    name={slotCodeCopied ? 'check' : 'copy'}
+                                    size={14}
+                                    color={slotCodeCopied ? RHSColors.green600 : RHSColors.blue700}
+                                  />
+                                  <Text style={[styles.slotCopyBtnText, slotCodeCopied && { color: RHSColors.green600 }]}>
+                                    {slotCodeCopied ? 'Đã sao chép' : 'Sao chép mã'}
+                                  </Text>
+                                </TouchableOpacity>
+                              </View>
+                            ) : null}
+                            <TouchableOpacity
+                              style={styles.viewContractBtn}
+                              onPress={handleViewContract}
+                              activeOpacity={0.9}
+                            >
+                              <Feather name="file-text" size={18} color={RHSColors.blue700} />
+                              <Text style={styles.viewContractBtnText}>Xem hợp đồng nguyên tắc</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ) : (
+                          <>
+                            {/* Countdown timer */}
+                            {countdown && (
+                              <View style={[styles.countdownSection, isExpired && styles.countdownExpired]}>
+                                <View style={styles.countdownHeader}>
+                                  <Feather name={isExpired ? 'alert-triangle' : 'clock'} size={18} color={isExpired ? RHSColors.red600 : RHSColors.govGoldDark} />
+                                  <Text style={[styles.countdownTitle, isExpired && { color: RHSColors.red600 }]}>
+                                    {isExpired ? 'Đã hết hạn giữ chỗ' : 'Thời hạn thanh toán'}
+                                  </Text>
+                                </View>
+                                <Text style={[styles.countdownValue, isExpired && { color: RHSColors.red600 }]}>
+                                  {countdown}
+                                </Text>
+                                {!isExpired && (
+                                  <Text style={styles.countdownLabel}>Bạn cần thanh toán trong thời gian này để giữ suất</Text>
+                                )}
+                              </View>
+                            )}
+
+                            {/* Expired */}
+                            {isExpired ? (
+                              <View style={styles.paymentSection}>
+                                <View style={[styles.waitingPaymentBadge, { justifyContent: 'center' }]}>
+                                  <Feather name="x-circle" size={18} color={RHSColors.red600} />
+                                  <Text style={[styles.waitingPaymentText, { color: RHSColors.red600 }]}>Đã hết hạn giữ chỗ</Text>
+                                </View>
+                                <Text style={styles.depositInfoText}>
+                                  Thời hạn 24 giờ đã kết thúc. Hồ sơ của bạn sẽ bị hủy.
+                                </Text>
+                              </View>
+                            ) : existingPayment?.status === 'Pending' ? (
+                              /* Pending payment → show "Kiểm tra giao dịch" */
+                              <View style={styles.paymentSection}>
+                                <View style={styles.waitingPaymentBadge}>
+                                  <Feather name="alert-circle" size={16} color={RHSColors.amber700} />
+                                  <Text style={styles.waitingPaymentText}>Đã có giao dịch đang chờ</Text>
+                                </View>
+                                <Text style={styles.depositInfoText}>
+                                  Bạn đã có một giao dịch đang chờ xử lý cho hồ sơ này. Vui lòng kiểm tra lại kết quả thanh toán.
+                                </Text>
+                                <TouchableOpacity
+                                  style={styles.payNowBtn}
+                                  onPress={handleStartPayment}
+                                  activeOpacity={0.9}
+                                  disabled={processingPayment}
+                                >
+                                  {processingPayment ? (
+                                    <>
+                                      <ActivityIndicator size="small" color="#fff" />
+                                      <Text style={styles.payNowText}>Đang xử lý...</Text>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Feather name="search" size={18} color="#fff" />
+                                      <Text style={styles.payNowText}>Kiểm tra giao dịch</Text>
+                                    </>
+                                  )}
+                                </TouchableOpacity>
+                              </View>
+                            ) : checkingPayment ? (
+                              <View style={styles.paymentSection}>
+                                <ActivityIndicator size="small" color={RHSColors.blue700} />
+                              </View>
+                            ) : (
+                              /* No payment → "Thanh toán ngay" */
+                              <View style={styles.paymentSection}>
+                                <View style={styles.waitingPaymentBadge}>
+                                  <Feather name="clock" size={16} color={RHSColors.govGoldDark} />
+                                  <Text style={styles.waitingPaymentText}>Đang chờ thanh toán</Text>
+                                </View>
+                                <Text style={styles.depositInfoText}>
+                                  Hồ sơ của bạn đã được duyệt. Vui lòng tiến hành đặt cọc để giữ suất tham gia bốc thăm.
+                                </Text>
+                                <TouchableOpacity
+                                  style={styles.payNowBtn}
+                                  onPress={handleStartPayment}
+                                  activeOpacity={0.9}
+                                  disabled={processingPayment}
+                                >
+                                  {processingPayment ? (
+                                    <>
+                                      <ActivityIndicator size="small" color="#fff" />
+                                      <Text style={styles.payNowText}>Đang xử lý...</Text>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Feather name="credit-card" size={18} color="#fff" />
+                                      <Text style={styles.payNowText}>Thanh toán ngay</Text>
+                                    </>
+                                  )}
+                                </TouchableOpacity>
+                              </View>
+                            )}
+                          </>
+                        )}
+                      </>
                     )}
 
                     {/* ── DEPOSIT_PAID: Show SlotCode & View Contract ── */}
@@ -574,6 +819,38 @@ export const MyApplicationsScreen = () => {
                           <Feather name="check-circle" size={16} color={RHSColors.green600} />
                           <Text style={styles.depositPaidText}>Đã đặt cọc thành công</Text>
                         </View>
+
+                        {/* SlotCode Card — lấy từ payment (API /my-payments) */}
+                        {paymentSlotCode ? (
+                          <View style={styles.slotCodeCard}>
+                            <View style={styles.slotCodeCardHeader}>
+                              <Feather name="award" size={18} color={RHSColors.govGold} />
+                              <Text style={styles.slotCodeCardTitle}>Mã số bốc thăm</Text>
+                            </View>
+                            <View style={styles.slotCodeContainer}>
+                              <Text style={styles.slotCodeText}>{paymentSlotCode}</Text>
+                            </View>
+                            <TouchableOpacity
+                              style={[styles.slotCopyBtn, slotCodeCopied && styles.slotCopyBtnCopied]}
+                              onPress={() => handleCopySlotCode(paymentSlotCode)}
+                              activeOpacity={0.8}
+                            >
+                              <Feather
+                                name={slotCodeCopied ? 'check' : 'copy'}
+                                size={14}
+                                color={slotCodeCopied ? RHSColors.green600 : RHSColors.blue700}
+                              />
+                              <Text style={[styles.slotCopyBtnText, slotCodeCopied && { color: RHSColors.green600 }]}>
+                                {slotCodeCopied ? 'Đã sao chép' : 'Sao chép mã'}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        ) : checkingPayment ? (
+                          <View style={styles.paymentSection}>
+                            <ActivityIndicator size="small" color={RHSColors.blue700} />
+                          </View>
+                        ) : null}
+
                         <Text style={styles.readyForLotteryText}>
                           Bạn đã hoàn tất đặt cọc. Hãy chờ ngày bốc thăm để nhận kết quả.
                         </Text>
@@ -583,7 +860,7 @@ export const MyApplicationsScreen = () => {
                           activeOpacity={0.9}
                         >
                           <Feather name="file-text" size={18} color={RHSColors.blue700} />
-                          <Text style={styles.viewContractBtnText}>Xem hợp đồng</Text>
+                          <Text style={styles.viewContractBtnText}>Xem hợp đồng nguyên tắc</Text>
                         </TouchableOpacity>
                       </View>
                     )}
@@ -602,21 +879,20 @@ export const MyApplicationsScreen = () => {
                       </TouchableOpacity>
                     )}
                   </View>
-                )}
-                showsVerticalScrollIndicator={false}
-              />
+              </ScrollView>
             ) : null}
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
       {/* ── Action Sheet for DRAFT ── */}
       <Modal visible={showActionSheet} transparent animationType="slide">
-        <TouchableOpacity
-          style={styles.sheetOverlay}
-          activeOpacity={1}
-          onPress={handleCloseActionSheet}
-        >
+        <View style={styles.sheetOverlay}>
+          <TouchableOpacity
+            style={styles.sheetBackdrop}
+            activeOpacity={1}
+            onPress={handleCloseActionSheet}
+          />
           <View style={styles.sheetContainer}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Quản lý hồ sơ nháp</Text>
@@ -681,7 +957,7 @@ export const MyApplicationsScreen = () => {
               <Text style={styles.sheetCancelText}>Hủy</Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -934,6 +1210,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
+  detailBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
   detailContainer: {
     backgroundColor: '#fff',
     borderTopLeftRadius: borderRadius.xxl,
@@ -965,6 +1244,9 @@ const styles = StyleSheet.create({
   detailLoading: {
     paddingVertical: 40,
     alignItems: 'center',
+  },
+  detailScroll: {
+    maxHeight: '80%',
   },
   detailBody: { paddingBottom: 20 },
   detailStatusRow: {
@@ -1119,6 +1401,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
+  sheetBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
   sheetContainer: {
     backgroundColor: '#fff',
     borderTopLeftRadius: borderRadius.xxl,
@@ -1265,6 +1550,101 @@ const styles = StyleSheet.create({
   },
   viewContractBtnText: {
     fontSize: 15,
+    fontWeight: '700',
+    color: RHSColors.blue700,
+  },
+
+  // ── Countdown Timer ──
+  countdownSection: {
+    marginTop: 8,
+    padding: 16,
+    backgroundColor: RHSColors.amber50,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: RHSColors.govGold,
+    alignItems: 'center',
+    gap: 6,
+  },
+  countdownExpired: {
+    backgroundColor: RHSColors.red50,
+    borderColor: RHSColors.red400,
+  },
+  countdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  countdownTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: RHSColors.govGoldDark,
+  },
+  countdownValue: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: RHSColors.govGoldDark,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 2,
+  },
+  countdownLabel: {
+    fontSize: 12,
+    color: RHSColors.textMuted,
+  },
+
+  // ── SlotCode Card ──
+  slotCodeCard: {
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: RHSColors.govGold,
+    padding: 16,
+    gap: 10,
+    alignItems: 'center',
+  },
+  slotCodeCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  slotCodeCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: RHSColors.textSecondary,
+  },
+  slotCodeContainer: {
+    backgroundColor: RHSColors.amber50,
+    borderRadius: borderRadius.md,
+    borderWidth: 2,
+    borderColor: RHSColors.govGold,
+    borderStyle: 'dashed',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    width: '100%',
+    alignItems: 'center',
+  },
+  slotCodeText: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: RHSColors.red700,
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+  },
+  slotCopyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: RHSColors.blue700,
+    gap: 6,
+  },
+  slotCopyBtnCopied: {
+    borderColor: RHSColors.green600,
+  },
+  slotCopyBtnText: {
+    fontSize: 13,
     fontWeight: '700',
     color: RHSColors.blue700,
   },

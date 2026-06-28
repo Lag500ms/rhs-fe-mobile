@@ -32,16 +32,20 @@ export interface DepositPaymentResult {
 
 /** Payment transaction info */
 export interface PaymentInfo {
-  paymentId: string;
+  id: string;
   orderId: string;
-  applicationId: string;
+  orderInfo?: string;
+  applicationId?: string | null;
   amount: number;
   status: string;
-  transactionNo?: string;
-  bankCode?: string;
-  payDate?: string;
+  vnpResponseCode?: string;
+  vnpTransactionNo?: string;
+  vnpBankCode?: string;
+  vnpPayDate?: string;
   createdAt: string;
   paidAt?: string;
+  slotCode?: string;
+  pdfUrl?: string;
 }
 
 /** Deposit result API response wrapper */
@@ -63,6 +67,18 @@ export interface MyPaymentsResponse {
 }
 
 export const paymentApi = {
+  /**
+   * Proxy the VNPay server-to-server callback.
+   * After detecting the VNPay redirect URL in the WebView, the mobile app
+   * calls this method to pass the VNPay response query params to the backend,
+   * since VNPay's IPN can't reach localhost in dev or a private network.
+   * GET /api/Payment/payment-callback?{queryString}
+   */
+  processVnpayCallback: async (queryString: string): Promise<any> => {
+    const response = await apiClient.get(`/Payment/payment-callback?${queryString}`);
+    return response.data;
+  },
+
   /**
    * Tạo URL thanh toán đặt cọc cho hồ sơ đã APPROVED.
    * POST /api/Payment/create-payment-url

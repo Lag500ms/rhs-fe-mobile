@@ -8,6 +8,7 @@ export interface UserProfileDto {
   citizenId?: string;
   dateOfBirth?: string;
   address?: string;
+  residentWard?: string;
   role: string;
   isEmailVerified: boolean;
   profileImageUrl?: string;
@@ -21,6 +22,7 @@ export interface UpdateProfileDto {
   dateOfBirth?: string;
   address?: string;
   citizenId?: string;
+  residentWard?: string;
 }
 
 export interface DeleteAccountDto {
