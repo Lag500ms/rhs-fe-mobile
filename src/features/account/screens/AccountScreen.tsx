@@ -7,12 +7,14 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
+  Switch,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
+import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
 import { getToken, clearTokens } from '../../../lib/tokenStorage';
 import { userApi, UserProfileDto } from '../../user/api/userApi';
@@ -22,6 +24,10 @@ export const AccountScreen = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profile, setProfile] = useState<UserProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // States cho các công tắc cài đặt
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -60,7 +66,18 @@ export const AccountScreen = () => {
   };
 
   const handleLogin = () => navigation.navigate('Auth', { screen: 'Login' });
-  const handleProfilePress = () => navigation.navigate('UserProfile');
+  
+  const confirmLogout = () => {
+    Alert.alert(
+      'Đăng xuất',
+      'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Đăng xuất', style: 'destructive', onPress: handleLogout },
+      ]
+    );
+  };
+
   const handleLogout = async () => {
     await clearTokens();
     setIsLoggedIn(false);
@@ -98,113 +115,176 @@ export const AccountScreen = () => {
       </LinearGradient>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Profile card OR Login prompt */}
+        
+        {/* Khối Profile hoặc Đăng nhập */}
         {!isLoggedIn ? (
           <View style={styles.loginCard}>
             <View style={styles.loginAvatarCircle}>
               <Feather name="user" size={44} color={RHSColors.blue700} />
             </View>
-            <Text style={styles.loginTitle}>Chào bạn!</Text>
+            <Text style={styles.loginTitle}>Chào mừng Công dân!</Text>
             <Text style={styles.loginSub}>
-              Đăng nhập để tra cứu và đăng ký nhà ở xã hội dành cho hộ nghèo, cận nghèo tại phường.
+              Vui lòng xác thực tài khoản để thực hiện các thủ tục hành chính về nhà ở xã hội tại địa phương.
             </Text>
             <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin} activeOpacity={0.85}>
               <Feather name="log-in" size={18} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.primaryBtnText}>Đăng nhập</Text>
+              <Text style={styles.primaryBtnText}>Xác thực tài khoản</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('Auth', { screen: 'Register' })} style={styles.linkBtn}>
-              <Text style={styles.linkText}>Chưa có tài khoản? Đăng ký</Text>
+              <Text style={styles.linkText}>Đăng ký tài khoản công dân mới</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity style={styles.profileCard} onPress={handleProfilePress} activeOpacity={0.85}>
+          <View style={styles.profileCard}>
             {profile?.profileImageUrl ? (
               <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarInitial}>
-                  {profile?.fullName?.charAt(0)?.toUpperCase() || 'R'}
+                  {profile?.fullName?.charAt(0)?.toUpperCase() || 'C'}
                 </Text>
               </View>
             )}
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{profile?.fullName || 'Người dùng'}</Text>
-              <Text style={styles.profileHint}>Xem hồ sơ cá nhân</Text>
+              <Text style={styles.profileName} numberOfLines={1}>
+                {profile?.fullName?.toUpperCase() || 'CÔNG DÂN'}
+              </Text>
+              <Text style={styles.profileId}>
+                Mã định danh (CCCD): <Text style={styles.profileIdNumber}>{profile?.citizenId || 'Chưa cập nhật'}</Text>
+              </Text>
             </View>
-            <Feather name="chevron-right" size={22} color={RHSColors.textMuted} />
-          </TouchableOpacity>
+          </View>
         )}
 
-        {/* Menu: Guide */}
-        <View style={styles.menuCard}>
-          <Text style={styles.menuTitle}>HƯỚNG DẪN</Text>
-          <MenuItem icon="help-circle" label="Câu hỏi thường gặp" />
-          <MenuItem icon="message-circle" label="Góp ý, báo lỗi" onPress={() => navigation.navigate('IssueReport')} />
-          <MenuItem icon="info" label="Về chúng tôi" last />
-        </View>
-
-        {/* Menu: Policy */}
-        <View style={styles.menuCard}>
-          <Text style={styles.menuTitle}>QUY ĐỊNH</Text>
-          <MenuItem icon="file-text" label="Điều khoản thỏa thuận" />
-          <MenuItem icon="shield" label="Chính sách bảo mật" last />
-        </View>
-
-        {/* Menu: Account (only when logged in) */}
+        {/* Các chức năng chỉ hiện khi đã đăng nhập */}
         {isLoggedIn && (
-          <View style={styles.menuCard}>
-            <Text style={styles.menuTitle}>TÀI KHOẢN & THÔNG BÁO</Text>
-            <MenuItem icon="settings" label="Cài đặt tài khoản" />
-            <MenuItem
-              icon="lock"
-              label="Đổi mật khẩu"
-              onPress={() => navigation.navigate('UserProfile', { screen: 'ChangePassword' })}
-            />
-            <MenuItem icon="bell" label="Thông báo" />
-            <MenuItem icon="log-out" label="Đăng xuất" onPress={handleLogout} danger last />
-          </View>
+          <>
+            {/* Section 1: THÔNG TIN CÁ NHÂN */}
+            <View style={styles.menuCard}>
+              <Text style={styles.menuTitle}>THÔNG TIN CÁ NHÂN</Text>
+              <MenuItem 
+                icon="user" 
+                label="Thông tin công dân" 
+                onPress={() => navigation.navigate('UserProfile')} 
+              />
+              <MenuItem 
+                icon="map-pin" 
+                label="Sổ địa chỉ thường trú" 
+                onPress={() => navigation.navigate('AddressBook')} 
+                last 
+              />
+            </View>
+
+            {/* Section 2: BẢO MẬT & TÀI KHOẢN */}
+            <View style={styles.menuCard}>
+              <Text style={styles.menuTitle}>BẢO MẬT & TÀI KHOẢN</Text>
+              <MenuItem 
+                icon="lock" 
+                label="Đổi mật khẩu" 
+                onPress={() => navigation.navigate('ChangePassword')} 
+              />
+              <MenuItem 
+                icon="bell" 
+                label="Nhận thông báo dịch vụ" 
+                rightComponent={
+                  <Switch 
+                    value={pushEnabled} 
+                    onValueChange={setPushEnabled}
+                    trackColor={{ false: '#D1D5DB', true: RHSColors.blue700 }}
+                  />
+                }
+              />
+              <MenuItem 
+                icon="shield-check" 
+                label="Xác thực sinh trắc học" 
+                rightComponent={
+                  <Switch 
+                    value={biometricEnabled} 
+                    onValueChange={setBiometricEnabled}
+                    trackColor={{ false: '#D1D5DB', true: RHSColors.blue700 }}
+                  />
+                }
+                last 
+              />
+            </View>
+          </>
+        )}
+
+        {/* Section 3: TRỢ GIÚP & PHÁP LÝ (Luôn hiện) */}
+        <View style={styles.menuCard}>
+          <Text style={styles.menuTitle}>TRỢ GIÚP & PHÁP LÝ</Text>
+          <MenuItem 
+            icon="file-text" 
+            label="Tra cứu thủ tục hành chính" 
+            onPress={() => navigation.navigate('FAQ')} 
+          />
+          <MenuItem 
+            icon="shield" 
+            label="Chính sách bảo mật dữ liệu" 
+            onPress={() => navigation.navigate('Policy')} 
+          />
+          <MenuItem 
+            icon="info" 
+            label="Thông tin đơn vị quản lý" 
+            rightComponent={<Text style={styles.versionText}>v1.0.0</Text>}
+            last 
+          />
+        </View>
+
+        {/* Section Logout */}
+        {isLoggedIn && (
+          <TouchableOpacity 
+            style={styles.logoutButton} 
+            onPress={confirmLogout}
+            activeOpacity={0.8}
+          >
+            <Feather name="log-out" size={18} color={RHSColors.red600} />
+            <Text style={styles.logoutText}>Đăng xuất khỏi hệ thống</Text>
+          </TouchableOpacity>
         )}
 
         {/* Footer */}
         <View style={styles.footer}>
           <RHSLogo size={20} />
-          <Text style={styles.footerText}>RHS Platform — Nền tảng hỗ trợ nhà ở {'\n'}cho hộ nghèo, cận nghèo tại phường</Text>
+          <Text style={styles.footerText}>Hệ thống Quản lý Nhà ở xã hội {'\n'}Phục vụ công dân số</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-// ─── Menu Item ──────────────────────────────────────────────────
+// ─── Menu Item Component ─────────────────────────────────────────
 const MenuItem = ({
   icon,
   label,
   onPress,
-  danger,
+  rightComponent,
   last,
 }: {
   icon: string;
   label: string;
   onPress?: () => void;
-  danger?: boolean;
+  rightComponent?: React.ReactNode; 
   last?: boolean;
 }) => (
   <TouchableOpacity
     style={[styles.menuItem, last && { borderBottomWidth: 0 }]}
     onPress={onPress}
-    activeOpacity={0.6}
+    activeOpacity={onPress ? 0.6 : 1}
+    disabled={!onPress}
   >
-    <View style={[styles.menuIconWrap, danger && { backgroundColor: RHSColors.red50 }]}>
-      <Feather name={icon as any} size={18} color={danger ? RHSColors.red600 : RHSColors.blue700} />
+    <View style={styles.menuIconWrap}>
+      <Feather name={icon as any} size={18} color={RHSColors.blue700} />
     </View>
-    <Text style={[styles.menuLabel, danger && { color: RHSColors.red600 }]}>{label}</Text>
-    <Feather name="chevron-right" size={18} color={RHSColors.grey400} />
+    <Text style={styles.menuLabel}>{label}</Text>
+    
+    {rightComponent ? rightComponent : <Feather name="chevron-right" size={18} color={RHSColors.grey400} />}
   </TouchableOpacity>
 );
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: RHSColors.surface },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.surface },
+  safe: { flex: 1, backgroundColor: '#F3F4F6' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3F4F6' },
   brandBar: { flexDirection: 'row', height: 4 },
   stripe: { height: '100%' },
   headerBg: {
@@ -213,16 +293,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     paddingVertical: 18,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
   },
   headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: 1 },
   scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 40 },
+  scrollContent: { paddingBottom: 40, paddingTop: 16 },
 
   // ── Login card ──
   loginCard: {
-    margin: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
     padding: 28,
     backgroundColor: '#fff',
     borderRadius: borderRadius.xl,
@@ -243,87 +322,127 @@ const styles = StyleSheet.create({
   primaryBtn: {
     flexDirection: 'row',
     backgroundColor: RHSColors.blue700,
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
     paddingVertical: 14,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
     marginBottom: 12,
-    ...shadows.md,
   },
   primaryBtnText: { ...typography.button, color: '#fff' },
   linkBtn: { paddingVertical: 4 },
-  linkText: { ...typography.bodySmall, color: RHSColors.blue700, fontWeight: '600', textDecorationLine: 'underline' },
+  linkText: { ...typography.bodySmall, color: RHSColors.blue700, fontWeight: '600' },
 
   // ── Profile card ──
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: 16,
-    padding: 18,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    padding: 16,
     backgroundColor: '#fff',
-    borderRadius: borderRadius.xl,
-    ...shadows.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: RHSColors.grey200,
+    ...shadows.sm,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 3,
-    borderColor: RHSColors.white,
-    marginRight: 14,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: RHSColors.grey100,
+    marginRight: 16,
   },
   avatarPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: RHSColors.blue700,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 16,
   },
   avatarInitial: { fontSize: 24, fontWeight: '800', color: '#fff' },
-  profileInfo: { flex: 1 },
-  profileName: { ...typography.h3, color: RHSColors.text },
-  profileHint: { fontSize: 12, color: RHSColors.textMuted, marginTop: 2 },
+  profileInfo: { flex: 1, justifyContent: 'center' },
+  profileName: { 
+    fontSize: 18, 
+    fontWeight: '800', 
+    color: RHSColors.text, 
+    marginBottom: 4 
+  },
+  profileId: { 
+    fontSize: 13, 
+    color: RHSColors.textSecondary 
+  },
+  profileIdNumber: {
+    fontWeight: '700',
+    color: RHSColors.text,
+  },
 
-  // ── Menu ──
+  // ── Menu Sections ──
   menuCard: {
     marginHorizontal: 16,
     marginBottom: 16,
     backgroundColor: '#fff',
-    borderRadius: borderRadius.xl,
-    paddingVertical: 8,
-    ...shadows.sm,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: RHSColors.grey200,
+    overflow: 'hidden',
   },
   menuTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: RHSColors.textMuted,
-    letterSpacing: 1,
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    letterSpacing: 0.5,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 8,
+    backgroundColor: '#F9FAFB',
+    borderBottomWidth: 1,
+    borderBottomColor: RHSColors.grey100,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: RHSColors.grey100,
   },
   menuIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     backgroundColor: RHSColors.blue50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
-  menuLabel: { flex: 1, ...typography.bodySmall, color: RHSColors.text, fontWeight: '500' },
+  menuLabel: { flex: 1, fontSize: 15, color: RHSColors.text, fontWeight: '500' },
+  versionText: { fontSize: 13, color: RHSColors.textMuted, fontWeight: '500' },
+
+  // ── Nút Đăng Xuất ──
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
+    paddingVertical: 16,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: RHSColors.red400,
+  },
+  logoutText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: RHSColors.red600,
+    marginLeft: 8,
+  },
 
   // ── Footer ──
   footer: {
@@ -332,10 +451,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   footerText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '500',
     color: RHSColors.textMuted,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 18,
   },
 });

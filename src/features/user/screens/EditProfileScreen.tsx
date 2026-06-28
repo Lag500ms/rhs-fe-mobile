@@ -24,37 +24,21 @@ export const EditProfileScreen = () => {
   const route = useRoute<any>();
   const existingProfile: UserProfileDto | undefined = route.params?.profile;
 
-  const [fullName, setFullName] = useState(existingProfile?.fullName || '');
+  const [fullName] = useState(existingProfile?.fullName || '');
   const [phoneNumber, setPhoneNumber] = useState(existingProfile?.phoneNumber || '');
-  const [address, setAddress] = useState(existingProfile?.address || '');
-  const [dateOfBirth, setDateOfBirth] = useState(
+  const [address] = useState(existingProfile?.address || '');
+  const [dateOfBirth] = useState(
     existingProfile?.dateOfBirth
       ? existingProfile.dateOfBirth.split('T')[0]
       : ''
   );
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [hasInteracted, setHasInteracted] = useState<{ [key: string]: boolean }>({});
-
-  const isSaveEnabled = fullName.length >= 2;
-
-  const validateForm = () => {
-    const newErrors: { [key: string]: string } = {};
-    if (!fullName) {
-      newErrors.fullName = 'Họ tên là bắt buộc';
-    } else if (fullName.length < 2) {
-      newErrors.fullName = 'Họ tên phải có ít nhất 2 ký tự';
-    }
-    if (dateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
-      newErrors.dateOfBirth = 'Ngày sinh phải có định dạng YYYY-MM-DD';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
   const handleSave = async () => {
-    setHasInteracted({ fullName: true, phoneNumber: true, address: true, dateOfBirth: true });
-    if (!validateForm()) return;
+    if (!phoneNumber.trim()) {
+      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
+      return;
+    }
     setLoading(true);
     try {
       const updateData: UpdateProfileDto = {
@@ -65,7 +49,7 @@ export const EditProfileScreen = () => {
       };
       const result = await userApi.updateProfile(updateData);
       if (result.success) {
-        Alert.alert('Thành công', 'Cập nhật thông tin thành công', [
+        Alert.alert('Thành công', 'Cập nhật số điện thoại thành công', [
           { text: 'OK', onPress: () => navigation.goBack() },
         ]);
       } else {
@@ -104,55 +88,56 @@ export const EditProfileScreen = () => {
       >
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.formCard}>
-            <CustomInput
-              iconName="user"
-              placeholder="Họ tên"
-              value={fullName}
-              onChangeText={(text) => {
-                setFullName(text);
-                setHasInteracted({ ...hasInteracted, fullName: false });
-              }}
-              errorMessage={hasInteracted.fullName ? errors.fullName : undefined}
-            />
+            <View style={styles.ekycBadge}>
+              <Feather name="check-circle" size={14} color={RHSColors.green600} />
+              <Text style={styles.ekycBadgeText}>
+                Họ tên & Ngày sinh được đồng bộ từ eKYC. Chỉ số điện thoại có thể thay đổi.
+              </Text>
+            </View>
+
+            <View style={styles.lockedField}>
+              <View style={styles.lockedLabelRow}>
+                <Feather name="user" size={16} color={RHSColors.textMuted} />
+                <Text style={styles.lockedLabel}>Họ và tên</Text>
+              </View>
+              <Text style={styles.lockedValue}>{fullName || '—'}</Text>
+            </View>
+
+            <View style={styles.lockedField}>
+              <View style={styles.lockedLabelRow}>
+                <Feather name="calendar" size={16} color={RHSColors.textMuted} />
+                <Text style={styles.lockedLabel}>Ngày sinh</Text>
+              </View>
+              <Text style={styles.lockedValue}>{dateOfBirth || '—'}</Text>
+            </View>
+
+            <View style={styles.lockedField}>
+              <View style={styles.lockedLabelRow}>
+                <Feather name="map-pin" size={16} color={RHSColors.textMuted} />
+                <Text style={styles.lockedLabel}>Địa chỉ</Text>
+              </View>
+              <Text style={styles.lockedValue}>{address || '—'}</Text>
+            </View>
+
+            <View style={styles.divider} />
 
             <CustomInput
               iconName="phone"
-              placeholder="Số điện thoại"
+              placeholder="Số điện thoại *"
               value={phoneNumber}
               onChangeText={setPhoneNumber}
               keyboardType="phone-pad"
             />
 
-            <CustomInput
-              iconName="map-pin"
-              placeholder="Địa chỉ"
-              value={address}
-              onChangeText={setAddress}
-            />
-
-            <CustomInput
-              iconName="calendar"
-              placeholder="Ngày sinh (YYYY-MM-DD)"
-              value={dateOfBirth}
-              onChangeText={(text) => {
-                setDateOfBirth(text);
-                setHasInteracted({ ...hasInteracted, dateOfBirth: false });
-              }}
-              errorMessage={hasInteracted.dateOfBirth ? errors.dateOfBirth : undefined}
-              keyboardType="default"
-            />
-
             <TouchableOpacity
-              style={[styles.saveBtn, isSaveEnabled && styles.saveBtnActive]}
-              disabled={!isSaveEnabled || loading}
+              style={styles.saveBtn}
+              disabled={loading}
               onPress={handleSave}
             >
               {loading ? (
                 <ActivityIndicator color={RHSColors.white} />
               ) : (
-                <Text style={[styles.saveBtnText, isSaveEnabled && styles.saveBtnTextActive]}>
-                  Lưu thay đổi
-                </Text>
+                <Text style={styles.saveBtnText}>Lưu thay đổi</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -217,23 +202,64 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
   },
-  saveBtn: {
-    backgroundColor: RHSColors.surface,
+  ekycBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: RHSColors.green50,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  ekycBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: RHSColors.green700,
+    flex: 1,
+    lineHeight: 16,
+  },
+  lockedField: {
+    backgroundColor: RHSColors.grey100,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: RHSColors.grey200,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  lockedLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  lockedLabel: {
+    fontSize: 12,
+    color: RHSColors.textMuted,
+    fontWeight: '500',
+  },
+  lockedValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: RHSColors.text,
+    marginLeft: 24,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: RHSColors.grey200,
+    marginVertical: 16,
+  },  saveBtn: {
+    backgroundColor: RHSColors.govBlue,
     height: 52,
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 24,
   },
-  saveBtnActive: {
-    backgroundColor: RHSColors.govBlue,
-  },
   saveBtnText: {
     fontSize: 16,
     fontWeight: '600',
-    color: RHSColors.textMuted,
-  },
-  saveBtnTextActive: {
     color: RHSColors.white,
   },
 });
