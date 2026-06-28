@@ -18,8 +18,22 @@ import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../
 import { RHSLogo } from '../../../lib/Logo';
 import { housingApi, HousingProjectResponse } from '../api/housingApi';
 import { HomeStackParamList } from '../navigation/HomeNavigator';
+import { userApi } from '../../user/api/userApi';
+import phuongData from '../../../../assets/phuong.json';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeList'>;
+
+type PhuongEntry = {
+  name: string;
+  type: string;
+  slug: string;
+  name_with_type: string;
+  path: string;
+  path_with_type: string;
+  code: string;
+  parent_code: string;
+};
+const phuongMap: Record<string, PhuongEntry> = phuongData;
 
 export const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -30,6 +44,20 @@ export const HomeScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [residentWardName, setResidentWardName] = useState<string | null>(null);
+
+  // Lấy ResidentWard code từ profile, tra tên trong phuong.json
+  useEffect(() => {
+    (async () => {
+      try {
+        const profile = await userApi.getProfile();
+        const code = profile?.user?.residentWard;
+        if (code && phuongMap[code]) {
+          setResidentWardName(phuongMap[code].name);
+        }
+      } catch {}
+    })();
+  }, []);
 
   const fetchProjects = useCallback(async (page: number = 1, append: boolean = false) => {
     try {
@@ -43,8 +71,19 @@ export const HomeScreen = () => {
         search: searchText || undefined,
       });
 
-      if (page === 1) setHousingProjects(result.items);
-      else setHousingProjects(prev => [...prev, ...result.items]);
+      let items = result.items;
+
+      // Nếu user có residentWard, đưa dự án cùng phường lên đầu
+      if (residentWardName && items.length > 0) {
+        items = [...items].sort((a, b) => {
+          const aMatch = a.ward?.toLowerCase() === residentWardName.toLowerCase() ? 0 : 1;
+          const bMatch = b.ward?.toLowerCase() === residentWardName.toLowerCase() ? 0 : 1;
+          return aMatch - bMatch;
+        });
+      }
+
+      if (page === 1) setHousingProjects(items);
+      else setHousingProjects(prev => [...prev, ...items]);
 
       setPageIndex(result.pageIndex);
       setTotalPages(result.totalPages);
@@ -54,7 +93,7 @@ export const HomeScreen = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [searchText]);
+  }, [searchText, residentWardName]);
 
   useEffect(() => { fetchProjects(1); }, [fetchProjects]);
 
@@ -159,6 +198,7 @@ export const HomeScreen = () => {
             <View style={styles.grid}>
               {housingProjects.map(project => {
                 const thumb = getThumb(project);
+                const isSameWard = residentWardName && project.ward?.toLowerCase() === residentWardName.toLowerCase();
                 return (
                   <TouchableOpacity
                     key={project.id}
@@ -177,6 +217,12 @@ export const HomeScreen = () => {
                       {project.status && (
                         <View style={styles.statusBadge}>
                           <Text style={styles.statusText}>{project.status}</Text>
+                        </View>
+                      )}
+                      {isSameWard && (
+                        <View style={styles.wardBadge}>
+                          <Feather name="map-pin" size={10} color="#fff" />
+                          <Text style={styles.wardBadgeText}>Cùng phường</Text>
                         </View>
                       )}
                     </View>
@@ -316,6 +362,19 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statusText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  wardBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: RHSColors.govGold,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  wardBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   cardBody: { padding: 14 },
   cardName: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text, marginBottom: 10, lineHeight: 20 },
   cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },

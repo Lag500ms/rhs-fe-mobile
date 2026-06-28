@@ -15,27 +15,39 @@ type PhuongEntry = {
 
 const phuongList: PhuongEntry[] = Object.values(phuongData);
 
+/** Loại bỏ dấu tiếng Việt để so khớp chính xác */
+function removeDiacritics(str: string): string {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
+}
+
 /** Trích xuất ResidentWard từ địa chỉ bằng cách so khớp với danh sách phường/xã */
 function extractWardFromAddress(address: string): string | undefined {
   if (!address) return undefined;
-  const normalized = address.toLowerCase();
+  const normalized = removeDiacritics(address.toLowerCase());
 
   // Tìm tất cả các phường/xã có tên xuất hiện trong địa chỉ
-  const matches = phuongList.filter((p) => normalized.includes(p.name.toLowerCase()));
+  const matches = phuongList.filter((p) => normalized.includes(removeDiacritics(p.name.toLowerCase())));
 
   if (matches.length === 0) return undefined;
-  if (matches.length === 1) return matches[0].name;
+  if (matches.length === 1) return matches[0].code;
 
   // Nhiều kết quả → ưu tiên cái có path trùng với địa chỉ
-  // path format: "Tân Hưng Thuận, Hồ Chí Minh"
-  const byPath = matches.find((p) => {
-    const pathTokens = p.path.toLowerCase().split(',').map((t) => t.trim());
+  const byPath = matches.filter((p) => {
+    const pathTokens = p.path.toLowerCase().split(',').map((t) => removeDiacritics(t.trim()));
     return pathTokens.some((token) => normalized.includes(token));
   });
-  if (byPath) return byPath.name;
 
-  // Fallback: trả về kết quả đầu tiên (tên dài nhất để tránh trùng ngắn như "Tân An")
-  return matches.sort((a, b) => b.name.length - a.name.length)[0].name;
+  if (byPath.length > 0) {
+    // Ưu tiên tên dài nhất trong những cái khớp path
+    return byPath.sort((a, b) => b.name.length - a.name.length)[0].code;
+  }
+
+  // Fallback: tên dài nhất
+  return matches.sort((a, b) => b.name.length - a.name.length)[0].code;
 }
 
 /** Trích xuất message chi tiết từ lỗi 400 của backend */

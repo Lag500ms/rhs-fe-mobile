@@ -18,7 +18,7 @@ export type ApplicationStackParamList = {
   BasicInformation: { projectId: string; projectName: string };
   EditInformation: { applicationId: string };
   UploadDocuments: { applicationId: string; projectName?: string; applicationStatus?: string };
-  ReviewSubmit: { applicationId: string };
+  ReviewSubmit: { applicationId: string; applicationStatus?: string };
   ContractViewer: {
     pdfUrl: string;
     title: string;

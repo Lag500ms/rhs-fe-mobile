@@ -37,7 +37,8 @@ function formatDate(dateStr: string): string {
 export const ReviewSubmitScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { applicationId } = route.params;
+  const { applicationId, applicationStatus } = route.params;
+  const isSupplementMode = applicationStatus === 'NEED_MORE_DOCUMENTS';
 
   // Hide bottom tab bar when in creation flow
   useLayoutEffect(() => {
@@ -130,11 +131,14 @@ export const ReviewSubmitScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Kiểm tra & Nộp hồ sơ</Text>
+        <Text style={styles.headerTitle}>
+          {isSupplementMode ? 'Nộp lại hồ sơ' : 'Kiểm tra & Nộp hồ sơ'}
+        </Text>
         <View style={{ width: 36 }} />
       </View>
 
-      {/* Stepper - refined */}
+      {/* Stepper - chỉ hiện khi tạo mới */}
+      {!isSupplementMode && (
       <View style={styles.stepper}>
         <View style={styles.stepItem}>
           <View style={[styles.stepCircle, styles.stepCircleDone]}>
@@ -157,6 +161,7 @@ export const ReviewSubmitScreen = () => {
           <Text style={[styles.stepLabel, styles.stepLabelActive]}>Nộp hồ sơ</Text>
         </View>
       </View>
+      )}
 
       <ScrollView
         style={styles.scroll}

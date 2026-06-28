@@ -185,9 +185,16 @@ export const UploadDocumentsScreen = () => {
     }
   };
 
-  const handleContinue = async () => {
+  const handleSaveAndBack = () => {
+    Alert.alert('Đã lưu', 'Giấy tờ của bạn đã được lưu. Bạn có thể tiếp tục chỉnh sửa sau.', [
+      { text: 'OK', onPress: () => navigation.goBack() },
+    ]);
+  };
+
+  const handleContinueToReview = () => {
     navigation.navigate('ReviewSubmit', {
       applicationId,
+      applicationStatus,
     });
   };
 
@@ -380,26 +387,50 @@ export const UploadDocumentsScreen = () => {
           );
         })}
 
-        {/* Continue Button - BLUE */}
-        <TouchableOpacity
-          style={styles.continueBtn}
-          onPress={handleContinue}
-          disabled={submitting}
-          activeOpacity={0.9}
-        >
-          <View style={styles.continueGrad}>
-            {submitting ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Text style={styles.continueText}>
-                  {isSupplementMode ? 'Lưu thay đổi' : 'Tiếp tục'}
-                </Text>
+        {/* Bottom Buttons */}
+        {isSupplementMode ? (
+          <>
+            <TouchableOpacity
+              style={styles.continueBtn}
+              onPress={handleContinueToReview}
+              activeOpacity={0.9}
+            >
+              <View style={styles.continueGrad}>
+                <Feather name="send" size={18} color="#fff" />
+                <Text style={styles.continueText}>Nộp lại hồ sơ</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={handleSaveAndBack}
+              activeOpacity={0.9}
+            >
+              <Feather name="save" size={18} color={RHSColors.blue700} />
+              <Text style={styles.saveBtnText}>Lưu & quay lại</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={styles.continueBtn}
+              onPress={handleContinueToReview}
+              activeOpacity={0.9}
+            >
+              <View style={styles.continueGrad}>
+                <Text style={styles.continueText}>Tiếp tục</Text>
                 <Feather name="arrow-right" size={18} color="#fff" />
-              </>
-            )}
-          </View>
-        </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={handleSaveAndBack}
+              activeOpacity={0.9}
+            >
+              <Feather name="save" size={18} color={RHSColors.blue700} />
+              <Text style={styles.saveBtnText}>Lưu & quay lại</Text>
+            </TouchableOpacity>
+          </>
+        )}
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
@@ -699,4 +730,19 @@ const styles = StyleSheet.create({
     backgroundColor: RHSColors.blue700,
   },
   continueText: { ...typography.button, color: '#fff' },
+  saveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: RHSColors.blue700,
+    borderRadius: borderRadius.md,
+    gap: 8,
+    marginTop: 10,
+  },
+  saveBtnText: {
+    ...typography.buttonSmall,
+    color: RHSColors.blue700,
+  },
 });

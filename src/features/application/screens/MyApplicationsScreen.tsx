@@ -47,10 +47,18 @@ function getActionForStatus(status: string): { label: string; icon: string; colo
       return { label: 'Xem chi tiết', icon: 'eye', color: RHSColors.blue700 };
     case 'UNDER_REVIEW':
       return { label: 'Xem chi tiết', icon: 'eye', color: RHSColors.blue700 };
+    case 'PROPOSED':
+      return { label: 'Đang chờ duyệt', icon: 'clock', color: RHSColors.blue700 };
     case 'APPROVED':
-      return { label: 'Xem chi tiết', icon: 'eye', color: RHSColors.green600 };
+      return { label: 'Thanh toán ngay', icon: 'credit-card', color: RHSColors.red600 };
+    case 'DEPOSIT_PAID':
+      return { label: 'Xem kết quả', icon: 'award', color: RHSColors.green600 };
     case 'REJECTED':
       return { label: 'Xem chi tiết', icon: 'eye', color: RHSColors.red600 };
+    case 'EXPIRED':
+      return { label: 'Đã hết hạn', icon: 'clock', color: RHSColors.grey500 };
+    case 'CANCELED':
+      return { label: 'Đã hủy', icon: 'x-circle', color: RHSColors.grey500 };
     default:
       return null;
   }

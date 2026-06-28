@@ -29,6 +29,12 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     textColor: '#F57F17',
     dotColor: '#F9A825',
   },
+  PROPOSED: {
+    label: 'Chờ phê duyệt',
+    bg: '#E3F2FD',
+    textColor: '#1565C0',
+    dotColor: '#1E88E5',
+  },
   NEED_MORE_DOCUMENTS: {
     label: 'Cần bổ sung',
     bg: '#FFF3E0',
@@ -36,7 +42,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: '#FF9800',
   },
   APPROVED: {
-    label: 'Đã duyệt',
+    label: 'Chờ thanh toán',
     bg: '#E8F5E9',
     textColor: '#2E7D32',
     dotColor: '#4CAF50',
@@ -53,11 +59,17 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     textColor: '#1B5E20',
     dotColor: '#2E7D32',
   },
-  WAITING_PAYMENT: {
-    label: 'Đang chờ thanh toán',
-    bg: '#FFF8E1',
-    textColor: '#E65100',
-    dotColor: '#FF9800',
+  EXPIRED: {
+    label: 'Hết hạn',
+    bg: '#ECEFF1',
+    textColor: '#78909C',
+    dotColor: '#90A4AE',
+  },
+  CANCELED: {
+    label: 'Đã hủy',
+    bg: '#ECEFF1',
+    textColor: '#78909C',
+    dotColor: '#90A4AE',
   },
 };
 
