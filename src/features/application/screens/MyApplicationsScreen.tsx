@@ -204,6 +204,7 @@ export const MyApplicationsScreen = () => {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [existingPayment, setExistingPayment] = useState<PaymentInfo | null>(null);
   const [checkingPayment, setCheckingPayment] = useState(false);
+  const [reapplying, setReapplying] = useState(false);
 
   const handleStartPayment = useCallback(async () => {
     if (!selectedDetail) return;
@@ -384,6 +385,38 @@ export const MyApplicationsScreen = () => {
         },
       ]
     );
+  };
+
+  // ── Re-apply from EXPIRED ──
+  const handleReApplyFromExpired = async () => {
+    if (!selectedDetail || reapplying) return;
+
+    setReapplying(true);
+    try {
+      const result = await housingApplicationApi.reApply(selectedDetail.applicationId);
+      handleCloseDetail();
+      setTimeout(() => {
+        navigation.navigate('BasicInformation', {
+          projectId: selectedDetail.projectId,
+          projectName: selectedDetail.projectName,
+          applicationId: result.applicationId,
+        });
+      }, 300);
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const msg = e?.response?.data?.message || e?.message || 'Không thể tạo lại hồ sơ.';
+
+      if (status === 409) {
+        Alert.alert(
+          'Đã có hồ sơ',
+          'Bạn đã có một hồ sơ đang hoạt động cho dự án này. Vui lòng kiểm tra danh sách hồ sơ.',
+        );
+      } else {
+        Alert.alert('Lỗi', msg);
+      }
+    } finally {
+      setReapplying(false);
+    }
   };
 
   // ── Main action handler ──
@@ -873,6 +906,36 @@ export const MyApplicationsScreen = () => {
                       </View>
                     )}
 
+                    {/* ── EXPIRED: Hết hạn thanh toán ── */}
+                    {selectedDetail.applicationStatus === 'EXPIRED' && (
+                      <View style={styles.expiredSection}>
+                        <View style={styles.expiredBadge}>
+                          <Feather name="alert-triangle" size={18} color={RHSColors.red600} />
+                          <Text style={styles.expiredTitle}>Hồ sơ đã bị hủy</Text>
+                        </View>
+                        <Text style={styles.expiredDescription}>
+                          Hồ sơ đã bị hủy do quá hạn thanh toán tiền đặt cọc. Vui lòng tạo hồ sơ mới để tiếp tục đăng ký.
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.reApplyBtn}
+                          onPress={handleReApplyFromExpired}
+                          activeOpacity={0.9}
+                          disabled={reapplying}
+                        >
+                          <View style={styles.reApplyGrad}>
+                            {reapplying ? (
+                              <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                              <>
+                                <Feather name="refresh-cw" size={16} color="#fff" />
+                                <Text style={styles.reApplyText}>Tạo hồ sơ đăng ký mới</Text>
+                              </>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
                     {/* ── REJECTED: Re-apply button ── */}
                     {selectedDetail.applicationStatus === 'REJECTED' && (
                       <TouchableOpacity
@@ -1308,6 +1371,32 @@ const styles = StyleSheet.create({
     backgroundColor: RHSColors.blue700,
   },
   reApplyText: { ...typography.buttonSmall, color: '#fff' },
+
+  // ── EXPIRED Section ──
+  expiredSection: {
+    marginTop: 8,
+    padding: 16,
+    backgroundColor: RHSColors.red50,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: RHSColors.red400,
+    gap: 12,
+  },
+  expiredBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  expiredTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: RHSColors.red700,
+  },
+  expiredDescription: {
+    fontSize: 13,
+    color: RHSColors.red700,
+    lineHeight: 18,
+  },
 
   detailSection: { marginBottom: 16 },
   detailSectionTitle: {

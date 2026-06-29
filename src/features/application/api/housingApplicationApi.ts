@@ -140,4 +140,16 @@ export const housingApplicationApi = {
   ): Promise<void> => {
     await apiClient.put(`/housing-applications/${applicationId}`, data);
   },
+
+  /**
+   * Tạo lại hồ sơ mới từ hồ sơ cũ đã EXPIRED.
+   * Copy thông tin định danh, trạng thái DRAFT.
+   * POST /api/housing-applications/re-apply/{oldApplicationId}
+   */
+  reApply: async (oldApplicationId: string): Promise<CreateApplicationResponse> => {
+    const response = await apiClient.post<CreateApplicationResponse>(
+      `/housing-applications/re-apply/${oldApplicationId}`
+    );
+    return response.data;
+  },
 };
