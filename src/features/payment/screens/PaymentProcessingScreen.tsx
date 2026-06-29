@@ -39,7 +39,6 @@ export const PaymentProcessingScreen = () => {
         const response = await paymentApi.getDepositResult(orderId);
 
         if (response.success && response.data) {
-          // Payment confirmed successfully
           clearInterval(pollingRef.current!);
           pollingRef.current = null;
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -49,15 +48,11 @@ export const PaymentProcessingScreen = () => {
         }
       } catch (e: any) {
         const statusCode = e?.response?.status;
-        const msg = e?.response?.data?.message || e?.message || '';
 
-        // If 404, payment not found yet — continue polling
         if (statusCode === 404) {
-          // Still processing, continue polling
           return;
         }
 
-        // If we get payment info as a fallback, check status
         try {
           const infoResponse = await paymentApi.getPaymentInfo(orderId);
           if (
@@ -65,26 +60,22 @@ export const PaymentProcessingScreen = () => {
             infoResponse.data &&
             infoResponse.data.status === 'Success'
           ) {
-            clearInterval(pollingRef.current!);
-            pollingRef.current = null;
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            // Try deposit result again as it may now be ready
-            const retryResult = await paymentApi.getDepositResult(orderId);
-            if (retryResult.success && retryResult.data) {
-              setResult(retryResult.data);
-              setStatus('success');
+            if (infoResponse.data.slotCode) {
+              clearInterval(pollingRef.current!);
+              pollingRef.current = null;
+              if (timeoutRef.current) clearTimeout(timeoutRef.current);
+              navigation.replace('PaymentSuccess', {
+                orderId,
+                slotCode: infoResponse.data.slotCode,
+                pdfUrl: infoResponse.data.pdfUrl || '',
+                projectName: projectName || 'Dự án',
+                applicantName: '',
+                amount: infoResponse.data.amount || depositAmount || 0,
+                paidAt: infoResponse.data.paidAt || new Date().toISOString(),
+              });
               return;
             }
-            // Fallback: use paymentInfo data (has slotCode + pdfUrl)
-            navigation.replace('PaymentSuccess', {
-              orderId,
-              slotCode: infoResponse.data.slotCode || 'Đang cập nhật...',
-              pdfUrl: infoResponse.data.pdfUrl || '',
-              projectName: projectName || 'Dự án',
-              applicantName: '',
-              amount: infoResponse.data.amount || depositAmount || 0,
-              paidAt: infoResponse.data.paidAt || new Date().toISOString(),
-            });
+            // slotCode chưa có, tiếp tục poll để chờ getDepositResult trả về
             return;
           }
 
@@ -97,7 +88,7 @@ export const PaymentProcessingScreen = () => {
             return;
           }
         } catch {
-          // Payment info also failed; continue polling
+          // continue polling
         }
       }
     }, POLL_INTERVAL_MS);
