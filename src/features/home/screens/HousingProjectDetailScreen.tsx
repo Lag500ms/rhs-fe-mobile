@@ -249,7 +249,10 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           {wishlistLoading ? (
             <ActivityIndicator size="small" color={RHSColors.blue700} />
           ) : (
-            <Feather name={isWishlisted ? 'heart' : 'heart'} size={20} color={isWishlisted ? '#FF5252' : RHSColors.blue700} />
+            <Image
+              source={isWishlisted ? require('../../../../assets/heart.png') : require('../../../../assets/like.png')}
+              style={styles.heartIcon}
+            />
           )}
         </TouchableOpacity>
       </View>
@@ -436,6 +439,7 @@ const styles = StyleSheet.create({
   },
   backBtn: { padding: 4, marginRight: 10 },
   wishlistBtn: { padding: 4 },
+  heartIcon: { width: 24, height: 24, resizeMode: 'contain' },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: RHSColors.blue700 },
   scroll: { flex: 1 },
 

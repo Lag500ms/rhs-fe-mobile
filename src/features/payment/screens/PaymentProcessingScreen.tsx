@@ -75,15 +75,15 @@ export const PaymentProcessingScreen = () => {
               setStatus('success');
               return;
             }
-            // Fallback: navigate with minimal info
+            // Fallback: use paymentInfo data (has slotCode + pdfUrl)
             navigation.replace('PaymentSuccess', {
               orderId,
-              slotCode: '',
-              pdfUrl: '',
+              slotCode: infoResponse.data.slotCode || 'Đang cập nhật...',
+              pdfUrl: infoResponse.data.pdfUrl || '',
               projectName: projectName || 'Dự án',
               applicantName: '',
-              amount: depositAmount || 0,
-              paidAt: new Date().toISOString(),
+              amount: infoResponse.data.amount || depositAmount || 0,
+              paidAt: infoResponse.data.paidAt || new Date().toISOString(),
             });
             return;
           }

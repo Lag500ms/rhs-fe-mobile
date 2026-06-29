@@ -75,8 +75,14 @@ export const paymentApi = {
    * GET /api/Payment/payment-callback?{queryString}
    */
   processVnpayCallback: async (queryString: string): Promise<any> => {
-    const response = await apiClient.get(`/Payment/payment-callback?${queryString}`);
-    return response.data;
+    // dùng fetch() thay vì apiClient để tránh axios URL encoding làm hỏng
+    // query string của VNPay (phá chữ ký HMAC-SHA512)
+    const res = await fetch(`${apiClient.defaults.baseURL}/Payment/payment-callback?${queryString}`);
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Callback failed: ${res.status} ${body}`);
+    }
+    return res.json();
   },
 
   /**

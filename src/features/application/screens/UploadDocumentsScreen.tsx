@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect, useEffect } from 'react';
+import React, { useState, useLayoutEffect, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { housingDocumentApi, UploadDocumentResponse, DocumentItem } from '../api/housingDocumentApi';
-import { housingApplicationApi, ReviewHistory } from '../api/housingApplicationApi';
+import { housingApplicationApi, ReviewHistory, ApplicationDocument } from '../api/housingApplicationApi';
 
 const DOC_TYPES = [
   {
@@ -38,6 +38,7 @@ interface UploadedFile {
   fileSize: number;
   documentType: DocKey;
   verificationStatus?: string; // PENDING | VERIFIED | REJECTED
+  aiRejectedReason?: string;
 }
 
 function formatFileSize(bytes: number): string {
@@ -89,7 +90,6 @@ export const UploadDocumentsScreen = () => {
     HOUSING_CONDITION_PROOF: false,
     POVERTY_HOUSEHOLD_CERTIFICATE: false,
   });
-  const [submitting, setSubmitting] = useState(false);
   const [reviewNote, setReviewNote] = useState<string | null>(null);
   const [loading, setLoading] = useState(isSupplementMode);
 
@@ -99,30 +99,10 @@ export const UploadDocumentsScreen = () => {
 
     (async () => {
       try {
-        // 1. Fetch detail để lấy reviewHistories và tìm reviewNote
         const detail = await housingApplicationApi.getApplicationDetail(applicationId);
         const note = findLatestReviewNote(detail.reviewHistories);
         setReviewNote(note);
-
-        // 2. Fetch danh sách documents từ application detail
-        // (BE không có endpoint GET documents riêng — documents nằm trong detail)
-        const docs = detail.documents || [];
-        const fileMap: Record<DocKey, UploadedFile | null> = {
-          HOUSING_CONDITION_PROOF: null,
-          POVERTY_HOUSEHOLD_CERTIFICATE: null,
-        };
-        for (const doc of docs) {
-          if (doc.documentType === 'HOUSING_CONDITION_PROOF' || doc.documentType === 'POVERTY_HOUSEHOLD_CERTIFICATE') {
-            fileMap[doc.documentType] = {
-              documentId: doc.documentId,
-              fileName: doc.fileName,
-              fileSize: doc.fileSizeBytes,
-              documentType: doc.documentType,
-              verificationStatus: doc.verificationStatus,
-            };
-          }
-        }
-        setUploadedFiles(fileMap);
+        applyDocumentsToState(detail.documents || []);
       } catch (e: any) {
         const msg = e?.response?.data?.message || 'Không thể tải thông tin hồ sơ.';
         Alert.alert('Lỗi', msg);
@@ -131,6 +111,72 @@ export const UploadDocumentsScreen = () => {
       }
     })();
   }, [applicationId, isSupplementMode]);
+
+  const applyDocumentsToState = useCallback((docs: ApplicationDocument[]) => {
+    const fileMap: Record<DocKey, UploadedFile | null> = {
+      HOUSING_CONDITION_PROOF: null,
+      POVERTY_HOUSEHOLD_CERTIFICATE: null,
+    };
+    for (const doc of docs) {
+      if (doc.documentType === 'HOUSING_CONDITION_PROOF' || doc.documentType === 'POVERTY_HOUSEHOLD_CERTIFICATE') {
+        fileMap[doc.documentType] = {
+          documentId: doc.documentId,
+          fileName: doc.fileName,
+          fileSize: doc.fileSizeBytes,
+          documentType: doc.documentType,
+          verificationStatus: doc.verificationStatus,
+          aiRejectedReason: doc.aiRejectedReason,
+        };
+      }
+    }
+    setUploadedFiles(fileMap);
+  }, []);
+
+  // ── AI Polling: gọi GET application detail mỗi 3s để cập nhật verificationStatus ──
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const hasPending = Object.values(uploadedFiles).some(
+      (f) => f && f.verificationStatus === 'PENDING'
+    );
+
+    if (hasPending && !pollingRef.current) {
+      pollingRef.current = setInterval(async () => {
+        try {
+          const detail = await housingApplicationApi.getApplicationDetail(applicationId);
+          applyDocumentsToState(detail.documents || []);
+          // Nếu không còn PENDING nữa thì dừng polling
+          const stillPending = detail.documents.some(
+            (d) => d.verificationStatus === 'PENDING'
+          );
+          if (!stillPending && pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+        } catch {
+          // silently ignore polling errors
+        }
+      }, 3000);
+    } else if (!hasPending && pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [uploadedFiles, applicationId, applyDocumentsToState]);
+
+  // ── Hard Gate Logic ──
+  const allDocs = Object.values(uploadedFiles);
+  const hasAllFiles = allDocs.every((f) => f !== null);
+  const hasAnyPending = allDocs.some((f) => f?.verificationStatus === 'PENDING');
+  const hasAnyRejected = allDocs.some((f) => f?.verificationStatus === 'REJECTED');
+  const allVerified = hasAllFiles && !hasAnyPending && !hasAnyRejected;
+  const canProceed = allVerified;
 
   const totalFiles = Object.values(uploadedFiles).filter(Boolean).length;
 
@@ -306,9 +352,16 @@ export const UploadDocumentsScreen = () => {
                   {file.verificationStatus && file.verificationStatus === 'REJECTED' && (
                     <View style={styles.rejectedBanner}>
                       <Feather name="alert-triangle" size={14} color={RHSColors.red600} />
-                      <Text style={styles.rejectedBannerText}>
-                        Giấy tờ này bị từ chối. Vui lòng xóa và tải lên giấy tờ mới.
-                      </Text>
+                      <View style={styles.rejectedBannerContent}>
+                        <Text style={styles.rejectedBannerText}>
+                          Giấy tờ này bị từ chối. Vui lòng xóa và tải lên giấy tờ mới.
+                        </Text>
+                        {file.aiRejectedReason ? (
+                          <Text style={styles.aiRejectedReason}>
+                            Lý do AI: {file.aiRejectedReason}
+                          </Text>
+                        ) : null}
+                      </View>
                     </View>
                   )}
                   {file.verificationStatus && file.verificationStatus === 'PENDING' && (
@@ -391,15 +444,23 @@ export const UploadDocumentsScreen = () => {
         {isSupplementMode ? (
           <>
             <TouchableOpacity
-              style={styles.continueBtn}
+              style={[styles.continueBtn, !canProceed && styles.continueBtnDisabled]}
               onPress={handleContinueToReview}
               activeOpacity={0.9}
+              disabled={!canProceed}
             >
-              <View style={styles.continueGrad}>
+              <View style={[styles.continueGrad, !canProceed && { backgroundColor: RHSColors.grey400 }]}>
                 <Feather name="send" size={18} color="#fff" />
                 <Text style={styles.continueText}>Nộp lại hồ sơ</Text>
               </View>
             </TouchableOpacity>
+            {!canProceed && (
+              <Text style={styles.gateHint}>
+                {!hasAllFiles ? 'Vui lòng upload đủ 2 loại giấy tờ bắt buộc' :
+                 hasAnyPending ? 'AI đang kiểm tra giấy tờ, vui lòng chờ...' :
+                 hasAnyRejected ? 'Vui lòng xóa giấy tờ bị từ chối và upload lại' : ''}
+              </Text>
+            )}
             <TouchableOpacity
               style={styles.saveBtn}
               onPress={handleSaveAndBack}
@@ -412,15 +473,23 @@ export const UploadDocumentsScreen = () => {
         ) : (
           <>
             <TouchableOpacity
-              style={styles.continueBtn}
+              style={[styles.continueBtn, !canProceed && styles.continueBtnDisabled]}
               onPress={handleContinueToReview}
               activeOpacity={0.9}
+              disabled={!canProceed}
             >
-              <View style={styles.continueGrad}>
+              <View style={[styles.continueGrad, !canProceed && { backgroundColor: RHSColors.grey400 }]}>
                 <Text style={styles.continueText}>Tiếp tục</Text>
                 <Feather name="arrow-right" size={18} color="#fff" />
               </View>
             </TouchableOpacity>
+            {!canProceed && (
+              <Text style={styles.gateHint}>
+                {!hasAllFiles ? 'Vui lòng upload đủ 2 loại giấy tờ bắt buộc' :
+                 hasAnyPending ? 'AI đang kiểm tra giấy tờ, vui lòng chờ...' :
+                 hasAnyRejected ? 'Vui lòng xóa giấy tờ bị từ chối và upload lại' : ''}
+              </Text>
+            )}
             <TouchableOpacity
               style={styles.saveBtn}
               onPress={handleSaveAndBack}
@@ -744,5 +813,25 @@ const styles = StyleSheet.create({
   saveBtnText: {
     ...typography.buttonSmall,
     color: RHSColors.blue700,
+  },
+  continueBtnDisabled: {
+    opacity: 0.6,
+  },
+  gateHint: {
+    fontSize: 12,
+    color: RHSColors.amber700,
+    textAlign: 'center',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  rejectedBannerContent: {
+    flex: 1,
+    gap: 4,
+  },
+  aiRejectedReason: {
+    fontSize: 12,
+    color: RHSColors.red700,
+    fontWeight: '600',
+    lineHeight: 16,
   },
 });

@@ -16,8 +16,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
-import { getToken, clearTokens } from '../../../lib/tokenStorage';
+import { getToken, getRefreshToken, clearTokens } from '../../../lib/tokenStorage';
 import { userApi, UserProfileDto } from '../../user/api/userApi';
+import { enableBiometric, disableBiometric, isBiometricEnabled } from '../../../lib/biometricService';
 
 export const AccountScreen = () => {
   const navigation = useNavigation<any>();
@@ -42,6 +43,8 @@ export const AccountScreen = () => {
       if (accessToken) {
         setIsLoggedIn(true);
         await loadProfile();
+        const bioEnabled = await isBiometricEnabled();
+        setBiometricEnabled(bioEnabled);
       } else {
         setIsLoggedIn(false);
         setProfile(null);
@@ -65,6 +68,25 @@ export const AccountScreen = () => {
     }
   };
 
+  const handleBiometricToggle = async (enabled: boolean) => {
+    if (enabled) {
+      const refreshToken = await getRefreshToken();
+      if (!refreshToken || !profile?.email) {
+        Alert.alert('Lỗi', 'Không tìm thấy dữ liệu xác thực. Vui lòng đăng nhập lại.');
+        return;
+      }
+      const result = await enableBiometric(profile.email, refreshToken);
+      if (result.success) {
+        setBiometricEnabled(true);
+      } else {
+        Alert.alert('Không thể bật', result.error || 'Thiết bị không hỗ trợ sinh trắc học.');
+      }
+    } else {
+      await disableBiometric();
+      setBiometricEnabled(false);
+    }
+  };
+
   const handleLogin = () => navigation.navigate('Auth', { screen: 'Login' });
   
   const confirmLogout = () => {
@@ -82,6 +104,7 @@ export const AccountScreen = () => {
     await clearTokens();
     setIsLoggedIn(false);
     setProfile(null);
+    setBiometricEnabled(false);
   };
 
   if (loading) {
@@ -128,7 +151,7 @@ export const AccountScreen = () => {
             </Text>
             <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin} activeOpacity={0.85}>
               <Feather name="log-in" size={18} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.primaryBtnText}>Xác thực tài khoản</Text>
+              <Text style={styles.primaryBtnText}>Đăng nhập tài khoản</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('Auth', { screen: 'Register' })} style={styles.linkBtn}>
               <Text style={styles.linkText}>Đăng ký tài khoản công dân mới</Text>
@@ -181,7 +204,7 @@ export const AccountScreen = () => {
               <MenuItem 
                 icon="lock" 
                 label="Đổi mật khẩu" 
-                onPress={() => navigation.navigate('ChangePassword')} 
+                onPress={() => navigation.getParent()?.navigate('UserProfile', { screen: 'ChangePassword' })} 
               />
               <MenuItem 
                 icon="bell" 
@@ -195,12 +218,13 @@ export const AccountScreen = () => {
                 }
               />
               <MenuItem 
-                icon="shield-check" 
+                iconSource={require('../../../../assets/fingerprint.png')}
+                icon=""
                 label="Xác thực sinh trắc học" 
                 rightComponent={
                   <Switch 
                     value={biometricEnabled} 
-                    onValueChange={setBiometricEnabled}
+                    onValueChange={handleBiometricToggle}
                     trackColor={{ false: '#D1D5DB', true: RHSColors.blue700 }}
                   />
                 }
@@ -256,12 +280,14 @@ export const AccountScreen = () => {
 // ─── Menu Item Component ─────────────────────────────────────────
 const MenuItem = ({
   icon,
+  iconSource,
   label,
   onPress,
   rightComponent,
   last,
 }: {
   icon: string;
+  iconSource?: any;
   label: string;
   onPress?: () => void;
   rightComponent?: React.ReactNode; 
@@ -274,7 +300,11 @@ const MenuItem = ({
     disabled={!onPress}
   >
     <View style={styles.menuIconWrap}>
-      <Feather name={icon as any} size={18} color={RHSColors.blue700} />
+      {iconSource ? (
+        <Image source={iconSource} style={styles.menuIconImage} />
+      ) : (
+        <Feather name={icon as any} size={18} color={RHSColors.blue700} />
+      )}
     </View>
     <Text style={styles.menuLabel}>{label}</Text>
     
@@ -420,6 +450,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
+  menuIconImage: { width: 18, height: 18, resizeMode: 'contain' },
   menuLabel: { flex: 1, fontSize: 15, color: RHSColors.text, fontWeight: '500' },
   versionText: { fontSize: 13, color: RHSColors.textMuted, fontWeight: '500' },
 

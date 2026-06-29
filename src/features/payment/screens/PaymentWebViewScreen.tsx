@@ -42,16 +42,13 @@ export const PaymentWebViewScreen = () => {
 
     if (queryString) {
       try {
-        // Call the backend's callback endpoint so the payment gets processed
-        // (bypassing VNPay's unreachable server-to-server IPN)
         await paymentApi.processVnpayCallback(queryString);
-      } catch {
-        // Network error — fallback to PaymentProcessing polling
+      } catch (e: any) {
+        // Log lỗi để debug — callback có thể fail do signature hoặc network
+        console.warn('PaymentWebView: callback failed', e?.response?.data || e?.message);
       }
     }
 
-    // Navigate to processing screen — the first poll should succeed since
-    // we just processed the callback above
     navigation.replace('PaymentProcessing', {
       orderId,
       applicationId,

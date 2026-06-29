@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -17,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { RHSColors, spacing, borderRadius, typography } from '../../../lib/theme';
 import { authApi } from '../api/authApi';
 import { setTokens, getRememberedEmail, saveRememberedEmail } from '../../../lib/tokenStorage';
+import { isBiometricEnabled, authenticateWithBiometrics, getStoredBiometricData, updateStoredRefreshToken, disableBiometric, clearBiometricIfEmailMismatched } from '../../../lib/biometricService';
 
 export const LoginScreen = () => {
   const navigation = useNavigation<any>();
@@ -26,6 +28,56 @@ export const LoginScreen = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [rememberMe, setRememberMe] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+  // Thêm state để kiểm tra xem máy có đang bật sinh trắc học không để render UI cho phù hợp
+  const [hasBiometricEnabled, setHasBiometricEnabled] = useState(false); 
+
+  const navigateToMainTabs = () => {
+    navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+  };
+
+  const handleBiometricLogin = async (isAuto = false) => {
+    setBiometricLoading(true);
+    try {
+      const authResult = await authenticateWithBiometrics(
+        'Đăng nhập vào Hệ thống dịch vụ công',
+      );
+      if (!authResult.success) {
+        return;
+      }
+
+      const storedData = await getStoredBiometricData();
+      if (!storedData) {
+        Alert.alert(
+          'Sinh trắc học',
+          'Dữ liệu xác thực không còn hợp lệ. Vui lòng đăng nhập bằng mật khẩu.',
+        );
+        await disableBiometric();
+        setHasBiometricEnabled(false);
+        return;
+      }
+
+      const refreshResult = await authApi.refreshToken({ refreshToken: storedData.refreshToken });
+      if (refreshResult.success && refreshResult.accessToken) {
+        await setTokens(refreshResult.accessToken, refreshResult.refreshToken);
+        if (refreshResult.refreshToken) {
+          await updateStoredRefreshToken(refreshResult.refreshToken);
+        }
+        navigateToMainTabs();
+      } else {
+        Alert.alert(
+          'Phiên hết hạn',
+          'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập bằng mật khẩu.',
+        );
+      }
+    } catch (error: any) {
+      if (!isAuto) {
+        Alert.alert('Lỗi', 'Không thể xác thực sinh trắc học. Vui lòng thử lại.');
+      }
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -33,6 +85,16 @@ export const LoginScreen = () => {
       if (savedEmail) {
         setEmail(savedEmail);
         setRememberMe(true);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const enabled = await isBiometricEnabled();
+      setHasBiometricEnabled(enabled); // Cập nhật state để show/hide nút vân tay
+      if (enabled) {
+        handleBiometricLogin(true);
       }
     })();
   }, []);
@@ -59,6 +121,12 @@ export const LoginScreen = () => {
       if (result.success && result.accessToken) {
         await setTokens(result.accessToken, result.refreshToken);
         if (rememberMe) await saveRememberedEmail(email.trim());
+
+        await clearBiometricIfEmailMismatched(email.trim());
+
+        if (result.refreshToken) {
+          await updateStoredRefreshToken(result.refreshToken);
+        }
 
         const routeParams = navigation.getState()?.routes?.find((r: any) => r.name === 'Login')?.params;
         const returnTo = routeParams?.returnTo;
@@ -97,7 +165,7 @@ export const LoginScreen = () => {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           
-          {/* Back button (Đổi từ icon x sang arrow-left) */}
+          {/* Back button */}
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Feather name="arrow-left" size={22} color="#333" />
           </TouchableOpacity>
@@ -149,19 +217,40 @@ export const LoginScreen = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Login button */}
-            <TouchableOpacity
-              style={[styles.loginBtn, isFormValid && styles.loginBtnActive]}
-              disabled={!isFormValid || loading}
-              onPress={handleLogin}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" size={22} />
-              ) : (
-                <Text style={[styles.loginBtnText, isFormValid && { color: '#fff' }]}>Đăng nhập</Text>
+            {/* --- CỤM NÚT ĐĂNG NHẬP NẰM NGANG --- */}
+            <View style={styles.actionButtonsRow}>
+              
+              {/* Nút Đăng nhập thường (Flex 1 - Giãn dài) */}
+              <TouchableOpacity
+                style={[styles.loginBtn, isFormValid && styles.loginBtnActive]}
+                disabled={!isFormValid || loading}
+                onPress={handleLogin}
+                activeOpacity={0.85}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" size={22} />
+                ) : (
+                  <Text style={[styles.loginBtnText, isFormValid && { color: '#fff' }]}>Đăng nhập</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Nút Sinh trắc học (Cố định 56x56) - Chỉ hiện khi User đã bật sinh trắc học */}
+              {hasBiometricEnabled && (
+                <TouchableOpacity
+                  style={styles.biometricBtnCircle}
+                  onPress={() => handleBiometricLogin(false)}
+                  activeOpacity={0.7}
+                  disabled={biometricLoading}
+                >
+                  {biometricLoading ? (
+                    <ActivityIndicator color={RHSColors.blue700} size={22} />
+                  ) : (
+                    <Image source={require('../../../../assets/fingerprint.png')} style={styles.biometricIcon} />
+                  )}
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+            </View>
+            {/* --------------------------------- */}
 
             {/* Footer */}
             <View style={styles.footer}>
@@ -249,7 +338,15 @@ const styles = StyleSheet.create({
   rememberText: { ...typography.body, color: '#333', fontWeight: '500' },
   forgotText: { ...typography.body, color: '#D32F2F', fontWeight: '500', textDecorationLine: 'underline' },
 
+  // --- STYLES CHO CỤM NÚT MỚI ---
+  actionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12, // Khoảng cách giữa 2 nút
+    width: '100%',
+  },
   loginBtn: {
+    flex: 1, // Chiếm toàn bộ khoảng trống còn lại
     backgroundColor: '#F0F0F0',
     borderRadius: 28,
     height: 56,
@@ -258,6 +355,23 @@ const styles = StyleSheet.create({
   },
   loginBtnActive: { backgroundColor: RHSColors.blue700 },
   loginBtnText: { ...typography.button, color: '#9E9E9E', fontSize: 17, fontWeight: '600' },
+
+  biometricBtnCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EFF6FF', 
+    borderWidth: 1.5,
+    borderColor: RHSColors.blue700,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  biometricIcon: {
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
+  },
+  // -----------------------------
 
   footer: { 
     flexDirection: 'row', 

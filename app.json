@@ -36,7 +36,8 @@
           "cameraPermission": "Ứng dụng cần truy cập camera để chụp ảnh CCCD và selfie xác thực danh tính."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-secure-store"
     ]
   }
 }

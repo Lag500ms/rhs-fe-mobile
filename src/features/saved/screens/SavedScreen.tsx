@@ -142,7 +142,7 @@ export const SavedScreen = () => {
           onPress={() => handleRemove(item.projectId)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Feather name="heart" size={18} color="#FF5252" />
+          <Image source={require('../../../../assets/heart.png')} style={{ width: 20, height: 20, resizeMode: 'contain' }} />
         </TouchableOpacity>
       </View>
 
@@ -198,7 +198,7 @@ export const SavedScreen = () => {
           {/* Illustration */}
           <View style={styles.illustrationWrap}>
             <View style={styles.illustrationBox}>
-              <Feather name="heart" size={72} color={RHSColors.govRed} />
+              <Image source={require('../../../../assets/heart.png')} style={{ width: 80, height: 80, resizeMode: 'contain' }} />
             </View>
           </View>
           <Text style={styles.emptyTitle}>Chưa đăng nhập</Text>
