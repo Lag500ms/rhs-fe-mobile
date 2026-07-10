@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getToken, getRefreshToken, setTokens, clearTokens } from './tokenStorage';
 
-const API_BASE_URL = 'http://192.168.1.4:5112/api';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5112/api';
 
 interface FailedQueueItem {
   resolve: (token: string) => void;
