@@ -157,7 +157,6 @@ export const eKycApi = {
       dateOfBirth?: string;
       address?: string;
       citizenId?: string;
-      residentWard?: string;
     } = {
       fullName: ocr.name || '',
     };
@@ -185,12 +184,6 @@ export const eKycApi = {
 
     if (ocr.address || ocr.home) payload.address = ocr.address || ocr.home;
     if (ocr.id) payload.citizenId = ocr.id;
-
-    // Lấy ResidentWard từ địa chỉ (dùng phuong.json)
-    const residentWard = extractWardFromAddress(payload.address || '');
-    if (residentWard) {
-      payload.residentWard = residentWard;
-    }
 
     // 3. Gửi cập nhật
     const response = await apiClient.put('/users/profile', payload);

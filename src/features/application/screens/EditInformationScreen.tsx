@@ -24,19 +24,12 @@ const HOUSING_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'SMALL_HOUSE', label: 'Diện tích nhà ở dưới 15m²' },
 ];
 
-function formatCurrency(value: string): string {
-  const digits = value.replace(/[^0-9]/g, '');
-  if (!digits) return '';
-  return Number(digits).toLocaleString('vi-VN');
-}
-
-function parseCurrency(value: string): number {
-  return Number(value.replace(/[^0-9]/g, '')) || 0;
-}
-
-function formatNumber(num: number): string {
-  return num.toLocaleString('vi-VN');
-}
+const MARITAL_STATUS_OPTIONS = [
+  { value: 'SINGLE', label: 'Độc thân' },
+  { value: 'MARRIED', label: 'Đã kết hôn' },
+  { value: 'DIVORCED', label: 'Ly hôn' },
+  { value: 'WIDOWED', label: 'Góa' },
+];
 
 export const EditInformationScreen = () => {
   const navigation = useNavigation<any>();
@@ -62,13 +55,16 @@ export const EditInformationScreen = () => {
   // ── Fields loaded from detail ──
   const [fullName, setFullName] = useState('');
   const [citizenId, setCitizenId] = useState('');
+  const [projectId, setProjectId] = useState('');
   const [permanentAddress, setPermanentAddress] = useState('');
   const [currentResidence, setCurrentResidence] = useState('');
   const [sameAsPermanent, setSameAsPermanent] = useState(false);
   const [occupation, setOccupation] = useState('');
   const [workPlace, setWorkPlace] = useState('');
   const [housingStatus, setHousingStatus] = useState('');
-  const [incomeDisplay, setIncomeDisplay] = useState('');
+  const [maritalStatus, setMaritalStatus] = useState('');
+  const [householdMembersCount, setHouseholdMembersCount] = useState('');
+  const [priorityGroup, setPriorityGroup] = useState('');
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -78,6 +74,7 @@ export const EditInformationScreen = () => {
     (async () => {
       try {
         const detail: ApplicationDetail = await housingApplicationApi.getApplicationDetail(applicationId);
+        setProjectId(detail.projectId);
         setFullName(detail.fullName || '');
         setCitizenId(detail.citizenId || '');
         setPermanentAddress(detail.permanentAddress || '');
@@ -85,9 +82,9 @@ export const EditInformationScreen = () => {
         setOccupation(detail.occupation || '');
         setWorkPlace(detail.workPlace || '');
         setHousingStatus(detail.housingStatus || '');
-        if (detail.estimatedMonthlyIncome) {
-          setIncomeDisplay(formatNumber(detail.estimatedMonthlyIncome));
-        }
+        setMaritalStatus(detail.maritalStatus || '');
+        setHouseholdMembersCount(String(detail.householdMembersCount || ''));
+        setPriorityGroup(detail.priorityGroup || '');
       } catch (e: any) {
         const msg = e?.response?.data?.message || 'Không thể tải thông tin hồ sơ.';
         Alert.alert('Lỗi', msg);
@@ -119,11 +116,11 @@ export const EditInformationScreen = () => {
         if (!value) newErrors.housingStatus = 'Vui lòng chọn thực trạng nhà ở';
         else delete newErrors.housingStatus;
         break;
-      case 'income': {
-        const num = parseCurrency(value);
-        if (!value.trim()) newErrors.income = 'Vui lòng nhập thu nhập';
-        else if (isNaN(num) || num <= 0) newErrors.income = 'Thu nhập không hợp lệ';
-        else delete newErrors.income;
+      case 'householdMembersCount': {
+        const num = parseInt(value, 10);
+        if (!value.trim()) newErrors.householdMembersCount = 'Vui lòng nhập số thành viên';
+        else if (isNaN(num) || num <= 0) newErrors.householdMembersCount = 'Số thành viên không hợp lệ';
+        else delete newErrors.householdMembersCount;
         break;
       }
     }
@@ -134,9 +131,10 @@ export const EditInformationScreen = () => {
     const newErrors: Record<string, string> = {};
     if (!currentResidence.trim()) newErrors.currentResidence = 'Vui lòng nhập nơi ở hiện tại';
     if (!housingStatus) newErrors.housingStatus = 'Vui lòng chọn thực trạng nhà ở';
-    const incomeNum = parseCurrency(incomeDisplay);
-    if (!incomeDisplay.trim()) newErrors.income = 'Vui lòng nhập thu nhập';
-    else if (isNaN(incomeNum) || incomeNum <= 0) newErrors.income = 'Thu nhập không hợp lệ';
+    if (!maritalStatus) newErrors.maritalStatus = 'Vui lòng chọn tình trạng hôn nhân';
+    const membersNum = parseInt(householdMembersCount, 10);
+    if (!householdMembersCount.trim()) newErrors.householdMembersCount = 'Vui lòng nhập số thành viên';
+    else if (isNaN(membersNum) || membersNum <= 0) newErrors.householdMembersCount = 'Số thành viên không hợp lệ';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -146,14 +144,20 @@ export const EditInformationScreen = () => {
 
     setSubmitting(true);
     try {
-      await housingApplicationApi.updateApplication(applicationId, {
+      await housingApplicationApi.createApplication({
+        projectId,
+        fullName: fullName.trim(),
+        citizenId: citizenId.replace(/\s/g, ''),
+        permanentAddress: permanentAddress.trim(),
         currentResidence: currentResidence.trim(),
         occupation: occupation.trim() || undefined,
         workPlace: workPlace.trim() || undefined,
         housingStatus,
-        estimatedMonthlyIncome: parseCurrency(incomeDisplay),
+        maritalStatus,
+        householdMembersCount: parseInt(householdMembersCount, 10),
+        priorityGroup: priorityGroup.trim() || undefined,
       });
-      Alert.alert('Thành công', 'Thông tin hồ sơ đã được cập nhật.', [
+      Alert.alert('Thành công', 'Đã tạo hồ sơ mới.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (e: any) {
@@ -299,8 +303,8 @@ export const EditInformationScreen = () => {
             />
           </View>
 
-          {/* Housing Status & Income */}
-          <Text style={styles.sectionTitle}>Thực trạng nhà ở & Thu nhập</Text>
+          {/* Housing Status */}
+          <Text style={styles.sectionTitle}>Thực trạng nhà ở</Text>
           <View style={styles.card}>
             <Text style={styles.label}>Thực trạng nhà ở *</Text>
             {HOUSING_STATUS_OPTIONS.map((opt) => (
@@ -338,29 +342,75 @@ export const EditInformationScreen = () => {
             {errors.housingStatus && (
               <Text style={styles.errorText}>{errors.housingStatus}</Text>
             )}
+          </View>
 
-            <Text style={[styles.label, { marginTop: 16 }]}>Thu nhập hàng tháng (VNĐ) *</Text>
-            <View style={styles.incomeRow}>
-              <Feather name="dollar-sign" size={18} color={RHSColors.blue700} />
-              <TextInput
-                style={[styles.input, { flex: 1 }, errors.income && styles.inputError]}
-                value={incomeDisplay}
-                onChangeText={(v) => {
-                  const formatted = formatCurrency(v);
-                  setIncomeDisplay(formatted);
-                  validateField('income', formatted);
+          {/* Household Info */}
+          <Text style={styles.sectionTitle}>Thông tin hộ gia đình</Text>
+          <View style={styles.card}>
+            <Text style={styles.label}>Tình trạng hôn nhân *</Text>
+            {MARITAL_STATUS_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt.value}
+                style={[
+                  styles.radio,
+                  maritalStatus === opt.value && styles.radioActive,
+                  errors.maritalStatus && maritalStatus !== opt.value && styles.radioError,
+                ]}
+                onPress={() => {
+                  setMaritalStatus(opt.value);
+                  setErrors(prev => { const e = { ...prev }; delete e.maritalStatus; return e; });
                 }}
-                placeholder="5,000,000"
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.radioDot,
+                    maritalStatus === opt.value && styles.radioDotActive,
+                  ]}
+                >
+                  {maritalStatus === opt.value && <View style={styles.radioDotFill} />}
+                </View>
+                <Text
+                  style={[
+                    styles.radioLabel,
+                    maritalStatus === opt.value && styles.radioLabelActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            {errors.maritalStatus && (
+              <Text style={styles.errorText}>{errors.maritalStatus}</Text>
+            )}
+
+            <Text style={[styles.label, { marginTop: 16 }]}>Số thành viên hộ gia đình *</Text>
+            <View style={styles.incomeRow}>
+              <Feather name="users" size={18} color={RHSColors.blue700} />
+              <TextInput
+                style={[styles.input, { flex: 1 }, errors.householdMembersCount && styles.inputError]}
+                value={householdMembersCount}
+                onChangeText={(v) => {
+                  if (/^\d*$/.test(v)) {
+                    setHouseholdMembersCount(v);
+                    validateField('householdMembersCount', v);
+                  }
+                }}
+                placeholder="4"
                 keyboardType="numeric"
                 placeholderTextColor={RHSColors.textMuted}
               />
             </View>
-            {errors.income && <Text style={styles.errorText}>{errors.income}</Text>}
-            {incomeDisplay ? (
-              <Text style={styles.incomeHint}>
-                Thu nhập: {incomeDisplay} VNĐ/tháng
-              </Text>
-            ) : null}
+            {errors.householdMembersCount && <Text style={styles.errorText}>{errors.householdMembersCount}</Text>}
+
+            <Text style={[styles.label, { marginTop: 16 }]}>Nhóm đối tượng ưu tiên</Text>
+            <TextInput
+              style={styles.input}
+              value={priorityGroup}
+              onChangeText={setPriorityGroup}
+              placeholder="VD: Hộ nghèo, gia đình chính sách..."
+              placeholderTextColor={RHSColors.textMuted}
+            />
           </View>
 
           {/* Save Button */}

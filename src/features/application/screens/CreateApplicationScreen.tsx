@@ -15,12 +15,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme';
 import { userApi } from '../../user/api/userApi';
-import { housingApplicationApi, CreateApplicationRequest } from '../../application/api/housingApplicationApi';
+import { housingApplicationApi } from '../../application/api/housingApplicationApi';
+import { CreateApplicationRequest } from '../types/application';
 import { getToken } from '../../../lib/tokenStorage';
 
 const HOUSING_STATUS_OPTIONS: { value: string; label: string; desc: string }[] = [
   { value: 'NO_HOUSE', label: 'Chưa có nhà ở', desc: 'Hiện tại chưa sở hữu nhà ở' },
   { value: 'SMALL_HOUSE', label: 'Nhà ở chật chội (dưới 15m²/người)', desc: 'Diện tích bình quân dưới 15m²/người' },
+];
+
+const MARITAL_STATUS_OPTIONS = [
+  { value: 'SINGLE', label: 'Độc thân' },
+  { value: 'MARRIED', label: 'Đã kết hôn' },
+  { value: 'DIVORCED', label: 'Ly hôn' },
+  { value: 'WIDOWED', label: 'Góa' },
 ];
 
 export const CreateApplicationScreen = () => {
@@ -38,7 +46,9 @@ export const CreateApplicationScreen = () => {
   const [currentResidence, setCurrentResidence] = useState('');
   const [permanentAddress, setPermanentAddress] = useState('');
   const [housingStatus, setHousingStatus] = useState('');
-  const [estimatedMonthlyIncome, setEstimatedMonthlyIncome] = useState('');
+  const [maritalStatus, setMaritalStatus] = useState('');
+  const [householdMembersCount, setHouseholdMembersCount] = useState('');
+  const [priorityGroup, setPriorityGroup] = useState('');
 
   // Load profile để điền sẵn họ tên + CCCD
   useEffect(() => {
@@ -62,9 +72,10 @@ export const CreateApplicationScreen = () => {
     if (!currentResidence.trim()) return 'Vui lòng nhập nơi ở hiện tại.';
     if (!permanentAddress.trim()) return 'Vui lòng nhập địa chỉ thường trú/tạm trú.';
     if (!housingStatus) return 'Vui lòng chọn thực trạng nhà ở.';
-    const income = Number(estimatedMonthlyIncome);
-    if (!estimatedMonthlyIncome.trim() || isNaN(income) || income <= 0) {
-      return 'Vui lòng nhập mức thu nhập hàng tháng hợp lệ.';
+    if (!maritalStatus) return 'Vui lòng chọn tình trạng hôn nhân.';
+    const members = parseInt(householdMembersCount, 10);
+    if (!householdMembersCount.trim() || isNaN(members) || members <= 0) {
+      return 'Vui lòng nhập số thành viên hộ gia đình.';
     }
     return null;
   };
@@ -90,7 +101,9 @@ export const CreateApplicationScreen = () => {
         currentResidence: currentResidence.trim(),
         permanentAddress: permanentAddress.trim(),
         housingStatus,
-        estimatedMonthlyIncome: Number(estimatedMonthlyIncome),
+        maritalStatus,
+        householdMembersCount: parseInt(householdMembersCount, 10),
+        priorityGroup: priorityGroup.trim() || undefined,
       };
 
       const result = await housingApplicationApi.createApplication(payload);
@@ -182,8 +195,8 @@ export const CreateApplicationScreen = () => {
           <TextInput style={styles.input} value={permanentAddress} onChangeText={setPermanentAddress} placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh" placeholderTextColor={RHSColors.textMuted} />
         </View>
 
-        {/* Housing Status + Income */}
-        <Text style={styles.sectionTitle}>Thực trạng nhà ở & Thu nhập</Text>
+        {/* Housing Status */}
+        <Text style={styles.sectionTitle}>Thực trạng nhà ở</Text>
         <View style={styles.card}>
           <Label>Thực trạng nhà ở *</Label>
           {HOUSING_STATUS_OPTIONS.map((opt) => (
@@ -202,14 +215,46 @@ export const CreateApplicationScreen = () => {
               </View>
             </TouchableOpacity>
           ))}
+        </View>
 
-          <Label style={{ marginTop: 16 }}>Thu nhập hàng tháng (VNĐ) *</Label>
+        {/* Household Info */}
+        <Text style={styles.sectionTitle}>Thông tin hộ gia đình</Text>
+        <View style={styles.card}>
+          <Label>Tình trạng hôn nhân *</Label>
+          {MARITAL_STATUS_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.radio, maritalStatus === opt.value && styles.radioActive]}
+              onPress={() => setMaritalStatus(opt.value)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.radioDot, maritalStatus === opt.value && styles.radioDotActive]}>
+                {maritalStatus === opt.value && <View style={styles.radioDotFill} />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.radioLabel, maritalStatus === opt.value && styles.radioLabelActive]}>{opt.label}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+
+          <Label style={{ marginTop: 16 }}>Số thành viên hộ gia đình *</Label>
           <TextInput
             style={styles.input}
-            value={estimatedMonthlyIncome}
-            onChangeText={setEstimatedMonthlyIncome}
-            placeholder="10.000.000"
+            value={householdMembersCount}
+            onChangeText={(v) => {
+              if (/^\d*$/.test(v)) setHouseholdMembersCount(v);
+            }}
+            placeholder="4"
             keyboardType="numeric"
+            placeholderTextColor={RHSColors.textMuted}
+          />
+
+          <Label style={{ marginTop: 16 }}>Nhóm đối tượng ưu tiên</Label>
+          <TextInput
+            style={styles.input}
+            value={priorityGroup}
+            onChangeText={setPriorityGroup}
+            placeholder="VD: Hộ nghèo, gia đình chính sách..."
             placeholderTextColor={RHSColors.textMuted}
           />
         </View>

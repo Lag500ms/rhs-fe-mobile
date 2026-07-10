@@ -115,6 +115,27 @@ export const UploadDocumentsScreen = () => {
 
   // ── Gate Logic (chỉ cần đủ 2 file, bỏ qua AI) ──
   const allDocs = Object.values(uploadedFiles);
+
+  const applyDocumentsToState = (docs: ApplicationDocument[]) => {
+    const newFiles: Record<DocKey, UploadedFile | null> = {
+      HOUSING_CONDITION_PROOF: null,
+      POVERTY_HOUSEHOLD_CERTIFICATE: null,
+    };
+    docs.forEach((doc) => {
+      const key = doc.documentType as DocKey;
+      if (key in newFiles) {
+        newFiles[key] = {
+          documentId: doc.documentId,
+          fileName: doc.fileName,
+          fileSize: doc.fileSizeBytes,
+          documentType: key,
+          verificationStatus: doc.verificationStatus,
+          aiRejectedReason: doc.aiRejectedReason,
+        };
+      }
+    });
+    setUploadedFiles(newFiles);
+  };
   const hasAllFiles = allDocs.every((f) => f !== null);
   const canProceed = hasAllFiles;
 

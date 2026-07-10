@@ -7,7 +7,9 @@ export interface CreateApplicationRequest {
   currentResidence: string;
   permanentAddress: string;
   housingStatus: string;
-  estimatedMonthlyIncome: number;
+  maritalStatus: string;
+  householdMembersCount: number;
+  priorityGroup?: string;
 }
 
 export interface CreateApplicationResponse {
@@ -31,11 +33,21 @@ export interface ApplicationDocument {
 
 export interface ApplicationSummary {
   applicationId: string;
+  projectId: string;
   projectName: string;
+  applicantId: string;
+  applicantFullName: string;
+  citizenId: string;
   applicationStatus: string;
   createdAt: string;
-  updatedAt: string | null;
+  submittedAt: string | null;
+  finalDecisionDate: string | null;
+  housingStatus: string;
+  maritalStatus: string | null;
+  householdMembersCount: number;
+  priorityGroup: string | null;
   documentCount: number;
+  receiptUrl: string | null;
 }
 
 export interface ReviewHistory {
@@ -69,10 +81,13 @@ export interface ApplicationDetail {
   currentResidence: string;
   permanentAddress: string;
   housingStatus: string;
-  estimatedMonthlyIncome: number;
+  maritalStatus: string | null;
+  householdMembersCount: number;
+  priorityGroup: string | null;
 
   officerId: string | null;
   officerFullName: string | null;
+  receiptUrl: string | null;
 
   documents: ApplicationDocument[];
   reviewHistories: ReviewHistory[];

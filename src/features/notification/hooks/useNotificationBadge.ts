@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { getUnreadCount } from '../api/notificationApi';
-import { UnreadCountResponse } from '../types/notification';
 
 const POLLING_INTERVAL = 30_000; // 30 seconds
 
@@ -12,8 +11,8 @@ export const useNotificationBadge = (): number => {
 
   const fetchUnreadCount = useCallback(async (): Promise<void> => {
     try {
-      const response: UnreadCountResponse = await getUnreadCount();
-      setUnreadCount(response.count);
+      const count = await getUnreadCount();
+      setUnreadCount(count);
     } catch (error) {
       // Không làm crash app, giữ nguyên count cũ
       console.warn('Failed to fetch unread count:', error);

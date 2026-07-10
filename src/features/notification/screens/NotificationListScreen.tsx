@@ -17,7 +17,7 @@ import {
   markAsRead,
   markAllAsRead,
 } from '../api/notificationApi';
-import { Notification, NotificationType, NotificationListResponse } from '../types/notification';
+import { Notification, NotificationListResponse } from '../types/notification';
 import {
   RHSColors,
   spacing,
@@ -29,50 +29,50 @@ import {
 // ─── Icon & Color mapping theo NotificationType ──────────────────
 
 const NOTIFICATION_CONFIG: Record<
-  NotificationType,
+  string,
   { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string }
 > = {
-  [NotificationType.DEPOSIT_PAID]: {
+  DEPOSIT_PAID: {
     icon: 'cash-outline',
     color: RHSColors.green700,
     bg: RHSColors.green50,
   },
-  [NotificationType.APPLICATION_REJECTED]: {
+  APPLICATION_REJECTED: {
     icon: 'close-circle-outline',
     color: RHSColors.red700,
     bg: RHSColors.red50,
   },
-  [NotificationType.APPLICATION_APPROVED]: {
+  APPLICATION_APPROVED: {
     icon: 'checkmark-circle-outline',
     color: RHSColors.green700,
     bg: RHSColors.green50,
   },
-  [NotificationType.CONTRACT_SIGNED]: {
+  CONTRACT_SIGNED: {
     icon: 'document-text-outline',
     color: RHSColors.blue700,
     bg: RHSColors.blue50,
   },
-  [NotificationType.PAYMENT_DUE]: {
+  PAYMENT_DUE: {
     icon: 'calendar-outline',
     color: RHSColors.amber700,
     bg: RHSColors.amber50,
   },
-  [NotificationType.PAYMENT_OVERDUE]: {
+  PAYMENT_OVERDUE: {
     icon: 'alert-circle-outline',
     color: RHSColors.red700,
     bg: RHSColors.red50,
   },
-  [NotificationType.DOCUMENT_EXPIRING]: {
+  DOCUMENT_EXPIRING: {
     icon: 'time-outline',
     color: RHSColors.amber700,
     bg: RHSColors.amber50,
   },
-  [NotificationType.SYSTEM_ANNOUNCEMENT]: {
+  SYSTEM_ANNOUNCEMENT: {
     icon: 'megaphone-outline',
     color: RHSColors.blue700,
     bg: RHSColors.blue50,
   },
-  [NotificationType.APPOINTMENT_REMINDER]: {
+  APPOINTMENT_REMINDER: {
     icon: 'alarm-outline',
     color: RHSColors.blue600,
     bg: RHSColors.blue50,
@@ -120,7 +120,7 @@ export const NotificationListScreen: React.FC = () => {
         setNotifications((prev) =>
           page === 1 ? response.items : [...prev, ...response.items]
         );
-        setCurrentPage(response.currentPage);
+        setCurrentPage(response.page);
         setTotalPages(response.totalPages);
       } catch (error) {
         console.error('Failed to fetch notifications:', error);
@@ -176,18 +176,18 @@ export const NotificationListScreen: React.FC = () => {
       // Optimistic update: cập nhật UI ngay lập tức
       setNotifications((prev) =>
         prev.map((item) =>
-          item.id === notification.id ? { ...item, isRead: true } : item
+          item.notificationId === notification.notificationId ? { ...item, isRead: true } : item
         )
       );
 
       try {
-        await markAsRead(notification.id);
+        await markAsRead(notification.notificationId);
       } catch (error) {
         // Rollback nếu API fail
         console.error('Failed to mark as read:', error);
         setNotifications((prev) =>
           prev.map((item) =>
-            item.id === notification.id
+            item.notificationId === notification.notificationId
               ? { ...item, isRead: notification.isRead }
               : item
           )
@@ -229,10 +229,9 @@ export const NotificationListScreen: React.FC = () => {
         await handleMarkAsRead(notification);
       }
 
-      // Điều hướng sang màn hình chi tiết hồ sơ
       // TODO: Thay đổi route và params theo yêu cầu thực tế
       navigation.navigate('ApplicationDetail', {
-        applicationId: notification.data?.applicationId,
+        applicationId: undefined,
       });
     },
     [handleMarkAsRead, navigation]
@@ -242,7 +241,7 @@ export const NotificationListScreen: React.FC = () => {
 
   const renderNotificationItem = useCallback(
     ({ item }: { item: Notification }) => {
-      const config = NOTIFICATION_CONFIG[item.type] || {
+      const config = NOTIFICATION_CONFIG[item.notificationType] || {
         icon: 'notifications-outline',
         color: RHSColors.blue700,
         bg: RHSColors.blue50,
@@ -299,7 +298,7 @@ export const NotificationListScreen: React.FC = () => {
               style={styles.message}
               numberOfLines={2}
             >
-              {item.message}
+              {item.content}
             </Text>
 
             <Text style={styles.timestamp}>{formattedDate}</Text>
@@ -397,7 +396,7 @@ export const NotificationListScreen: React.FC = () => {
       ) : (
         <FlatList
           data={notifications}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.notificationId}
           renderItem={renderNotificationItem}
           contentContainerStyle={
             notifications.length === 0 ? styles.emptyListContent : undefined

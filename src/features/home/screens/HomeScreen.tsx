@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -20,22 +22,41 @@ import { housingApi } from '../api/housingApi';
 import { HousingProjectResponse } from '../types/housing';
 import { formatPrice, getThumb } from '../utils/format';
 import { HomeStackParamList } from '../navigation/HomeNavigator';
-import { userApi } from '../../user/api/userApi';
-import phuongData from '../../../../assets/phuong.json';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeList'>;
 
-type PhuongEntry = {
-  name: string;
-  type: string;
-  slug: string;
-  name_with_type: string;
-  path: string;
-  path_with_type: string;
-  code: string;
-  parent_code: string;
+const PROVINCES = [
+  'Hà Nội', 'TP.HCM', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ',
+  'Bình Dương', 'Đồng Nai', 'Bà Rịa - Vũng Tàu', 'Long An',
+  'Bắc Ninh', 'Hải Dương', 'Bắc Giang', 'Vĩnh Phúc', 'Thái Nguyên',
+  'Thanh Hóa', 'Nghệ An', 'Hà Tĩnh', 'Quảng Bình', 'Thừa Thiên Huế',
+  'Quảng Nam', 'Quảng Ngãi', 'Bình Định', 'Khánh Hòa', 'Lâm Đồng',
+  'An Giang', 'Kiên Giang', 'Cà Mau', 'Tiền Giang', 'Bến Tre',
+];
+
+const DISTRICTS: Record<string, string[]> = {
+  'TP.HCM': ['Quận 1', 'Quận 2', 'Quận 3', 'Quận 4', 'Quận 5', 'Quận 6', 'Quận 7', 'Quận 8', 'Quận 9', 'Quận 10', 'Quận 11', 'Quận 12', 'Bình Thạnh', 'Gò Vấp', 'Tân Bình', 'Tân Phú', 'Phú Nhuận', 'Bình Tân', 'Thủ Đức', 'Hóc Môn', 'Củ Chi', 'Bình Chánh', 'Nhà Bè', 'Cần Giờ'],
+  'Hà Nội': ['Ba Đình', 'Hoàn Kiếm', 'Tây Hồ', 'Long Biên', 'Cầu Giấy', 'Đống Đa', 'Hai Bà Trưng', 'Hoàng Mai', 'Thanh Xuân', 'Hà Đông', 'Nam Từ Liêm', 'Bắc Từ Liêm', 'Thanh Trì', 'Gia Lâm', 'Đông Anh', 'Sóc Sơn', 'Mê Linh'],
 };
-const phuongMap: Record<string, PhuongEntry> = phuongData;
+
+const PRICE_RANGES = [
+  { label: 'Dưới 300 triệu', min: 0, max: 300_000_000 },
+  { label: '300 - 500 triệu', min: 300_000_000, max: 500_000_000 },
+  { label: '500 triệu - 1 tỷ', min: 500_000_000, max: 1_000_000_000 },
+  { label: '1 - 2 tỷ', min: 1_000_000_000, max: 2_000_000_000 },
+  { label: 'Trên 2 tỷ', min: 2_000_000_000, max: undefined },
+  { label: 'Tất cả', min: undefined, max: undefined },
+];
+
+const AREA_RANGES = [
+  { label: 'Dưới 30 m²', min: 0, max: 30 },
+  { label: '30 - 50 m²', min: 30, max: 50 },
+  { label: '50 - 70 m²', min: 50, max: 70 },
+  { label: 'Trên 70 m²', min: 70, max: undefined },
+  { label: 'Tất cả', min: undefined, max: undefined },
+];
+
+type FilterSheet = 'province' | 'district' | 'price' | 'area' | null;
 
 export const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -46,20 +67,31 @@ export const HomeScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [residentWardName, setResidentWardName] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
 
-  // Lấy ResidentWard code từ profile, tra tên trong phuong.json
-  useEffect(() => {
-    (async () => {
-      try {
-        const profile = await userApi.getProfile();
-        const code = profile?.user?.residentWard;
-        if (code && phuongMap[code]) {
-          setResidentWardName(phuongMap[code].name);
-        }
-      } catch {}
-    })();
-  }, []);
+  // Filters
+  const [filterProvince, setFilterProvince] = useState<string | null>(null);
+  const [filterDistrict, setFilterDistrict] = useState<string | null>(null);
+  const [filterMinPrice, setFilterMinPrice] = useState<number | undefined>(undefined);
+  const [filterMaxPrice, setFilterMaxPrice] = useState<number | undefined>(undefined);
+  const [filterMinArea, setFilterMinArea] = useState<number | undefined>(undefined);
+  const [filterMaxArea, setFilterMaxArea] = useState<number | undefined>(undefined);
+
+  // Sheet
+  const [activeSheet, setActiveSheet] = useState<FilterSheet>(null);
+
+  const hasActiveFilters = !!filterProvince || !!filterDistrict
+    || filterMinPrice !== undefined || filterMaxPrice !== undefined
+    || filterMinArea !== undefined || filterMaxArea !== undefined;
+
+  const resetFilters = () => {
+    setFilterProvince(null);
+    setFilterDistrict(null);
+    setFilterMinPrice(undefined);
+    setFilterMaxPrice(undefined);
+    setFilterMinArea(undefined);
+    setFilterMaxArea(undefined);
+  };
 
   const fetchProjects = useCallback(async (page: number = 1, append: boolean = false) => {
     try {
@@ -71,31 +103,27 @@ export const HomeScreen = () => {
         pageIndex: page,
         pageSize: 10,
         search: searchText || undefined,
+        province: filterProvince || undefined,
+        district: filterDistrict || undefined,
+        minPrice: filterMinPrice,
+        maxPrice: filterMaxPrice,
+        minArea: filterMinArea,
+        maxArea: filterMaxArea,
       });
 
-      let items = result.items;
-
-      // Nếu user có residentWard, đưa dự án cùng phường lên đầu
-      if (residentWardName && items.length > 0) {
-        items = [...items].sort((a, b) => {
-          const aMatch = a.ward?.toLowerCase() === residentWardName.toLowerCase() ? 0 : 1;
-          const bMatch = b.ward?.toLowerCase() === residentWardName.toLowerCase() ? 0 : 1;
-          return aMatch - bMatch;
-        });
-      }
-
-      if (page === 1) setHousingProjects(items);
-      else setHousingProjects(prev => [...prev, ...items]);
+      if (page === 1) setHousingProjects(result.items);
+      else setHousingProjects(prev => [...prev, ...result.items]);
 
       setPageIndex(result.pageIndex);
       setTotalPages(result.totalPages);
+      setTotalCount(result.totalCount);
     } catch (err: any) {
       setError(err.message || 'Không thể tải danh sách nhà');
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [searchText, residentWardName]);
+  }, [searchText, filterProvince, filterDistrict, filterMinPrice, filterMaxPrice, filterMinArea, filterMaxArea]);
 
   useEffect(() => { fetchProjects(1); }, [fetchProjects]);
 
@@ -104,16 +132,46 @@ export const HomeScreen = () => {
     if (pageIndex < totalPages && !loadingMore) fetchProjects(pageIndex + 1, true);
   };
 
+  const districtsForProvince = useMemo(() => {
+    if (!filterProvince) return [];
+    return DISTRICTS[filterProvince] || [];
+  }, [filterProvince]);
+
+  const priceLabel = useMemo(() => {
+    if (filterMinPrice === undefined && filterMaxPrice === undefined) return null;
+    if (filterMinPrice === 0 && filterMaxPrice === 300_000_000) return 'Dưới 300tr';
+    if (filterMinPrice === 300_000_000 && filterMaxPrice === 500_000_000) return '300-500tr';
+    if (filterMinPrice === 500_000_000 && filterMaxPrice === 1_000_000_000) return '500tr-1tỷ';
+    if (filterMinPrice === 1_000_000_000 && filterMaxPrice === 2_000_000_000) return '1-2tỷ';
+    if (filterMinPrice === 2_000_000_000 && filterMaxPrice === undefined) return 'Trên 2tỷ';
+    const min = filterMinPrice ? `${(filterMinPrice / 1_000_000).toFixed(0)}tr` : '';
+    const max = filterMaxPrice ? `${(filterMaxPrice / 1_000_000).toFixed(0)}tr` : '';
+    if (min && max) return `${min}-${max}`;
+    if (min) return `Từ ${min}`;
+    return `Đến ${max}`;
+  }, [filterMinPrice, filterMaxPrice]);
+
+  const areaLabel = useMemo(() => {
+    if (filterMinArea === undefined && filterMaxArea === undefined) return null;
+    if (filterMinArea === 0 && filterMaxArea === 30) return 'Dưới 30m²';
+    if (filterMinArea === 30 && filterMaxArea === 50) return '30-50m²';
+    if (filterMinArea === 50 && filterMaxArea === 70) return '50-70m²';
+    if (filterMinArea === 70 && filterMaxArea === undefined) return 'Trên 70m²';
+    const min = filterMinArea ? `${filterMinArea}m²` : '';
+    const max = filterMaxArea ? `${filterMaxArea}m²` : '';
+    if (min && max) return `${min}-${max}`;
+    if (min) return `Từ ${min}`;
+    return `Đến ${max}`;
+  }, [filterMinArea, filterMaxArea]);
+
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Brand stripes */}
       <View style={styles.bar}>
         <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.red600 }]} />
         <View style={[styles.stripe, { flex: 0.4, backgroundColor: RHSColors.amber600 }]} />
         <View style={[styles.stripe, { flex: 2, backgroundColor: RHSColors.blue700 }]} />
       </View>
 
-      {/* Hero header */}
       <LinearGradient
         colors={['#0A3A85', '#1565C0', '#1E88E5']}
         start={{ x: 0, y: 0 }}
@@ -123,12 +181,11 @@ export const HomeScreen = () => {
         <View style={styles.heroTop}>
           <RHSLogo size={40} />
           <View style={styles.heroTextWrap}>
-          <Text style={styles.heroTitle}>Tra cứu nhà ở</Text>
-          <Text style={styles.heroSub}>Hỗ trợ nhà ở xã hội cho hộ nghèo, cận nghèo tại phường</Text>
+            <Text style={styles.heroTitle}>Tra cứu nhà ở</Text>
+            <Text style={styles.heroSub}>Hỗ trợ nhà ở xã hội cho hộ nghèo, cận nghèo tại phường</Text>
           </View>
         </View>
 
-        {/* Search bar inside hero */}
         <View style={styles.searchWrap}>
           <Feather name="search" size={18} color={RHSColors.textMuted} style={{ marginRight: 10 }} />
           <TextInput
@@ -148,19 +205,78 @@ export const HomeScreen = () => {
         </View>
       </LinearGradient>
 
+      {/* ── Filter Chips ── */}
+      <View style={styles.filterBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+          <TouchableOpacity
+            style={[styles.filterChip, filterProvince && styles.filterChipActive]}
+            onPress={() => setActiveSheet('province')}
+            activeOpacity={0.7}
+          >
+            <Feather name="map-pin" size={13} color={filterProvince ? '#fff' : RHSColors.textSecondary} />
+            <Text style={[styles.filterChipText, filterProvince && styles.filterChipTextActive]}>
+              {filterProvince || 'Tỉnh/TP'}
+            </Text>
+            <Feather name="chevron-down" size={12} color={filterProvince ? '#fff' : RHSColors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, filterDistrict && styles.filterChipActive, !filterProvince && styles.filterChipDisabled]}
+            onPress={() => filterProvince && setActiveSheet('district')}
+            activeOpacity={0.7}
+            disabled={!filterProvince}
+          >
+            <Feather name="navigation" size={13} color={filterDistrict ? '#fff' : RHSColors.textSecondary} />
+            <Text style={[styles.filterChipText, filterDistrict && styles.filterChipTextActive, !filterProvince && styles.filterChipTextDisabled]}>
+              {filterDistrict || 'Quận/Huyện'}
+            </Text>
+            <Feather name="chevron-down" size={12} color={filterDistrict ? '#fff' : RHSColors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, priceLabel && styles.filterChipActive]}
+            onPress={() => setActiveSheet('price')}
+            activeOpacity={0.7}
+          >
+            <Feather name="dollar-sign" size={13} color={priceLabel ? '#fff' : RHSColors.textSecondary} />
+            <Text style={[styles.filterChipText, priceLabel && styles.filterChipTextActive]}>
+              {priceLabel || 'Giá'}
+            </Text>
+            <Feather name="chevron-down" size={12} color={priceLabel ? '#fff' : RHSColors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, areaLabel && styles.filterChipActive]}
+            onPress={() => setActiveSheet('area')}
+            activeOpacity={0.7}
+          >
+            <Feather name="maximize" size={13} color={areaLabel ? '#fff' : RHSColors.textSecondary} />
+            <Text style={[styles.filterChipText, areaLabel && styles.filterChipTextActive]}>
+              {areaLabel || 'Diện tích'}
+            </Text>
+            <Feather name="chevron-down" size={12} color={areaLabel ? '#fff' : RHSColors.textMuted} />
+          </TouchableOpacity>
+
+          {hasActiveFilters && (
+            <TouchableOpacity style={styles.filterChipReset} onPress={resetFilters} activeOpacity={0.7}>
+              <Feather name="refresh-cw" size={12} color={RHSColors.red600} />
+              <Text style={styles.filterChipResetText}>Đặt lại</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      </View>
+
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Section header */}
         <View style={styles.sectionHead}>
           <View style={styles.sectionBadge}>
             <Feather name="home" size={14} color="#fff" />
           </View>
           <Text style={styles.sectionTitle}>Danh sách nhà ở</Text>
           <View style={styles.countBadge}>
-            <Text style={styles.countText}>{housingProjects.length} dự án</Text>
+            <Text style={styles.countText}>{totalCount} dự án</Text>
           </View>
         </View>
 
-        {/* Content */}
         {loading && pageIndex === 1 ? (
           <View style={styles.stateBox}>
             <ActivityIndicator size="large" color={RHSColors.blue700} />
@@ -185,7 +301,6 @@ export const HomeScreen = () => {
             <View style={styles.grid}>
               {housingProjects.map(project => {
                 const thumb = getThumb(project);
-                const isSameWard = residentWardName && project.ward?.toLowerCase() === residentWardName.toLowerCase();
                 return (
                   <TouchableOpacity
                     key={project.id}
@@ -206,12 +321,6 @@ export const HomeScreen = () => {
                           <Text style={styles.statusText}>{project.status}</Text>
                         </View>
                       )}
-                      {isSameWard && (
-                        <View style={styles.wardBadge}>
-                          <Feather name="map-pin" size={10} color="#fff" />
-                          <Text style={styles.wardBadgeText}>Cùng phường</Text>
-                        </View>
-                      )}
                     </View>
                     <View style={styles.cardBody}>
                       <Text style={styles.cardName} numberOfLines={2}>{project.projectName}</Text>
@@ -228,6 +337,12 @@ export const HomeScreen = () => {
                             </Text>
                           </View>
                         )}
+                        <View style={[styles.chip, project.availableUnits > 0 ? { backgroundColor: RHSColors.green50 } : { backgroundColor: RHSColors.red50 }]}>
+                          <Feather name="home" size={11} color={project.availableUnits > 0 ? RHSColors.green600 : RHSColors.red600} />
+                          <Text style={[styles.chipText, project.availableUnits > 0 ? { color: RHSColors.green600 } : { color: RHSColors.red600 }]}>
+                            {project.availableUnits > 0 ? `Còn ${project.availableUnits} căn` : 'Đã hết'}
+                          </Text>
+                        </View>
                       </View>
                       <View style={styles.locationRow}>
                         <Feather name="map-pin" size={12} color={RHSColors.textMuted} />
@@ -241,7 +356,6 @@ export const HomeScreen = () => {
               })}
             </View>
 
-            {/* Load more */}
             {pageIndex < totalPages && (
               <TouchableOpacity style={styles.loadMoreBtn} onPress={handleLoadMore} disabled={loadingMore} activeOpacity={0.85}>
                 {loadingMore ? (
@@ -255,6 +369,134 @@ export const HomeScreen = () => {
         )}
         <View style={{ height: 30 }} />
       </ScrollView>
+
+      {/* ── Province Sheet ── */}
+      <Modal visible={activeSheet === 'province'} transparent animationType="slide">
+        <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={() => setActiveSheet(null)}>
+          <View style={styles.sheetContainer}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Chọn Tỉnh / Thành phố</Text>
+            <FlatList
+              data={PROVINCES}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.sheetItem, filterProvince === item && styles.sheetItemActive]}
+                  onPress={() => {
+                    setFilterProvince(item);
+                    setFilterDistrict(null);
+                    setActiveSheet(null);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.sheetItemText, filterProvince === item && styles.sheetItemTextActive]}>
+                    {item}
+                  </Text>
+                  {filterProvince === item && <Feather name="check" size={18} color={RHSColors.blue700} />}
+                </TouchableOpacity>
+              )}
+              style={styles.sheetList}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── District Sheet ── */}
+      <Modal visible={activeSheet === 'district'} transparent animationType="slide">
+        <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={() => setActiveSheet(null)}>
+          <View style={styles.sheetContainer}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Chọn Quận / Huyện — {filterProvince}</Text>
+            <FlatList
+              data={districtsForProvince}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.sheetItem, filterDistrict === item && styles.sheetItemActive]}
+                  onPress={() => {
+                    setFilterDistrict(item);
+                    setActiveSheet(null);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.sheetItemText, filterDistrict === item && styles.sheetItemTextActive]}>
+                    {item}
+                  </Text>
+                  {filterDistrict === item && <Feather name="check" size={18} color={RHSColors.blue700} />}
+                </TouchableOpacity>
+              )}
+              style={styles.sheetList}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.sheetEmpty}>
+                  <Text style={styles.sheetEmptyText}>Không có dữ liệu quận/huyện cho tỉnh này</Text>
+                </View>
+              }
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Price Sheet ── */}
+      <Modal visible={activeSheet === 'price'} transparent animationType="slide">
+        <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={() => setActiveSheet(null)}>
+          <View style={styles.sheetContainer}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Chọn khoảng giá</Text>
+            {PRICE_RANGES.map((range) => {
+              const isActive = filterMinPrice === range.min && filterMaxPrice === range.max;
+              return (
+                <TouchableOpacity
+                  key={range.label}
+                  style={[styles.sheetItem, isActive && styles.sheetItemActive]}
+                  onPress={() => {
+                    setFilterMinPrice(range.min);
+                    setFilterMaxPrice(range.max);
+                    setActiveSheet(null);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.sheetItemText, isActive && styles.sheetItemTextActive]}>
+                    {range.label}
+                  </Text>
+                  {isActive && <Feather name="check" size={18} color={RHSColors.blue700} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Area Sheet ── */}
+      <Modal visible={activeSheet === 'area'} transparent animationType="slide">
+        <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={() => setActiveSheet(null)}>
+          <View style={styles.sheetContainer}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Chọn diện tích</Text>
+            {AREA_RANGES.map((range) => {
+              const isActive = filterMinArea === range.min && filterMaxArea === range.max;
+              return (
+                <TouchableOpacity
+                  key={range.label}
+                  style={[styles.sheetItem, isActive && styles.sheetItemActive]}
+                  onPress={() => {
+                    setFilterMinArea(range.min);
+                    setFilterMaxArea(range.max);
+                    setActiveSheet(null);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.sheetItemText, isActive && styles.sheetItemTextActive]}>
+                    {range.label}
+                  </Text>
+                  {isActive && <Feather name="check" size={18} color={RHSColors.blue700} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -285,6 +527,66 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   searchInput: { flex: 1, fontSize: 14, color: RHSColors.text },
+
+  // ── Filter Bar ──
+  filterBar: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: RHSColors.grey200,
+  },
+  filterScroll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: RHSColors.grey100,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: RHSColors.grey200,
+  },
+  filterChipActive: {
+    backgroundColor: RHSColors.blue700,
+    borderColor: RHSColors.blue700,
+  },
+  filterChipDisabled: {
+    opacity: 0.4,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: RHSColors.textSecondary,
+  },
+  filterChipTextActive: {
+    color: '#fff',
+  },
+  filterChipTextDisabled: {
+    color: RHSColors.textMuted,
+  },
+  filterChipReset: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: RHSColors.red300,
+    backgroundColor: RHSColors.red50,
+  },
+  filterChipResetText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: RHSColors.red600,
+  },
+
   scroll: { flex: 1, paddingHorizontal: 16 },
   sectionHead: {
     flexDirection: 'row',
@@ -349,19 +651,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statusText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-  wardBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: RHSColors.govGold,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
-  },
-  wardBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   cardBody: { padding: 14 },
   cardName: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text, marginBottom: 10, lineHeight: 20 },
   cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
@@ -387,4 +676,71 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
   },
   loadMoreText: { ...typography.buttonSmall, color: RHSColors.blue700 },
+
+  // ── Bottom Sheet ──
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: borderRadius.xxl,
+    borderTopRightRadius: borderRadius.xxl,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    paddingTop: 12,
+    maxHeight: '70%',
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: RHSColors.grey300,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: RHSColors.text,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  sheetList: {
+    maxHeight: 400,
+  },
+  sheetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: borderRadius.md,
+    marginBottom: 2,
+  },
+  sheetItemActive: {
+    backgroundColor: RHSColors.blue50,
+  },
+  sheetItemText: {
+    fontSize: 15,
+    color: RHSColors.text,
+    fontWeight: '500',
+  },
+  sheetItemTextActive: {
+    color: RHSColors.blue700,
+    fontWeight: '700',
+  },
+  sheetEmpty: {
+    paddingVertical: 30,
+    alignItems: 'center',
+  },
+  sheetEmptyText: {
+    fontSize: 14,
+    color: RHSColors.textMuted,
+  },
+
+  // Old styles kept for compatibility
+  wardBadge: {},
+  wardBadgeText: {},
 });

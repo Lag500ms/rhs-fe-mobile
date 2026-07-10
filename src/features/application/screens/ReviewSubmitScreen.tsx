@@ -22,10 +22,6 @@ import { getHousingStatusLabel } from '../utils/statusConfig';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-function formatCurrency(num: number): string {
-  return num.toLocaleString('vi-VN');
-}
-
 function formatDate(dateStr: string): string {
   try {
     const d = new Date(dateStr);
@@ -191,18 +187,28 @@ export const ReviewSubmitScreen = () => {
           <InfoRow icon="bookmark" label="Thường trú" value={detail.permanentAddress} />
         </View>
 
-        {/* Housing & Income */}
+        {/* Housing */}
         <View style={styles.sectionCard}>
-          <Text style={styles.cardTitle}>Thực trạng nhà ở & Thu nhập</Text>
+          <Text style={styles.cardTitle}>Thực trạng nhà ở & Hộ gia đình</Text>
           <InfoRow
             icon="layers"
             label="Thực trạng nhà ở"
             value={getHousingStatusLabel(detail.housingStatus)}
           />
           <InfoRow
-            icon="trending-up"
-            label="Thu nhập"
-            value={`${formatCurrency(detail.estimatedMonthlyIncome)} VNĐ/tháng`}
+            icon="heart"
+            label="Tình trạng hôn nhân"
+            value={detail.maritalStatus || '—'}
+          />
+          <InfoRow
+            icon="users"
+            label="Số thành viên"
+            value={String(detail.householdMembersCount || '—')}
+          />
+          <InfoRow
+            icon="star"
+            label="Nhóm ưu tiên"
+            value={detail.priorityGroup || '—'}
           />
         </View>
 

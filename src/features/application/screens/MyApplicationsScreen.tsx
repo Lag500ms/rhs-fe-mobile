@@ -36,6 +36,20 @@ function formatDate(dateStr: string): string {
   }
 }
 
+function formatDateTime(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    const day = `${d.getDate()}`.padStart(2, '0');
+    const month = `${d.getMonth() + 1}`.padStart(2, '0');
+    const year = d.getFullYear();
+    const hour = `${d.getHours()}`.padStart(2, '0');
+    const min = `${d.getMinutes()}`.padStart(2, '0');
+    return `${day}/${month}/${year} ${hour}:${min}`;
+  } catch {
+    return dateStr;
+  }
+}
+
 function getActionForStatus(status: string): { label: string; icon: string; color: string } | null {
   switch (status) {
     case 'DRAFT':
@@ -333,6 +347,28 @@ export const MyApplicationsScreen = () => {
   const [paymentSlotCode, setPaymentSlotCode] = useState<string | null>(null);
   const [paymentPdfUrl, setPaymentPdfUrl] = useState<string | null>(null);
 
+  // ── Receipt viewer state ──
+  const [loadingReceipt, setLoadingReceipt] = useState(false);
+
+  // ── View Receipt ──
+  const handleViewReceipt = useCallback(() => {
+    const receiptUrl = selectedDetail?.receiptUrl;
+    const appId = selectedDetail?.applicationId;
+    handleCloseDetail();
+    if (receiptUrl && appId) {
+      setLoadingReceipt(true);
+      setTimeout(() => {
+        setLoadingReceipt(false);
+        navigation.navigate('ContractViewer', {
+          pdfUrl: receiptUrl,
+          title: 'Biên nhận nộp hồ sơ',
+        });
+      }, 100);
+    } else {
+      Alert.alert('Không có biên nhận', 'Biên nhận chưa được tạo. Vui lòng thử lại sau.');
+    }
+  }, [selectedDetail, navigation]);
+
   // ── View Contract for DEPOSIT_PAID ──
   const handleViewContract = useCallback(() => {
     // Lưu pdfUrl trước khi close (handleCloseDetail sẽ clear state)
@@ -392,27 +428,27 @@ export const MyApplicationsScreen = () => {
 
     setReapplying(true);
     try {
-      const result = await housingApplicationApi.reApply(selectedDetail.applicationId);
+      const result = await housingApplicationApi.createApplication({
+        projectId: selectedDetail.projectId,
+        fullName: selectedDetail.fullName,
+        citizenId: selectedDetail.citizenId,
+        currentResidence: selectedDetail.currentResidence,
+        permanentAddress: selectedDetail.permanentAddress,
+        housingStatus: selectedDetail.housingStatus,
+        maritalStatus: selectedDetail.maritalStatus || 'SINGLE',
+        householdMembersCount: selectedDetail.householdMembersCount || 1,
+        priorityGroup: selectedDetail.priorityGroup || undefined,
+      });
       handleCloseDetail();
       setTimeout(() => {
-        navigation.navigate('BasicInformation', {
-          projectId: selectedDetail.projectId,
-          projectName: selectedDetail.projectName,
+        navigation.navigate('UploadDocuments', {
           applicationId: result.applicationId,
+          projectName: selectedDetail.projectName,
         });
       }, 300);
     } catch (e: any) {
-      const status = e?.response?.status;
       const msg = e?.response?.data?.message || e?.message || 'Không thể tạo lại hồ sơ.';
-
-      if (status === 409) {
-        Alert.alert(
-          'Đã có hồ sơ',
-          'Bạn đã có một hồ sơ đang hoạt động cho dự án này. Vui lòng kiểm tra danh sách hồ sơ.',
-        );
-      } else {
-        Alert.alert('Lỗi', msg);
-      }
+      Alert.alert('Lỗi', msg);
     } finally {
       setReapplying(false);
     }
@@ -708,6 +744,43 @@ export const MyApplicationsScreen = () => {
                         <DetailRow label="Cập nhật" value={formatDate(selectedDetail.updatedAt)} />
                       )}
                     </DetailSection>
+
+                    {/* ── BIÊN NHẬN NỘP HỒ SƠ ── */}
+                    {selectedDetail.receiptUrl && selectedDetail.applicationStatus !== 'DRAFT' && (
+                      <View style={styles.receiptCard}>
+                        <View style={styles.receiptCardHeader}>
+                          <View style={styles.receiptCardIconWrap}>
+                            <Feather name="file-text" size={22} color={RHSColors.blue700} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.receiptCardTitle}>Biên nhận nộp hồ sơ</Text>
+                            <Text style={styles.receiptCardMeta}>
+                              Mã hồ sơ: {(selectedDetail.applicationId ?? '').substring(0, 8).toUpperCase()}
+                            </Text>
+                            {selectedDetail.submittedAt && (
+                              <Text style={styles.receiptCardMeta}>
+                                Nộp lúc: {formatDateTime(selectedDetail.submittedAt)}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                        <TouchableOpacity
+                          style={[styles.receiptCardBtn, loadingReceipt && styles.receiptCardBtnLoading]}
+                          onPress={handleViewReceipt}
+                          activeOpacity={0.8}
+                          disabled={loadingReceipt}
+                        >
+                          {loadingReceipt ? (
+                            <ActivityIndicator size="small" color={RHSColors.blue700} />
+                          ) : (
+                            <Feather name="download" size={16} color={RHSColors.blue700} />
+                          )}
+                          <Text style={styles.receiptCardBtnText}>
+                            {loadingReceipt ? 'Đang tải...' : 'Xem biên nhận'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
 
                     {/* ── APPROVED: Payment section ── */}
                     {selectedDetail.applicationStatus === 'APPROVED' && (
@@ -1741,6 +1814,62 @@ const styles = StyleSheet.create({
   },
   slotCopyBtnText: {
     fontSize: 13,
+    fontWeight: '700',
+    color: RHSColors.blue700,
+  },
+
+  // ── Biên nhận nộp hồ sơ ──
+  receiptCard: {
+    marginTop: 8,
+    marginBottom: 8,
+    backgroundColor: RHSColors.blue50,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: RHSColors.blue200,
+    padding: 16,
+  },
+  receiptCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 14,
+  },
+  receiptCardIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    backgroundColor: RHSColors.blue100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  receiptCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: RHSColors.text,
+    marginBottom: 4,
+  },
+  receiptCardMeta: {
+    fontSize: 12,
+    color: RHSColors.textMuted,
+    lineHeight: 17,
+  },
+  receiptCardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: RHSColors.blue700,
+    gap: 8,
+  },
+  receiptCardBtnLoading: {
+    opacity: 0.6,
+  },
+  receiptCardBtnText: {
+    fontSize: 14,
     fontWeight: '700',
     color: RHSColors.blue700,
   },
