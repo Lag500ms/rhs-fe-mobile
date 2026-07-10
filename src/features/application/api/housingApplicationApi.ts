@@ -1,91 +1,11 @@
 import apiClient from '../../../lib/apiClient';
-
-export interface CreateApplicationRequest {
-  projectId: string;
-  fullName: string;
-  citizenId: string;
-  occupation?: string;
-  workPlace?: string;
-  currentResidence: string;
-  permanentAddress: string;
-  housingStatus: string; // "NO_HOUSE" | "SMALL_HOUSE"
-  estimatedMonthlyIncome: number;
-}
-
-export interface CreateApplicationResponse {
-  applicationId: string;
-  applicationStatus: string;
-  createdAt: string;
-  message: string;
-}
-
-export interface ApplicationDocument {
-  documentId: string;
-  documentType: string;
-  fileName: string;
-  fileUrl: string;
-  fileSizeBytes: number;
-  verificationStatus: string; // PENDING | VERIFIED | REJECTED
-  aiRejectedReason?: string;  // Lý do từ chối từ AI (nếu có)
-  uploadedAt: string;
-  uploadedBy?: string;
-}
-
-export interface ApplicationSummary {
-  applicationId: string;
-  projectName: string;
-  applicationStatus: string;
-  createdAt: string;
-  updatedAt: string | null;
-  documentCount: number;
-}
-
-export interface ReviewHistory {
-  historyId: string;
-  action: string;
-  oldStatus: string;
-  newStatus: string;
-  note: string | null;
-  changedAt: string;
-  changedBy: string;
-  changedByFullName: string;
-}
-
-export interface ApplicationDetail {
-  applicationId: string;
-  applicationStatus: string;
-  priorityScore: number;
-  createdAt: string;
-  submittedAt: string | null;
-  updatedAt: string | null;
-  finalDecisionDate: string | null;
-
-  projectId: string;
-  projectName: string;
-
-  applicantId: string;
-  fullName: string;
-  citizenId: string;
-  occupation: string | null;
-  workPlace: string | null;
-  currentResidence: string;
-  permanentAddress: string;
-  housingStatus: string;
-  estimatedMonthlyIncome: number;
-
-  officerId: string | null;
-  officerFullName: string | null;
-
-  documents: ApplicationDocument[];
-  reviewHistories: ReviewHistory[];
-}
-
-export interface PagedResponse<T> {
-  items: T[];
-  pageIndex: number;
-  pageSize: number;
-  totalCount: number;
-}
+import {
+  CreateApplicationRequest,
+  CreateApplicationResponse,
+  ApplicationSummary,
+  ApplicationDetail,
+  PagedResponse,
+} from '../types/application';
 
 export const housingApplicationApi = {
   /**

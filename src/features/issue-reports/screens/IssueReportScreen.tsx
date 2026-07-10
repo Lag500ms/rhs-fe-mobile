@@ -17,9 +17,8 @@ import { RHSColors, shadows, borderRadius } from '../../../lib/theme';
 import { getToken } from '../../../lib/tokenStorage';
 import {
   issueReportApi,
-  IssueReportListItem,
-  CreateIssueReportRequest,
 } from '../api/issueReportApi';
+import { IssueReportListItem, CreateIssueReportRequest } from '../types/issueReport';
 
 const ISSUE_TYPES = [
   { value: 'Bug', label: 'Báo lỗi', icon: 'alert-triangle' },

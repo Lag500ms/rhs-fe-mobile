@@ -19,13 +19,12 @@ import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme
 import { getToken } from '../../../lib/tokenStorage';
 import {
   housingApplicationApi,
-  ApplicationSummary,
-  ApplicationDetail,
-  ApplicationDocument,
 } from '../api/housingApplicationApi';
 import { housingDocumentApi } from '../api/housingDocumentApi';
+import { ApplicationSummary, ApplicationDetail, ApplicationDocument } from '../types/application';
 import { getStatusConfig } from '../utils/statusConfig';
-import { paymentApi, PaymentInfo } from '../../payment/api/paymentApi';
+import { paymentApi } from '../../payment/api/paymentApi';
+import { PaymentInfo } from '../../payment/types/payment';
 import * as Clipboard from 'expo-clipboard';
 
 function formatDate(dateStr: string): string {

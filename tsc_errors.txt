@@ -1,0 +1,10 @@
+src/features/application/screens/UploadDocumentsScreen.tsx(324,17): error TS1005: ')' expected.
+src/features/application/screens/UploadDocumentsScreen.tsx(325,17): error TS1005: ';' expected.
+src/features/application/screens/UploadDocumentsScreen.tsx(345,16): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/features/application/screens/UploadDocumentsScreen.tsx(346,15): error TS17002: Expected corresponding JSX closing tag for 'ScrollView'.
+src/features/application/screens/UploadDocumentsScreen.tsx(348,9): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/features/application/screens/UploadDocumentsScreen.tsx(348,11): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/features/application/screens/UploadDocumentsScreen.tsx(407,9): error TS17002: Expected corresponding JSX closing tag for 'SafeAreaView'.
+src/features/application/screens/UploadDocumentsScreen.tsx(408,5): error TS1005: ')' expected.
+src/features/application/screens/UploadDocumentsScreen.tsx(409,3): error TS1109: Expression expected.
+src/features/application/screens/UploadDocumentsScreen.tsx(410,1): error TS1128: Declaration or statement expected.

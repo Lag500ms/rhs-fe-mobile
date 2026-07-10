@@ -16,10 +16,8 @@ import {
   getMyNotifications,
   markAsRead,
   markAllAsRead,
-  Notification,
-  NotificationType,
-  NotificationListResponse,
 } from '../api/notificationApi';
+import { Notification, NotificationType, NotificationListResponse } from '../types/notification';
 import {
   RHSColors,
   spacing,

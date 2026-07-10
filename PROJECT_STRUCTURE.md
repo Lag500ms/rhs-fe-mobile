@@ -880,7 +880,18 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });
 ```
+AI MUST FOLLOW
 
+Không tạo component mới nếu đã có component tương tự.
+Luôn tìm component hiện có trước khi sinh code.
+Luôn tìm hook hiện có trước khi tạo hook mới.
+Luôn tìm API hiện có trước khi viết endpoint mới.
+Không duplicate code.
+Mỗi file chỉ có một trách nhiệm.
+Ưu tiên refactor hơn là thêm code.
+Nếu phát hiện component có thể tái sử dụng thì phải đề xuất tách ra.
+Nếu file vượt khoảng 200 dòng thì phải đề xuất chia nhỏ.
+Trước khi sinh code phải đọc toàn bộ PROJECT_STRUCTURE.md.
 ---
 
 *Tài liệu tự động sinh từ phân tích codebase ngày 2026-07-10.*  

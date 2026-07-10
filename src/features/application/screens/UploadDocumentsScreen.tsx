@@ -14,8 +14,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
-import { housingDocumentApi, UploadDocumentResponse, DocumentItem } from '../api/housingDocumentApi';
-import { housingApplicationApi, ReviewHistory, ApplicationDocument } from '../api/housingApplicationApi';
+import { housingDocumentApi } from '../api/housingDocumentApi';
+import { housingApplicationApi } from '../api/housingApplicationApi';
+import { UploadDocumentResponse, DocumentItem, ReviewHistory, ApplicationDocument } from '../types/application';
 
 const DOC_TYPES = [
   {
@@ -320,7 +321,6 @@ export const UploadDocumentsScreen = () => {
                       </TouchableOpacity>
                     )}
                   </View>
-                </View>
               ) : (
                 <TouchableOpacity
                   style={[styles.dashedZone, isUploading && styles.dashedZoneActive]}

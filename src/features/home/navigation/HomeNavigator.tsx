@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { HomeScreen } from '../screens/HomeScreen';
 import { HousingProjectDetailScreen } from '../screens/HousingProjectDetailScreen';
 import { MapFullScreen } from '../screens/MapFullScreen';
-import { HousingProjectResponse } from '../api/housingApi';
+import { HousingProjectResponse } from '../types/housing';
 
 export type HomeStackParamList = {
   HomeList: undefined;

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { getUnreadCount, UnreadCountResponse } from '../api/notificationApi';
+import { getUnreadCount } from '../api/notificationApi';
+import { UnreadCountResponse } from '../types/notification';
 
 const POLLING_INTERVAL = 30_000; // 30 seconds
 

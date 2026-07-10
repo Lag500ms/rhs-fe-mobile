@@ -15,25 +15,12 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RHSColors, shadows, borderRadius, typography } from '../../../lib/theme';
 import { getToken } from '../../../lib/tokenStorage';
-import { wishlistApi, WishlistItemResponse, PagedResult } from '../api/wishlistApi';
+import { wishlistApi } from '../api/wishlistApi';
+import { WishlistItemResponse, PagedResult } from '../types/wishlist';
 import { housingApi } from '../../home/api/housingApi';
+import { priceRange } from '../utils/format';
 
 const PAGE_SIZE = 10;
-
-/** Định dạng tiền VND */
-const formatPrice = (value: number): string => {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} tỷ`;
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)} triệu`;
-  return value.toLocaleString('vi-VN');
-};
-
-/** Hiển thị khoảng giá */
-const priceRange = (min: number, max: number): string => {
-  if (min <= 0 && max <= 0) return 'Liên hệ';
-  if (min <= 0) return `≤ ${formatPrice(max)}`;
-  if (max <= 0 || max === min) return formatPrice(min);
-  return `${formatPrice(min)} – ${formatPrice(max)}`;
-};
 
 export const SavedScreen = () => {
   const navigation = useNavigation<any>();

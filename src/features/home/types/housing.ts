@@ -1,0 +1,51 @@
+export interface ProjectImageResponse {
+  id: string;
+  imageUrl: string;
+  displayOrder: number;
+}
+
+export interface HousingProjectResponse {
+  id: string;
+  projectName: string;
+  description: string;
+  province: string;
+  district: string;
+  ward: string;
+  street: string;
+  minPrice: number;
+  maxPrice: number;
+  minArea: number;
+  maxArea: number;
+  availableUnits: number;
+  thumbnailUrl?: string;
+  lotteryDate?: string;
+  lotteryLocation?: string;
+  depositAmount: number;
+  createdAt: string;
+  updatedAt?: string;
+  status?: string;
+  images: ProjectImageResponse[];
+}
+
+export interface HousingProjectFilterParams {
+  pageIndex?: number;
+  pageSize?: number;
+  search?: string;
+  province?: string;
+  district?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minArea?: number;
+  maxArea?: number;
+  statusId?: string;
+}
+
+export interface PagedResult<T> {
+  pageIndex: number;
+  pageSize: number;
+  totalCount: number;
+  items: T[];
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}

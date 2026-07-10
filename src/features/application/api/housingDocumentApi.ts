@@ -1,36 +1,9 @@
 import apiClient from '../../../lib/apiClient';
-
-export interface UploadDocumentResponse {
-  documentId: string;
-  documentType: string;
-  fileName: string;
-  fileUrl: string;
-  fileSizeBytes: number;
-  uploadedAt: string;
-  verificationStatus?: string; // PENDING | VERIFIED | REJECTED
-}
-
-export interface DocumentItem {
-  documentId: string;
-  documentType: string;
-  fileName: string;
-  fileUrl: string;
-  fileSizeBytes: number;
-  uploadedAt: string;
-  verificationStatus: string; // PENDING | VERIFIED | REJECTED
-}
-
-export interface VerificationResultResponse {
-  verificationId: string;
-  documentId: string;
-  validationResult: string; // MATCH, MISMATCH, ERROR
-  extractedFullName: string | null;
-  extractedCitizenId: string | null;
-  extractedAddress: string | null;
-  extractedDateOfBirth: string | null;
-  errorDetails: string | null;
-  verifiedAt: string;
-}
+import {
+  UploadDocumentResponse,
+  DocumentItem,
+  VerificationResultResponse,
+} from '../types/application';
 
 export const housingDocumentApi = {
   /**

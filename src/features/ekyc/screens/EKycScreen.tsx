@@ -9,7 +9,8 @@ import { Camera, CameraView } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme';
-import { eKycApi, OcrResult } from '../api/eKycApi';
+import { eKycApi } from '../api/eKycApi';
+import { OcrResult } from '../types/ekyc';
 
 const VERIFIED_KEY = 'identityVerified';
 const SCREEN_WIDTH = Dimensions.get('window').width;

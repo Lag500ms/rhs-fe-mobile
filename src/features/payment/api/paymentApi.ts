@@ -1,70 +1,13 @@
 import apiClient from '../../../lib/apiClient';
-
-/** Request body for creating a payment URL */
-export interface CreatePaymentRequest {
-  applicationId: string;
-  orderInfo?: string;
-}
-
-/** Response from create-payment-url endpoint */
-export interface CreatePaymentResponse {
-  success: boolean;
-  message: string;
-  data: {
-    paymentUrl: string;
-    orderId: string;
-    amount: number;
-  };
-}
-
-/** Deposit result after successful payment */
-export interface DepositPaymentResult {
-  orderId: string;
-  applicationId: string;
-  amount: number;
-  slotCode: string;
-  pdfUrl: string;
-  vnpTransactionNo?: string;
-  paidAt?: string;
-  projectName: string;
-  applicantName: string;
-}
-
-/** Payment transaction info */
-export interface PaymentInfo {
-  id: string;
-  orderId: string;
-  orderInfo?: string;
-  applicationId?: string | null;
-  amount: number;
-  status: string;
-  vnpResponseCode?: string;
-  vnpTransactionNo?: string;
-  vnpBankCode?: string;
-  vnpPayDate?: string;
-  createdAt: string;
-  paidAt?: string;
-  slotCode?: string;
-  pdfUrl?: string;
-}
-
-/** Deposit result API response wrapper */
-export interface DepositResultResponse {
-  success: boolean;
-  data: DepositPaymentResult;
-}
-
-/** Payment info API response wrapper */
-export interface PaymentInfoResponse {
-  success: boolean;
-  data: PaymentInfo;
-}
-
-/** List payments response */
-export interface MyPaymentsResponse {
-  success: boolean;
-  data: PaymentInfo[];
-}
+import {
+  CreatePaymentRequest,
+  CreatePaymentResponse,
+  DepositPaymentResult,
+  PaymentInfo,
+  DepositResultResponse,
+  PaymentInfoResponse,
+  MyPaymentsResponse,
+} from '../types/payment';
 
 export const paymentApi = {
   /**

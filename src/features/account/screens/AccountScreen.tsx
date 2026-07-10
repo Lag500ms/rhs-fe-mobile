@@ -17,7 +17,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
 import { getToken, getRefreshToken, clearTokens } from '../../../lib/tokenStorage';
-import { userApi, UserProfileDto } from '../../user/api/userApi';
+import { userApi } from '../../user/api/userApi';
+import { UserProfileDto } from '../../user/types/user';
 import { enableBiometric, disableBiometric, isBiometricEnabled } from '../../../lib/biometricService';
 
 export const AccountScreen = () => {

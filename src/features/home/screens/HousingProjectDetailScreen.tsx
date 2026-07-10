@@ -19,21 +19,17 @@ import { WebView } from 'react-native-webview';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme';
 import { HousingProjectResponse, housingApi } from '../api/housingApi';
+import { formatPrice, formatArea, getThumb } from '../utils/format';
+import { geocode, LatLng, VIETNAM_FALLBACK, MAPBOX_TOKEN } from '../services/geocodeService';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { getToken } from '../../../lib/tokenStorage';
 import { wishlistApi } from '../../saved/api/wishlistApi';
 import { userApi } from '../../user/api/userApi';
 
 
-const VERIFIED_KEY = 'identityVerified';
-const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2lyeGlhb2xpbjJrNCIsImEiOiJjbXE2NXI3aXIwMWdqMnRwdTloemM4am9zIn0.AQVt7JOUOcycgp-G49qwOA';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 interface Props { route: { params: { project: HousingProjectResponse } }; navigation: any; }
-
-interface LatLng { latitude: number; longitude: number; }
-
-const VIETNAM_FALLBACK: LatLng = { latitude: 21.0285, longitude: 105.8542 };
 
 export const HousingProjectDetailScreen = ({ route }: Props) => {
   const navigation = useNavigation<any>();
@@ -54,7 +50,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
     : [];
 
   useEffect(() => {
-    geocode(fullAddress);
+    geocodeAddress(fullAddress);
     checkWishlist();
     fetchSuggestedProjects();
   }, []);
@@ -86,33 +82,13 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
     } catch {}
   };
 
-  const geocode = async (address: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const enc = encodeURIComponent(address);
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${enc}.json?access_token=${MAPBOX_TOKEN}&country=VN&limit=1`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.features?.length > 0) {
-        const [lng, lat] = data.features[0].center;
-        setCoords({ latitude: lat, longitude: lng });
-      } else {
-        const fbUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(project.province)}.json?access_token=${MAPBOX_TOKEN}&country=VN&limit=1`;
-        const fbRes = await fetch(fbUrl);
-        const fbData = await fbRes.json();
-        if (fbData.features?.length > 0) {
-          const [lng, lat] = fbData.features[0].center;
-          setCoords({ latitude: lat, longitude: lng });
-        } else {
-          setCoords(VIETNAM_FALLBACK);
-          setError('Không thể xác định vị trí chính xác');
-        }
-      }
-    } catch {
-      setCoords(VIETNAM_FALLBACK);
-      setError('Không thể tải bản đồ');
-    } finally { setLoading(false); }
+  const geocodeAddress = async (address: string) => {
+    setLoading(true);
+    setError(null);
+    const result = await geocode(address, project.province);
+    setCoords(result.coords);
+    setError(result.error || null);
+    setLoading(false);
   };
 
   const openFullMap = () => {
@@ -222,18 +198,6 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
     new mapboxgl.Marker({element:el,anchor:'bottom'}).setLngLat([${coords.longitude},${coords.latitude}]).addTo(map);
     </script></body></html>` : '';
 
-  const fmtPrice = (min: number, max: number) => {
-    if (min === 0 && max === 0) return 'Liên hệ';
-    if (min >= 1e9) return min === max ? `${min/1e9} tỷ` : `${min/1e9} - ${max/1e9} tỷ`;
-    if (min >= 1e6) return min === max ? `${min/1e6} triệu` : `${min/1e6} - ${max/1e6} triệu`;
-    return `${min.toLocaleString()}đ`;
-  };
-
-  const fmtArea = (min: number, max: number) => {
-    if (min === 0 && max === 0) return '';
-    return min === max ? `${min} m²` : `${min} - ${max} m²`;
-  };
-
   return (
     <SafeAreaView style={styles.safe}>
       {/* Thin brand bar at top */}
@@ -284,12 +248,12 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           <View style={styles.row}>
             <View style={[styles.chip, { backgroundColor: '#E3F2FD' }]}>
               <Feather name="dollar-sign" size={13} color={RHSColors.blue700} />
-              <Text style={[styles.chipText, {color: RHSColors.blue700}]}>{fmtPrice(project.minPrice, project.maxPrice)}</Text>
+              <Text style={[styles.chipText, {color: RHSColors.blue700}]}>{formatPrice(project.minPrice, project.maxPrice)}</Text>
             </View>
-            {fmtArea(project.minArea, project.maxArea) ? (
+            {formatArea(project.minArea, project.maxArea) ? (
               <View style={[styles.chip, {backgroundColor: '#E3F2FD'}]}>
                 <Feather name="maximize" size={13} color={RHSColors.blue700} />
-                <Text style={[styles.chipText, {color: RHSColors.blue700}]}>{fmtArea(project.minArea, project.maxArea)}</Text>
+                <Text style={[styles.chipText, {color: RHSColors.blue700}]}>{formatArea(project.minArea, project.maxArea)}</Text>
               </View>
             ) : null}
           </View>
@@ -380,9 +344,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
               <Text style={styles.suggestedTitle}>Dự án cùng phường</Text>
             </View>
             {suggestedProjects.map(sp => {
-              const thumb = sp.images?.length
-                ? [...sp.images].sort((a, b) => a.displayOrder - b.displayOrder)[0].imageUrl
-                : sp.thumbnailUrl || null;
+              const thumb = getThumb(sp);
               return (
                 <TouchableOpacity
                   key={sp.id}
@@ -406,7 +368,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
                       <View style={styles.suggestedChip}>
                         <Feather name="dollar-sign" size={10} color={RHSColors.red600} />
                         <Text style={styles.suggestedChipText}>
-                          {fmtPrice(sp.minPrice, sp.maxPrice)}
+                          {formatPrice(sp.minPrice, sp.maxPrice)}
                         </Text>
                       </View>
                     </View>

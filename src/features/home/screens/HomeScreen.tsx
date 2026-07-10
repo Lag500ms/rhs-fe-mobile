@@ -16,7 +16,9 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
-import { housingApi, HousingProjectResponse } from '../api/housingApi';
+import { housingApi } from '../api/housingApi';
+import { HousingProjectResponse } from '../types/housing';
+import { formatPrice, getThumb } from '../utils/format';
 import { HomeStackParamList } from '../navigation/HomeNavigator';
 import { userApi } from '../../user/api/userApi';
 import phuongData from '../../../../assets/phuong.json';
@@ -100,21 +102,6 @@ export const HomeScreen = () => {
   const handleSearch = () => fetchProjects(1);
   const handleLoadMore = () => {
     if (pageIndex < totalPages && !loadingMore) fetchProjects(pageIndex + 1, true);
-  };
-
-  const formatPrice = (min: number, max: number) => {
-    if (min === 0 && max === 0) return 'Liên hệ';
-    if (min >= 1e9) return min === max ? `${min/1e9} tỷ` : `${min/1e9} - ${max/1e9} tỷ`;
-    if (min >= 1e6) return min === max ? `${min/1e6} triệu` : `${min/1e6} - ${max/1e6} triệu`;
-    return `${min.toLocaleString()}đ`;
-  };
-
-  const getThumb = (p: HousingProjectResponse) => {
-    if (p.images?.length) {
-      const sorted = [...p.images].sort((a, b) => a.displayOrder - b.displayOrder);
-      return sorted[0].imageUrl;
-    }
-    return p.thumbnailUrl || null;
   };
 
   return (

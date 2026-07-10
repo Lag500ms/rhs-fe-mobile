@@ -1,54 +1,7 @@
 import apiClient from '../../../lib/apiClient';
 import { userApi } from '../../user/api/userApi';
-import phuongData from '../../../../assets/phuong.json';
-
-type PhuongEntry = {
-  name: string;
-  type: string;
-  slug: string;
-  name_with_type: string;
-  path: string;
-  path_with_type: string;
-  code: string;
-  parent_code: string;
-};
-
-const phuongList: PhuongEntry[] = Object.values(phuongData);
-
-/** Loại bỏ dấu tiếng Việt để so khớp chính xác */
-function removeDiacritics(str: string): string {
-  return str
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D');
-}
-
-/** Trích xuất ResidentWard từ địa chỉ bằng cách so khớp với danh sách phường/xã */
-function extractWardFromAddress(address: string): string | undefined {
-  if (!address) return undefined;
-  const normalized = removeDiacritics(address.toLowerCase());
-
-  // Tìm tất cả các phường/xã có tên xuất hiện trong địa chỉ
-  const matches = phuongList.filter((p) => normalized.includes(removeDiacritics(p.name.toLowerCase())));
-
-  if (matches.length === 0) return undefined;
-  if (matches.length === 1) return matches[0].code;
-
-  // Nhiều kết quả → ưu tiên cái có path trùng với địa chỉ
-  const byPath = matches.filter((p) => {
-    const pathTokens = p.path.toLowerCase().split(',').map((t) => removeDiacritics(t.trim()));
-    return pathTokens.some((token) => normalized.includes(token));
-  });
-
-  if (byPath.length > 0) {
-    // Ưu tiên tên dài nhất trong những cái khớp path
-    return byPath.sort((a, b) => b.name.length - a.name.length)[0].code;
-  }
-
-  // Fallback: tên dài nhất
-  return matches.sort((a, b) => b.name.length - a.name.length)[0].code;
-}
+import { OcrResult, FaceMatchResult, LivenessResult } from '../types/ekyc';
+import { extractWardFromAddress } from '../utils/ward';
 
 /** Trích xuất message chi tiết từ lỗi 400 của backend */
 function extractErrorMessage(e: any, fallback: string): string {
@@ -61,39 +14,6 @@ function extractErrorMessage(e: any, fallback: string): string {
   if (code) parts.push(`(Mã: ${code})`);
   if (field) parts.push(`[Field: ${field}]`);
   return parts.join(' ');
-}
-
-export interface OcrResult {
-  id?: string;
-  name?: string;
-  dob?: string;
-  sex?: string;
-  nationality?: string;
-  home?: string;
-  address?: string;
-  doe?: string;
-  issueDate?: string;
-  issueLoc?: string;
-  type?: string;
-  overallScore?: number;
-}
-
-export interface FaceMatchResult {
-  isMatch: boolean;
-  similarity: number;
-  isBothImgIdCard: boolean;
-  fptMessage: string;
-}
-
-export interface LivenessResult {
-  isLive: boolean;
-  spoofProbability: number;
-  needToReview: boolean;
-  isDeepfake: boolean;
-  warning: string;
-  livenessCode: string;
-  livenessMessage: string;
-  fptMessage: string;
 }
 
 const getMimeType = (uri: string): string => {

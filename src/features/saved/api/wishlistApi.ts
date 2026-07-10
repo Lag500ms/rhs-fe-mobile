@@ -1,36 +1,5 @@
 import apiClient from '../../../lib/apiClient';
-
-/** Kiểu phân trang chung – đồng bộ với PagedResult từ housingApi */
-export interface PagedResult<T> {
-  pageIndex: number;
-  pageSize: number;
-  totalCount: number;
-  items: T[];
-  totalPages: number;
-  hasPreviousPage: boolean;
-  hasNextPage: boolean;
-}
-
-/** Response từ GET api/wishlist (danh sách wishlist + phân trang) */
-export interface WishlistItemResponse {
-  wishlistId: string;
-  addedAt: string;
-
-  // ── Thông tin HousingProject ──
-  projectId: string;
-  projectName: string;
-  description: string;
-  province: string;
-  district: string;
-  address: string;
-  minPrice: number;
-  maxPrice: number;
-  minArea: number;
-  maxArea: number;
-  availableUnits: number;
-  thumbnailUrl?: string;
-  status?: string;
-}
+import { PagedResult, WishlistItemResponse } from '../types/wishlist';
 
 /** Response body chuẩn từ backend */
 interface ApiResponse<T> {

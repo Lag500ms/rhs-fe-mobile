@@ -10,7 +10,8 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
 
-const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2lyeGlhb2xpbjJrNCIsImEiOiJjbXE2NXI3aXIwMWdqMnRwdTloemM4am9zIn0.AQVt7JOUOcycgp-G49qwOA';
+import { MAPBOX_TOKEN } from '../services/geocodeService';
+
 const { width, height } = Dimensions.get('window');
 
 interface Props {

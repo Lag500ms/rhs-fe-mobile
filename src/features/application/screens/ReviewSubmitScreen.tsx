@@ -15,8 +15,9 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
-import { housingApplicationApi, ApplicationDetail, ApplicationDocument } from '../api/housingApplicationApi';
+import { housingApplicationApi } from '../api/housingApplicationApi';
 import { housingDocumentApi } from '../api/housingDocumentApi';
+import { ApplicationDetail, ApplicationDocument } from '../types/application';
 import { getHousingStatusLabel } from '../utils/statusConfig';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');

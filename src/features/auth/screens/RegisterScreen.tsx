@@ -15,7 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { RHSColors, spacing, borderRadius, typography } from '../../../lib/theme';
-import { authApi, RegisterDto } from '../api/authApi';
+import { authApi } from '../api/authApi';
+import { RegisterDto } from '../types/auth';
 
 export const RegisterScreen = () => {
   const navigation = useNavigation<any>();

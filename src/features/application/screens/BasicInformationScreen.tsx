@@ -17,7 +17,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { userApi } from '../../user/api/userApi';
-import { housingApplicationApi, CreateApplicationRequest } from '../api/housingApplicationApi';
+import { housingApplicationApi } from '../api/housingApplicationApi';
+import { CreateApplicationRequest } from '../types/application';
 
 const HOUSING_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'NO_HOUSE', label: 'Chưa có nhà ở' },

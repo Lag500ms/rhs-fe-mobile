@@ -17,7 +17,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { RHSColors } from '../../../lib/theme';
 
 import { CustomInput } from '../../auth/components/CustomInput';
-import { userApi, UpdateProfileDto, UserProfileDto } from '../api/userApi';
+import { userApi } from '../api/userApi';
+import { UpdateProfileDto, UserProfileDto } from '../types/user';
 
 export const EditProfileScreen = () => {
   const navigation = useNavigation<any>();

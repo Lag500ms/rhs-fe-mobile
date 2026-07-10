@@ -11,7 +11,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { RHSColors, borderRadius } from '../../../lib/theme';
 import { PaymentStackParamList } from '../navigation/PaymentNavigator';
-import { paymentApi, DepositPaymentResult } from '../api/paymentApi';
+import { paymentApi } from '../api/paymentApi';
+import { DepositPaymentResult } from '../types/payment';
 
 type PaymentProcessingRouteProp = RouteProp<PaymentStackParamList, 'PaymentProcessing'>;
 
