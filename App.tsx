@@ -7,7 +7,6 @@ import { UserNavigator } from './src/features/user/UserNavigator';
 import { MainTabNavigator } from './src/features/main/MainTabNavigator';
 import { EKycNavigator } from './src/features/ekyc/EKycNavigator';
 import { IssueReportNavigator } from './src/features/issue-reports/IssueReportNavigator';
-import { NotificationListScreen } from './src/features/notification/screens/NotificationListScreen';
 import { FaqScreen } from './src/features/help/screens/FaqScreen';
 
 export type RootStackParamList = {
@@ -16,7 +15,6 @@ export type RootStackParamList = {
   UserProfile: undefined;
   EKyc: { returnTo?: string } | undefined;
   IssueReport: undefined;
-  NotificationList: undefined;
   Faq: undefined;
 };
 
@@ -34,7 +32,6 @@ export default function App() {
         <Stack.Screen name="UserProfile" component={UserNavigator} />
         <Stack.Screen name="EKyc" component={EKycNavigator} />
         <Stack.Screen name="IssueReport" component={IssueReportNavigator} />
-        <Stack.Screen name="NotificationList" component={NotificationListScreen} />
         <Stack.Screen name="Faq" component={FaqScreen} />
       </Stack.Navigator>
     </NavigationContainer>

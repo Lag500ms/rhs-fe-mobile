@@ -190,11 +190,6 @@ export const AccountScreen = () => {
                 icon="user" 
                 label="Thông tin công dân" 
                 onPress={() => navigation.navigate('UserProfile')} 
-              />
-              <MenuItem 
-                icon="map-pin" 
-                label="Sổ địa chỉ thường trú" 
-                onPress={() => navigation.navigate('AddressBook')} 
                 last 
               />
             </View>
@@ -242,11 +237,6 @@ export const AccountScreen = () => {
             icon="file-text" 
             label="Tra cứu thủ tục hành chính" 
             onPress={() => navigation.navigate('Faq')} 
-          />
-          <MenuItem 
-            icon="shield" 
-            label="Chính sách bảo mật dữ liệu" 
-            onPress={() => navigation.navigate('Policy')} 
           />
           <MenuItem 
             icon="info" 
