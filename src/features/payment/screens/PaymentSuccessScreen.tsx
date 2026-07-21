@@ -19,7 +19,7 @@ type PaymentSuccessRouteProp = RouteProp<PaymentStackParamList, 'PaymentSuccess'
 export const PaymentSuccessScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<PaymentSuccessRouteProp>();
-  const { orderId, slotCode, pdfUrl, projectName, applicantName, amount, paidAt } = route.params;
+  const { orderId, applicationId, slotCode, pdfUrl, projectName, applicantName, amount, paidAt } = route.params;
 
   const [copied, setCopied] = useState(false);
 
@@ -36,13 +36,14 @@ export const PaymentSuccessScreen = () => {
   }, [slotCode]);
 
   const handleViewContract = useCallback(() => {
-    if (pdfUrl) {
+    if (applicationId || pdfUrl) {
       navigation.navigate('ContractViewer', {
-        pdfUrl,
+        applicationId,
+        pdfUrl: applicationId ? undefined : pdfUrl,
         title: `Hợp đồng - ${projectName}`,
       });
     }
-  }, [pdfUrl, projectName, navigation]);
+  }, [applicationId, pdfUrl, projectName, navigation]);
 
   const handleShareSlotCode = useCallback(async () => {
     try {
@@ -170,7 +171,7 @@ export const PaymentSuccessScreen = () => {
         </View>
 
         {/* ── View Contract Button ── */}
-        {pdfUrl ? (
+        {applicationId || pdfUrl ? (
           <TouchableOpacity
             style={styles.contractBtn}
             onPress={handleViewContract}

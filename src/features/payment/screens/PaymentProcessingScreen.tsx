@@ -67,6 +67,7 @@ export const PaymentProcessingScreen = () => {
               if (timeoutRef.current) clearTimeout(timeoutRef.current);
               navigation.replace('PaymentSuccess', {
                 orderId,
+                applicationId,
                 slotCode: infoResponse.data.slotCode,
                 pdfUrl: infoResponse.data.pdfUrl || '',
                 projectName: projectName || 'Dự án',
@@ -125,6 +126,7 @@ export const PaymentProcessingScreen = () => {
     if (result) {
       navigation.replace('PaymentSuccess', {
         orderId: result.orderId,
+        applicationId: result.applicationId || applicationId,
         slotCode: result.slotCode,
         pdfUrl: result.pdfUrl,
         projectName: result.projectName || projectName,

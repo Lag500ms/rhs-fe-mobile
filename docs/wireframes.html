@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RHS Mobile — UI Wireframes</title>
+  <style>
+    :root {
+      --bg: #f4f4f5;
+      --surface: #fff;
+      --ink: #1a1a1a;
+      --muted: #6b7280;
+      --line: #c4c4c4;
+      --fill: #e5e5e5;
+      --fill2: #d4d4d4;
+      --fill3: #f0f0f0;
+      --phone: #111;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.4;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      padding: 16px 24px;
+    }
+    header h1 { margin: 0 0 4px; font-size: 1.35rem; }
+    header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .nav a {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      text-decoration: none;
+      background: var(--fill3);
+    }
+    .nav a:hover { background: var(--fill); }
+    main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+    section { margin-bottom: 40px; }
+    section h2 {
+      font-size: 1.1rem;
+      margin: 0 0 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .note { font-size: 0.8rem; color: var(--muted); margin: 0 0 16px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 28px;
+    }
+    .card-meta { margin-bottom: 8px; }
+    .card-meta .title { font-weight: 700; font-size: 0.95rem; }
+    .card-meta .route { font-size: 0.75rem; color: var(--muted); }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--fill2);
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .badge.orphan { background: #fde68a; }
+
+    /* Phone frame */
+    .phone {
+      width: 260px;
+      height: 520px;
+      border: 2px solid var(--phone);
+      border-radius: 28px;
+      background: #fafafa;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 1px 0 #ddd;
+    }
+    .status {
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      font-size: 8px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .body { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      height: 48px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+      flex-shrink: 0;
+    }
+    .tabs span {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: 8px;
+      color: var(--muted);
+    }
+    .tabs span.on { color: var(--ink); font-weight: 700; }
+    .tabs .ico {
+      width: 14px; height: 14px; border-radius: 3px; background: var(--fill2);
+    }
+    .tabs span.on .ico { background: #555; }
+
+    /* Wire primitives */
+    .pad { padding: 10px; display: flex; flex-direction: column; gap: 8px; flex: 1; overflow: hidden; }
+    .stripes { display: flex; height: 4px; width: 100%; flex-shrink: 0; }
+    .stripes i { display: block; height: 100%; }
+    .stripes i:nth-child(1) { flex: 2; background: #bbb; }
+    .stripes i:nth-child(2) { flex: 0.4; background: #ddd; }
+    .stripes i:nth-child(3) { flex: 2; background: #888; }
+    .hdr {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; background: #fff;
+      border-bottom: 1px solid #e5e5e5; flex-shrink: 0;
+    }
+    .hdr.filled { background: var(--fill); border-bottom: none; border-radius: 0 0 12px 12px; }
+    .hdr .back {
+      width: 22px; height: 22px; border-radius: 11px;
+      border: 1px solid var(--line); background: var(--fill3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; flex-shrink: 0;
+    }
+    .hdr .t { flex: 1; text-align: center; font-size: 11px; font-weight: 700; }
+    .hdr .r { font-size: 8px; color: var(--muted); min-width: 22px; text-align: right; }
+    .box {
+      border: 1px solid var(--line); border-radius: 6px;
+      background: var(--fill3); box-sizing: border-box;
+    }
+    .box.dash { border-style: dashed; }
+    .box.ctr { display: flex; align-items: center; justify-content: center; }
+    .line {
+      height: 8px; border-radius: 4px; background: var(--fill2);
+    }
+    .line.muted { background: var(--fill); height: 6px; }
+    .lbl { font-size: 10px; font-weight: 600; color: #444; }
+    .lbl.sm { font-size: 9px; color: var(--muted); font-weight: 500; }
+    .inp {
+      height: 36px; border-radius: 18px; border: 1px solid var(--line);
+      background: #fff; display: flex; align-items: center;
+      padding: 0 12px; font-size: 10px; color: var(--muted);
+    }
+    .btn {
+      height: 36px; border-radius: 18px; display: flex;
+      align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; padding: 0 12px;
+      background: var(--fill2); border: 1px solid transparent;
+    }
+    .btn.pri { background: #555; color: #fff; }
+    .btn.out { background: transparent; border-color: var(--line); }
+    .chip {
+      display: inline-flex; align-items: center; height: 24px;
+      padding: 0 8px; border-radius: 12px; border: 1px solid var(--line);
+      background: #fff; font-size: 9px; color: #555; white-space: nowrap;
+    }
+    .chip.lock { background: var(--fill3); }
+    .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .grow { flex: 1; }
+    .sp { flex: 1; }
+    .center-col {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 10px; padding: 16px;
+    }
+    .step { display: flex; gap: 4px; }
+    .step > div { flex: 1; opacity: 0.5; }
+    .step > div.on { opacity: 1; }
+    .step .bar { height: 6px; border-radius: 3px; background: var(--fill2); margin-bottom: 4px; }
+    footer {
+      padding: 16px 24px 40px; text-align: center;
+      font-size: 0.8rem; color: var(--muted);
+    }
+    @media print {
+      header { position: static; }
+      .phone { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>RHS Mobile — UI Wireframes</h1>
+    <p>
+      Low-fidelity wireframes từ source Expo (<code>rhs-fe-mobile</code>).
+      Grayscale · 28 màn hình · mở file này bằng trình duyệt hoặc host lên web.
+    </p>
+    <nav class="nav">
+      <a href="#auth">1 · Auth</a>
+      <a href="#main">2 · Main</a>
+      <a href="#user">3 · User</a>
+      <a href="#ekyc">4 · eKYC</a>
+      <a href="#orphan">5 · Orphan</a>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- ========== AUTH ========== -->
+    <section id="auth">
+      <h2>1 · Auth</h2>
+      <div class="grid">
+
+        <article>
+          <div class="card-meta"><div class="title">Đăng nhập</div><div class="route">Auth / Login</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="pad">
+              <div class="box ctr" style="width:28px;height:28px;border-radius:14px"><span class="lbl">←</span></div>
+              <div style="text-align:center;margin-top:8px"><span class="lbl">Đăng nhập</span></div>
+              <div class="sp"></div>
+              <div class="inp">[icon] Nhập SĐT chính hoặc email</div>
+              <div class="inp">[icon] Mật khẩu · show/hide</div>
+              <div class="row"><span class="chip">☐ Nhớ tài khoản</span><div class="grow"></div><span class="lbl sm">Quên mật khẩu</span></div>
+              <div class="row"><div class="grow"><div class="btn pri">Đăng nhập</div></div><div class="box" style="width:36px;height:36px;border-radius:18px"></div></div>
+              <div class="sp"></div>
+              <div style="text-align:center"><span class="lbl sm">Bạn chưa có tài khoản? Đăng ký</span></div>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Đăng ký tài khoản</div><div class="route">Auth / Register</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="pad" style="gap:6px">
+              <div class="box ctr" style="width:28px;height:28px;border-radius:14px"><span class="lbl">←</span></div>
+              <div style="text-align:center"><span class="lbl">Đăng ký tài khoản</span></div>
+              <span class="lbl sm">Họ và tên *</span><div class="inp"></div>
+              <span class="lbl sm">Email *</span><div class="inp"></div>
+              <span class="lbl sm">Mật khẩu *</span><div class="inp">••••••••</div>
+              <span class="lbl sm">Số điện thoại</span><div class="inp"></div>
+              <div class="btn pri">Đăng ký</div>
+              <span class="lbl sm">Điều khoản / Chính sách</span>
+              <div style="text-align:center"><span class="lbl sm">Bạn đã có tài khoản? Đăng nhập</span></div>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Xác thực OTP</div><div class="route">Auth / VerifyOtp</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div style="background:var(--fill);padding:10px 10px 24px">
+              <div class="row"><div class="box ctr" style="width:22px;height:22px;border-radius:11px"><span class="lbl">←</span></div>
+              <div class="box" style="width:20px;height:20px"></div>
+              <div><div class="lbl">Xác thực OTP</div><div class="lbl sm">subtitle</div></div></div>
+            </div>
+            <div style="margin:-12px 10px 0;padding:12px;border-radius:14px;border:1px solid var(--line);background:#fff;display:flex;flex-direction:column;gap:10px;align-items:center">
+              <div class="box" style="width:40px;height:40px;border-radius:20px"></div>
+              <span class="lbl">Nhập mã xác thực</span>
+              <span class="lbl sm">email@example.com</span>
+              <div class="row">
+                <div class="box" style="width:28px;height:36px"></div>
+                <div class="box" style="width:28px;height:36px"></div>
+                <div class="box" style="width:28px;height:36px"></div>
+                <div class="box" style="width:28px;height:36px"></div>
+                <div class="box" style="width:28px;height:36px"></div>
+                <div class="box" style="width:28px;height:36px"></div>
+              </div>
+              <div style="width:100%"><div class="btn pri">Xác thực</div></div>
+              <span class="lbl sm">Gửi lại mã OTP</span>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Quên mật khẩu</div><div class="route">Auth / ForgotPassword</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="stripes"><i></i><i></i><i></i></div>
+            <div class="pad">
+              <div class="box ctr" style="width:28px;height:28px;border-radius:14px"><span class="lbl">←</span></div>
+              <span class="lbl">Quên mật khẩu</span>
+              <span class="lbl sm">Nhập email để nhận mã OTP đặt lại mật khẩu</span>
+              <div class="sp"></div>
+              <div class="inp">Nhập email</div>
+              <div class="btn pri">Gửi yêu cầu</div>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Đặt lại mật khẩu</div><div class="route">Auth / ResetPassword</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="stripes"><i></i><i></i><i></i></div>
+            <div class="pad" style="gap:6px">
+              <div class="box ctr" style="width:28px;height:28px;border-radius:14px"><span class="lbl">←</span></div>
+              <span class="lbl">Đặt lại mật khẩu</span>
+              <span class="lbl sm">OTP</span><div class="inp">Mã OTP</div>
+              <span class="lbl sm">Mật khẩu mới</span><div class="inp">••••••••</div>
+              <span class="lbl sm">Xác nhận mật khẩu</span><div class="inp">••••••••</div>
+              <div class="btn pri">Đặt lại mật khẩu</div>
+            </div>
+          </div></div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ========== MAIN ========== -->
+    <section id="main">
+      <h2>2 · Main Tabs &amp; Flows</h2>
+      <p class="note">Tab bar: Trang chủ · Hồ sơ của tôi · Quan tâm · Tài khoản</p>
+      <div class="grid">
+
+        <article>
+          <div class="card-meta"><div class="title">Tra cứu nhà ở <span class="badge">TAB</span></div><div class="route">MainTabs / Home / HomeList</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="stripes"><i></i><i></i><i></i></div>
+            <div style="padding:10px">
+              <div class="row"><div class="box" style="width:24px;height:24px"></div>
+              <div><div class="lbl">Tra cứu nhà ở</div><div class="lbl sm">TP. Hồ Chí Minh</div></div></div>
+              <div style="margin-top:8px" class="inp">[search] Tìm kiếm dự án nhà ở...</div>
+            </div>
+            <div class="row" style="padding:0 8px 8px">
+              <span class="chip lock">TP.HCM</span>
+              <span class="chip">Quận/Huyện ▾</span>
+              <span class="chip">Giá ▾</span>
+              <span class="chip">Diện tích ▾</span>
+            </div>
+            <div class="pad" style="gap:8px;padding-top:0">
+              <div class="row"><div class="box" style="width:16px;height:16px"></div><span class="lbl">Danh sách nhà ở</span><span class="chip">N dự án</span></div>
+              <div class="box" style="padding:0;overflow:hidden;border-radius:10px">
+                <div class="box ctr" style="height:72px;border:0;border-radius:0"><span class="lbl sm">[ image ]</span></div>
+                <div style="padding:8px;display:flex;flex-direction:column;gap:4px">
+                  <div class="line" style="width:80%"></div>
+                  <div class="row"><span class="chip">Giá</span><span class="chip">m²</span><span class="chip">Còn căn</span></div>
+                  <div class="line muted" style="width:90%"></div>
+                </div>
+              </div>
+              <div class="box" style="padding:0;overflow:hidden;border-radius:10px">
+                <div class="box ctr" style="height:56px;border:0;border-radius:0"><span class="lbl sm">[ image ]</span></div>
+                <div style="padding:8px"><div class="line" style="width:70%"></div></div>
+              </div>
+              <div class="btn out">Xem thêm dự án</div>
+            </div>
+          </div>
+          <div class="tabs">
+            <span class="on"><i class="ico"></i>Trang chủ</span>
+            <span><i class="ico"></i>Hồ sơ</span>
+            <span><i class="ico"></i>Quan tâm</span>
+            <span><i class="ico"></i>Tài khoản</span>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Chi tiết dự án</div><div class="route">Home / HousingProjectDetail</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="stripes"><i></i><i></i><i></i></div>
+            <div class="hdr"><div class="back">←</div><div class="t">Chi tiết dự án</div><div class="r">heart</div></div>
+            <div class="pad">
+              <div class="box ctr" style="height:110px;border-radius:8px"><span class="lbl sm">[ carousel · · · ]</span></div>
+              <div class="box" style="padding:8px;border-radius:8px">
+                <div class="line" style="width:70%"></div>
+                <div style="height:6px"></div>
+                <div class="row"><span class="chip">Giá</span><span class="chip">Diện tích</span></div>
+                <div style="height:6px"></div>
+                <div class="line muted" style="width:95%"></div>
+              </div>
+              <div class="box" style="padding:8px;border-radius:8px"><span class="lbl sm">Mô tả dự án</span><div class="line muted" style="width:100%;margin-top:4px"></div></div>
+              <div class="box ctr" style="height:70px;border-radius:8px"><span class="lbl sm">[ map preview ]</span></div>
+              <div class="btn out">Xem bản đồ 3D</div>
+              <div class="btn pri">Đăng ký nhà ở</div>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Bản đồ 3D</div><div class="route">Home / MapFull</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div style="flex:1;position:relative;background:var(--fill)">
+              <div class="center-col"><span class="lbl">WebView · Bản đồ 3D</span></div>
+              <div style="position:absolute;top:8px;left:8px;right:8px">
+                <div class="hdr" style="border-radius:8px"><div class="back">←</div><div class="t">Tên dự án</div><div class="r"></div></div>
+                <div style="text-align:center"><span class="lbl sm">Bản đồ 3D</span></div>
+              </div>
+              <div style="position:absolute;bottom:10px;left:10px;right:10px;padding:8px;border-radius:8px;background:#fff;border:1px solid var(--line)">
+                <span class="lbl sm">lat, lng</span>
+              </div>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Hồ sơ đăng ký <span class="badge">TAB</span></div><div class="route">MainTabs / Applications</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="pad">
+              <div class="row"><span class="lbl">Hồ sơ đăng ký</span><span class="chip">2</span><div class="grow"></div><div class="box" style="width:22px;height:22px"></div></div>
+              <div class="box" style="padding:10px;border-radius:10px">
+                <div class="row"><div class="box" style="width:28px;height:28px"></div><div class="grow"><div class="line" style="width:75%"></div></div><span class="chip">status</span></div>
+                <div style="height:8px"></div><div class="line muted" style="width:55%"></div><div class="line muted" style="width:40%"></div>
+                <div style="height:8px"></div><span class="lbl sm">action →</span>
+              </div>
+              <div class="box" style="padding:10px;border-radius:10px">
+                <div class="row"><div class="box" style="width:28px;height:28px"></div><div class="grow"><div class="line" style="width:65%"></div></div><span class="chip">status</span></div>
+                <div style="height:8px"></div><div class="line muted" style="width:50%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="tabs">
+            <span><i class="ico"></i>Trang chủ</span>
+            <span class="on"><i class="ico"></i>Hồ sơ</span>
+            <span><i class="ico"></i>Quan tâm</span>
+            <span><i class="ico"></i>Tài khoản</span>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Chi tiết hồ sơ</div><div class="route">Applications / ApplicationDetail</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="hdr"><div class="back">←</div><div class="t">Chi tiết hồ sơ</div><div class="r"></div></div>
+            <div class="pad" style="gap:6px">
+              <span class="chip">● Đã duyệt</span>
+              <div class="line" style="width:80%"></div>
+              <div class="box" style="padding:8px;border-radius:8px"><span class="lbl sm">Thông tin cá nhân</span><div class="line muted" style="width:90%;margin-top:4px"></div></div>
+              <div class="box" style="padding:8px;border-radius:8px"><span class="lbl sm">Địa chỉ</span><div class="line muted" style="width:95%;margin-top:4px"></div></div>
+              <div class="box" style="padding:8px;border-radius:8px"><span class="lbl sm">Giấy tờ · N file</span></div>
+              <div class="box" style="padding:8px;border-radius:8px"><span class="lbl sm">Số tiền đặt cọc · countdown</span><div style="height:6px"></div><div class="btn pri">Thanh toán ngay</div></div>
+            </div>
+            <div style="padding:8px"><div class="btn out">Xem hợp đồng nguyên tắc</div></div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Bước 1/3 — Thông tin</div><div class="route">Applications / BasicInformation</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="stripes"><i></i><i></i><i></i></div>
+            <div class="hdr"><div class="back">←</div><div class="t">Bước 1/3 — Thông tin</div><div class="r"></div></div>
+            <div class="pad" style="gap:6px">
+              <div class="step">
+                <div class="on"><div class="bar"></div><span class="lbl sm">1. Thông tin</span></div>
+                <div><div class="bar"></div><span class="lbl sm">2. Giấy tờ</span></div>
+                <div><div class="bar"></div><span class="lbl sm">3. Nộp hồ sơ</span></div>
+              </div>
+              <div class="box" style="padding:8px;border-radius:8px"><span class="lbl sm">Dự án</span><div class="line" style="width:80%;margin-top:4px"></div></div>
+              <span class="lbl sm">Họ tên · CCCD · Thường trú (eKYC locked)</span>
+              <div class="box" style="height:28px"></div><div class="box" style="height:28px"></div>
+              <span class="lbl sm">Chỗ ở hiện tại</span>
+              <div class="box dash" style="height:48px"></div>
+              <span class="chip">☐ Giống thường trú</span>
+              <span class="lbl sm">Nghề nghiệp · hôn nhân · đối tượng · hình thức</span>
+              <div class="btn pri">Lưu &amp; Tiếp tục</div>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Bước 2/3 — Giấy tờ</div><div class="route">Applications / UploadDocuments</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="stripes"><i></i><i></i><i></i></div>
+            <div class="hdr"><div class="back">←</div><div class="t">Bước 2/3 — Giấy tờ</div><div class="r"></div></div>
+            <div class="pad">
+              <div class="step">
+                <div><div class="bar"></div><span class="lbl sm">1. Thông tin</span></div>
+                <div class="on"><div class="bar"></div><span class="lbl sm">2. Giấy tờ</span></div>
+                <div><div class="bar"></div><span class="lbl sm">3. Nộp hồ sơ</span></div>
+              </div>
+              <span class="lbl sm">Đã tải 0/2</span>
+              <div class="box dash ctr" style="height:72px;border-radius:8px"><div><div class="lbl sm">Giấy xác nhận nhà ở</div><div class="lbl sm">Chạm để chọn file PDF</div></div></div>
+              <div class="box dash ctr" style="height:72px;border-radius:8px"><div><div class="lbl sm">Giấy CN hộ nghèo…</div><div class="lbl sm">Chạm để chọn file PDF</div></div></div>
+              <div class="btn pri">Tiếp tục</div>
+              <div class="btn out">Lưu &amp; quay lại</div>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Bước 3/3 — Kiểm tra &amp; nộp</div><div class="route">Applications / ReviewSubmit</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="stripes"><i></i><i></i><i></i></div>
+            <div class="hdr"><div class="back">←</div><div class="t">Bước 3/3 — Kiểm tra &amp; nộp</div><div class="r"></div></div>
+            <div class="pad" style="gap:6px">
+              <div class="step">
+                <div><div class="bar"></div><span class="lbl sm">1. Thông tin</span></div>
+                <div><div class="bar"></div><span class="lbl sm">2. Giấy tờ</span></div>
+                <div class="on"><div class="bar"></div><span class="lbl sm">3. Nộp hồ sơ</span></div>
+              </div>
+              <div class="box" style="padding:8px;border-radius:8px"><span class="lbl sm">Tóm tắt hồ sơ</span></div>
+              <div class="box" style="padding:8px;border-radius:8px"><span class="lbl sm">Cá nhân</span><div class="line muted" style="width:90%;margin-top:4px"></div></div>
+              <div class="box" style="padding:8px;border-radius:8px"><span class="lbl sm">Địa chỉ</span><div class="line muted" style="width:70%;margin-top:4px"></div></div>
+              <div class="box" style="padding:8px;border-radius:8px"><span class="lbl sm">Nhà ở / Hộ · Giấy tờ</span></div>
+              <div class="btn pri">Nộp hồ sơ</div>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Cổng thanh toán VNPay</div><div class="route">Applications / PaymentWebView</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="hdr"><div class="back">×</div><div class="t">Cổng thanh toán VNPay</div><div class="r"></div></div>
+            <div class="center-col">
+              <div class="box" style="width:40px;height:40px;border-radius:20px"></div>
+              <span class="lbl">WebView · VNPay</span>
+              <span class="lbl sm">Đang kết nối cổng thanh toán...</span>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Đang kiểm tra giao dịch</div><div class="route">Applications / PaymentProcessing</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="pad"><div class="sp"></div>
+              <div class="center-col" style="padding:0">
+                <div class="box" style="width:48px;height:48px;border-radius:24px"></div>
+                <span class="lbl">Đang kiểm tra giao dịch...</span>
+                <div class="box" style="padding:10px;width:100%;border-radius:8px"><div class="line" style="width:70%"></div><div style="height:6px"></div><div class="line muted" style="width:50%"></div></div>
+                <span class="lbl sm">Đang thử lần N/45...</span>
+              </div>
+            <div class="sp"></div></div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Thanh toán thành công</div><div class="route">Applications / PaymentSuccess</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div style="padding:24px 12px 28px;background:var(--fill);text-align:center">
+              <div class="box" style="width:40px;height:40px;border-radius:20px;margin:0 auto 8px"></div>
+              <span class="lbl">Thanh toán thành công!</span>
+            </div>
+            <div class="pad">
+              <div class="box" style="padding:10px;border-radius:8px;margin-top:-16px;background:#fff">
+                <span class="lbl sm">Mã suất</span><div class="line" style="width:60%;margin:4px 0 8px"></div>
+                <div class="row"><div class="grow"><div class="btn out">Sao chép mã</div></div><div class="grow"><div class="btn out">Chia sẻ</div></div></div>
+              </div>
+              <div class="box" style="padding:8px;border-radius:8px"><span class="lbl sm">Thông tin giao dịch</span><div class="line muted" style="width:90%;margin-top:4px"></div></div>
+              <div class="btn pri">Xem hợp đồng nguyên tắc</div>
+              <div class="btn out">Quay lại danh sách hồ sơ</div>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Hợp đồng nguyên tắc</div><div class="route">Applications / ContractViewer</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="hdr"><div class="back">×</div><div class="t">Hợp đồng nguyên tắc</div><div class="r">↗</div></div>
+            <div class="center-col">
+              <div class="box ctr" style="width:140px;height:160px"><span class="lbl sm">PDF WebView</span></div>
+              <span class="lbl sm">Đang tải hợp đồng...</span>
+            </div>
+            <div style="padding:10px"><div class="btn pri">Tải xuống &amp; Lưu</div></div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Quan tâm <span class="badge">TAB</span></div><div class="route">MainTabs / Saved</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="pad">
+              <div class="row"><span class="lbl">Quan tâm</span><span class="chip">3</span></div>
+              <div class="box" style="padding:10px;border-radius:8px;border-left:3px solid #888">
+                <div class="row"><div class="grow"><div class="line" style="width:80%"></div></div><span class="lbl sm">heart</span></div>
+                <div class="line muted" style="width:60%;margin:4px 0"></div>
+                <div class="row"><span class="chip">Giá</span><span class="chip">m²</span><span class="chip">status</span></div>
+              </div>
+              <div class="box" style="padding:10px;border-radius:8px;border-left:3px solid #888">
+                <div class="line" style="width:70%"></div>
+                <div class="line muted" style="width:50%;margin-top:4px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="tabs">
+            <span><i class="ico"></i>Trang chủ</span>
+            <span><i class="ico"></i>Hồ sơ</span>
+            <span class="on"><i class="ico"></i>Quan tâm</span>
+            <span><i class="ico"></i>Tài khoản</span>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Tài khoản <span class="badge">TAB</span></div><div class="route">MainTabs / Account</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="stripes"><i></i><i></i><i></i></div>
+            <div style="padding:12px" class="row"><div class="box" style="width:28px;height:28px"></div><span class="lbl">RHS Platform</span></div>
+            <div class="pad">
+              <div class="box ctr" style="padding:12px;border-radius:10px">
+                <div style="text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center">
+                  <div class="box" style="width:44px;height:44px;border-radius:22px"></div>
+                  <span class="lbl">Chào mừng Công dân!</span>
+                  <span class="lbl sm">Xác thực để làm thủ tục NOXH</span>
+                  <div class="btn pri" style="width:100%">Đăng nhập tài khoản</div>
+                  <span class="lbl sm">Đăng ký tài khoản công dân mới</span>
+                </div>
+              </div>
+              <div class="box" style="padding:8px;border-radius:8px">
+                <span class="lbl sm">TRỢ GIÚP &amp; PHÁP LÝ</span>
+                <div class="line muted" style="width:90%;margin-top:6px"></div>
+                <div class="line muted" style="width:85%;margin-top:4px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="tabs">
+            <span><i class="ico"></i>Trang chủ</span>
+            <span><i class="ico"></i>Hồ sơ</span>
+            <span><i class="ico"></i>Quan tâm</span>
+            <span class="on"><i class="ico"></i>Tài khoản</span>
+          </div></div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ========== USER ========== -->
+    <section id="user">
+      <h2>3 · User</h2>
+      <div class="grid">
+
+        <article>
+          <div class="card-meta"><div class="title">Hồ sơ cá nhân</div><div class="route">UserProfile / Profile</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="stripes"><i></i><i></i><i></i></div>
+            <div style="padding:12px"><span class="lbl">Hồ sơ cá nhân</span><div class="lbl sm">Họ và tên</div></div>
+            <div class="pad">
+              <div class="row" style="justify-content:flex-end"><span class="chip">Sửa SĐT</span></div>
+              <div style="display:flex;justify-content:center"><div class="box ctr" style="width:64px;height:64px;border-radius:32px"><span class="lbl sm">cam</span></div></div>
+              <div class="box" style="padding:8px;border-radius:8px">
+                <div class="line" style="width:80%"></div>
+                <div class="line muted" style="width:70%;margin-top:4px"></div>
+                <div class="line muted" style="width:90%;margin-top:4px"></div>
+              </div>
+              <div class="box" style="padding:10px 12px;border-radius:8px"><div class="row"><div class="box" style="width:18px;height:18px"></div><span class="lbl">Đổi mật khẩu</span><div class="grow"></div><span class="lbl sm">›</span></div></div>
+              <div class="box" style="padding:10px 12px;border-radius:8px"><div class="row"><div class="box" style="width:18px;height:18px"></div><span class="lbl">Xác minh danh tính</span><div class="grow"></div><span class="lbl sm">›</span></div></div>
+              <div class="box" style="padding:10px 12px;border-radius:8px"><div class="row"><div class="box" style="width:18px;height:18px"></div><span class="lbl">Xóa tài khoản</span><div class="grow"></div><span class="lbl sm">›</span></div></div>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Chỉnh sửa hồ sơ</div><div class="route">UserProfile / EditProfile</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="stripes"><i></i><i></i><i></i></div>
+            <div class="hdr filled"><div class="back">×</div><div class="t">Chỉnh sửa hồ sơ</div><div class="r"></div></div>
+            <div class="pad" style="gap:6px">
+              <span class="chip">eKYC verified</span>
+              <span class="lbl sm">Họ tên (locked)</span><div class="box" style="height:32px"></div>
+              <span class="lbl sm">Ngày sinh (locked)</span><div class="box" style="height:32px"></div>
+              <span class="lbl sm">Địa chỉ (locked)</span><div class="box" style="height:32px"></div>
+              <span class="lbl sm">Số điện thoại</span><div class="inp">SĐT</div>
+              <div class="btn pri">Lưu thay đổi</div>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Đổi mật khẩu</div><div class="route">UserProfile / ChangePassword</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="hdr filled"><div class="back">×</div><div class="t">Đổi mật khẩu</div><div class="r"></div></div>
+            <div class="pad">
+              <span class="lbl sm">Mật khẩu hiện tại</span><div class="inp">••••••••</div>
+              <span class="lbl sm">Mật khẩu mới</span><div class="inp">••••••••</div>
+              <span class="lbl sm">Xác nhận mật khẩu</span><div class="inp">••••••••</div>
+              <div class="btn pri">Đổi mật khẩu</div>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Xóa tài khoản</div><div class="route">UserProfile / DeleteAccount</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="hdr filled"><div class="back">←</div><div class="t">Xóa tài khoản</div><div class="r"></div></div>
+            <div class="pad">
+              <div class="box" style="padding:12px;border-radius:8px">
+                <span class="lbl">Bạn có chắc chắn?</span>
+                <div class="line muted" style="width:100%;margin-top:6px"></div>
+              </div>
+              <span class="lbl sm">Mật khẩu</span><div class="inp">••••••••</div>
+              <span class="lbl sm">Lý do</span><div class="box dash" style="height:56px;border-radius:8px"></div>
+              <div class="btn out">Xóa tài khoản</div>
+            </div>
+          </div></div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ========== EKYC ========== -->
+    <section id="ekyc">
+      <h2>4 · eKYC &amp; Báo lỗi</h2>
+      <div class="grid">
+
+        <article>
+          <div class="card-meta"><div class="title">Xác minh danh tính</div><div class="route">EKyc / EKycHome</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="stripes"><i></i><i></i><i></i></div>
+            <div class="hdr filled"><div class="back">×</div><div class="t">Xác minh danh tính</div><div class="r"></div></div>
+            <div class="pad">
+              <div class="step">
+                <div class="on"><div class="bar"></div><span class="lbl sm">CCCD</span></div>
+                <div><div class="bar"></div><span class="lbl sm">Khuôn mặt</span></div>
+                <div><div class="bar"></div><span class="lbl sm">Liveness</span></div>
+              </div>
+              <div class="sp"></div>
+              <div class="center-col" style="padding:0">
+                <div class="box" style="width:80px;height:80px;border-radius:40px"></div>
+                <span class="lbl">Xác minh danh tính</span>
+                <span class="lbl sm">Chụp CCCD · selfie · liveness</span>
+                <div style="width:100%"><div class="btn pri">Bắt đầu</div></div>
+              </div>
+              <div class="sp"></div>
+            </div>
+          </div></div>
+        </article>
+
+        <article>
+          <div class="card-meta"><div class="title">Góp ý báo lỗi</div><div class="route">IssueReport / IssueReportHome</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="hdr"><div class="back">←</div><div class="t">Góp ý báo lỗi</div><div class="r">N</div></div>
+            <div class="pad">
+              <div class="btn out">+ Tạo góp ý / báo lỗi</div>
+              <div class="row"><span class="chip">Báo lỗi</span><span class="chip">Góp ý</span><span class="chip">Cải thiện</span><span class="chip">Khác</span></div>
+              <div class="box" style="padding:10px;border-radius:8px"><span class="chip">type</span><div class="line" style="width:75%;margin:4px 0"></div><div class="line muted" style="width:95%"></div><span class="lbl sm">timestamp</span></div>
+              <div class="box" style="padding:10px;border-radius:8px"><span class="chip">type</span><div class="line" style="width:60%;margin:4px 0"></div></div>
+            </div>
+          </div></div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ========== ORPHAN ========== -->
+    <section id="orphan">
+      <h2>5 · Orphan screens</h2>
+      <p class="note">Đã dọn: <code>CreateApplicationScreen</code> và <code>EditInformationScreen</code> đã bị xóa (trùng luồng wizard). <code>NotificationListScreen</code> đã được gắn vào root stack (mở từ tab Tài khoản → “Hộp thư thông báo” và chuông thông báo).</p>
+      <div class="grid">
+
+        <article>
+          <div class="card-meta"><div class="title">Thông báo <span class="badge">wired</span></div><div class="route">NotificationListScreen</div></div>
+          <div class="phone"><div class="status"><span>9:41</span><span>●●●</span></div><div class="body">
+            <div class="hdr"><div class="back">←</div><div class="t">Thông báo</div><div class="r">Đọc tất cả</div></div>
+            <div class="pad" style="gap:6px">
+              <div class="box" style="padding:10px;border-radius:8px"><div class="row"><div class="box" style="width:28px;height:28px;border-radius:14px"></div><div class="grow"><div class="line" style="width:70%"></div><div class="line muted" style="width:95%;margin-top:4px"></div><span class="lbl sm">time</span></div><div class="box" style="width:8px;height:8px;border-radius:4px"></div></div></div>
+              <div class="box" style="padding:10px;border-radius:8px;opacity:.85"><div class="row"><div class="box" style="width:28px;height:28px;border-radius:14px"></div><div class="grow"><div class="line" style="width:60%"></div><span class="lbl sm">time</span></div></div></div>
+            </div>
+          </div></div>
+        </article>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    Nguồn: <code>rhs-fe-mobile</code> · File này tự chứa (HTML + CSS), không cần build.
+    Chia sẻ bằng cách gửi file, commit lên repo, hoặc host static (GitHub Pages / Netlify).
+  </footer>
+</body>
+</html>

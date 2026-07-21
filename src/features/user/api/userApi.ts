@@ -15,9 +15,7 @@ const uploadProfileImage = async (asset: ImageAsset): Promise<UserResponse> => {
     type: asset.type,
   } as any);
 
-  const response = await apiClient.post<UserResponse>('/users/profile/image', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const response = await apiClient.post<UserResponse>('/users/profile/image', formData);
   return response.data;
 };
 

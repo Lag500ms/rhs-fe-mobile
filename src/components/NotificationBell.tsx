@@ -10,7 +10,7 @@ export const NotificationBell: React.FC = memo(() => {
   const unreadCount = useNotificationBadge();
 
   const handlePress = (): void => {
-    navigation.navigate('NotificationList');
+    navigation.navigate('MainTabs', { screen: 'Notifications' });
   };
 
   const displayCount = unreadCount > 99 ? '99+' : unreadCount.toString();

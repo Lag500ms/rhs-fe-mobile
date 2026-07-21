@@ -1,81 +1,55 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, CameraView } from 'expo-camera';
-import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme';
 import { eKycApi } from '../api/eKycApi';
 import { OcrResult } from '../types/ekyc';
 
 const VERIFIED_KEY = 'identityVerified';
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const MAX_FILE_SIZE_BYTES = 8_000_000;
-const RECORD_DURATION_SEC = 4; // giây
 
-type EKycStep = 'welcome' | 'ocr' | 'facematch' | 'liveness' | 'complete' | 'failed';
+/**
+ * Luồng eKYC theo VNPT eKYC (REST):
+ *   1. OCR mặt trước CCCD  -> /EKyc/ocr
+ *   2. Kiểm tra CCCD trùng -> /EKyc/check-citizen-id
+ *   3. So khớp khuôn mặt   -> /EKyc/face-match
+ *   4. Lưu & khóa profile  -> PUT /users/profile
+ * (VNPT không hỗ trợ Liveness qua REST nên không có bước quay video.)
+ */
+type EKycStep = 'welcome' | 'ocr' | 'facematch' | 'complete';
 
-/* ── Component chính ──────────────────────────────────────── */
 export const EKycScreen = () => {
   const nav = useNavigation<any>();
   const [step, setStep] = useState<EKycStep>('welcome');
   const [busy, setBusy] = useState(false);
   const [ocr, setOcr] = useState<OcrResult | null>(null);
   const [cccdUri, setCccdUri] = useState<string | null>(null);
-  const [videoUri, setVideoUri] = useState<string | null>(null);
   const [selfieUri, setSelfieUri] = useState<string | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
   const started = useRef(false);
-  const cam = useRef<CameraView>(null);
-  const [camReady, setCamReady] = useState(false);
-  const [camPerm, setCamPerm] = useState<boolean | null>(null);
 
-  useEffect(() => { if ((step === 'liveness') && camPerm === null) reqPerm(); }, [step, camPerm]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (cam.current) { try { cam.current.stopRecording(); } catch {} }
-    };
-  }, []);
-
-  const reqPerm = async () => {
-    const c = await Camera.requestCameraPermissionsAsync();
-    if (c.status !== 'granted') { Alert.alert('Cần quyền camera'); setCamPerm(false); return; }
-    const m = await Camera.requestMicrophonePermissionsAsync();
-    if (m.status !== 'granted') { Alert.alert('Cần quyền ghi âm'); setCamPerm(false); return; }
-    setCamPerm(true);
-  };
-
-  /* 1. Chụp CCCD + OCR → Kiểm tra CCCD trùng → Qua bước facematch */
+  /* Bước 1: Chụp CCCD -> OCR -> kiểm tra CCCD trùng */
   const shootCccd = async () => {
     await ImagePicker.requestCameraPermissionsAsync();
     const r = await ImagePicker.launchCameraAsync({ mediaTypes: 'images', quality: 0.8, allowsEditing: false });
     if (r.canceled || !r.assets?.length) return;
     setBusy(true);
     try {
-      // B1: OCR
       const o = await eKycApi.ocr(r.assets[0].uri);
       setOcr(o);
       setCccdUri(r.assets[0].uri);
 
-      // B2: Kiểm tra CCCD đã tồn tại trong hệ thống chưa
       if (o.id) {
         const check = await eKycApi.checkCitizenId(o.id);
         if (!check.available) {
           setBusy(false);
-          Alert.alert(
-            'CCCD không khả dụng',
-            check.message,
-            [
-              { text: 'Quay lại', style: 'cancel' },
-              { text: 'Chụp lại', onPress: () => { setOcr(null); setCccdUri(null); } },
-            ]
-          );
+          Alert.alert('CCCD không khả dụng', check.message, [
+            { text: 'Quay lại', style: 'cancel' },
+            { text: 'Chụp lại', onPress: () => { setOcr(null); setCccdUri(null); } },
+          ]);
           return;
         }
       }
@@ -83,11 +57,12 @@ export const EKycScreen = () => {
       setStep('facematch');
     } catch (e: any) {
       Alert.alert('Lỗi OCR', e?.message ?? 'Vui lòng thử lại.');
+    } finally {
+      setBusy(false);
     }
-    finally { setBusy(false); }
   };
 
-  /* 2a. Chụp ảnh khuôn mặt */
+  /* Bước 2a: Chụp ảnh khuôn mặt */
   const takeSelfie = async () => {
     await ImagePicker.requestCameraPermissionsAsync();
     const p = await ImagePicker.launchCameraAsync({
@@ -100,65 +75,21 @@ export const EKycScreen = () => {
     setSelfieUri(p.assets[0].uri);
   };
 
-  /* 2b. Gọi face-match so sánh selfie với CCCD */
+  /* Bước 2b: face-match -> nếu khớp: lưu profile & hoàn tất */
   const verifyFaceMatch = async () => {
     if (!selfieUri) { Alert.alert('Chưa chụp ảnh khuôn mặt'); return; }
-    if (!cccdUri || cccdUri === 'skip') { Alert.alert('Thiếu ảnh CCCD'); return; }
+    if (!cccdUri) { Alert.alert('Thiếu ảnh CCCD'); return; }
 
     setBusy(true);
     try {
       const m = await eKycApi.faceMatch(selfieUri, cccdUri);
-      setBusy(false);
       if (!m.isMatch) {
-        Alert.alert('Khuôn mặt không khớp', `Similarity: ${m.similarity ?? ''}`, [
-          { text: 'Chụp lại', onPress: () => setSelfieUri(null) },
-        ]);
-        return;
-      }
-      setStep('liveness');
-    } catch (e: any) {
-      setBusy(false);
-      Alert.alert('Lỗi face-match', e?.message ?? 'Vui lòng thử lại.');
-    }
-  };
-
-  /* 3. Quay video 5s → gọi liveness luôn */
-  const startRecording = async () => {
-    if (!cam.current || !camReady || isRecording) return;
-
-    setVideoUri(null);
-    setIsRecording(true);
-
-    try {
-      // Sử dụng maxDuration để tự động dừng sau RECORD_DURATION_SEC (5s)
-      const v = await cam.current.recordAsync({
-        maxDuration: RECORD_DURATION_SEC,
-      });
-
-      setIsRecording(false);
-      if (!v?.uri) { Alert.alert('Không lấy được file video'); return; }
-      setVideoUri(v.uri);
-
-      // Quay xong → tự động gửi lên liveness API (kèm ảnh selfie từ bước 2)
-      uploadLiveness(v.uri, selfieUri!);
-    } catch (e: any) {
-      setIsRecording(false);
-      if (e?.message !== 'Recording cancelled') {
-        Alert.alert('Không quay được video', e?.message ?? '');
-      }
-    }
-  };
-
-  /* Gửi video + ảnh selfie lên API liveness */
-  const uploadLiveness = async (videoUri: string, cmndImageUri: string) => {
-    setBusy(true);
-    try {
-      const live = await eKycApi.liveness(videoUri, cmndImageUri);
-      if (!live.isLive) {
         setBusy(false);
-        Alert.alert('Không phải người thật', `Spoof probability: ${live.spoofProbability ?? ''}`, [
-          { text: 'Quay lại', onPress: () => setVideoUri(null) },
-        ]);
+        Alert.alert(
+          'Khuôn mặt không khớp',
+          `Độ tương đồng: ${m.similarity ?? ''}%. Vui lòng chụp lại ảnh rõ nét hơn.`,
+          [{ text: 'Chụp lại', onPress: () => setSelfieUri(null) }],
+        );
         return;
       }
 
@@ -172,29 +103,23 @@ export const EKycScreen = () => {
     }
   };
 
-  const reset = (s: EKycStep) => {
-    if (s === 'welcome') { setOcr(null); setCccdUri(null); setVideoUri(null); setSelfieUri(null); started.current = false; }
-    setStep(s);
-  };
-
   const close = () => {
-    if (started.current && step !== 'complete' && step !== 'failed')
-      Alert.alert('Dừng?', 'Mất tiến trình.', [
+    if (started.current && step !== 'complete') {
+      Alert.alert('Dừng?', 'Mất tiến trình xác minh.', [
         { text: 'Tiếp tục', style: 'cancel' },
         { text: 'Thoát', style: 'destructive', onPress: () => { started.current = false; nav.goBack(); } },
       ]);
-    else nav.goBack();
+    } else {
+      nav.goBack();
+    }
   };
 
-  /* ── Step indicator ── */
   const steps = [
     { k: 'ocr', l: 'CCCD' },
     { k: 'facematch', l: 'Khuôn mặt' },
-    { k: 'liveness', l: 'Liveness' },
   ];
-
-  const stepOrder: EKycStep[] = ['ocr', 'facematch', 'liveness'];
-  const completedCount = stepOrder.findIndex(s => s === step);
+  const stepOrder: EKycStep[] = ['ocr', 'facematch'];
+  const completedCount = stepOrder.findIndex((s) => s === step);
 
   return (
     <SafeAreaView style={st.safe}>
@@ -209,7 +134,7 @@ export const EKycScreen = () => {
         <View style={{ width: 36 }} />
       </LinearGradient>
 
-      {step !== 'welcome' && step !== 'complete' && step !== 'failed' && (
+      {step !== 'welcome' && step !== 'complete' && (
         <View style={st.stepBar}>
           {steps.map((stp, i) => {
             const isActive = completedCount >= 0 && i <= completedCount;
@@ -222,7 +147,7 @@ export const EKycScreen = () => {
                     : <Text style={[st.stepDotNum, isActive && { color: '#fff' }]}>{i + 1}</Text>}
                 </View>
                 <Text style={[st.stepLabel, isActive && st.stepLabelActive]}>{stp.l}</Text>
-                {i < 2 && <View style={[st.stepLine, isDone && st.stepLineActive]} />}
+                {i < steps.length - 1 && <View style={[st.stepLine, isDone && st.stepLineActive]} />}
               </View>
             );
           })}
@@ -231,16 +156,14 @@ export const EKycScreen = () => {
 
       <ScrollView style={st.scroll} contentContainerStyle={st.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* ── Welcome ── */}
         {step === 'welcome' && (
           <View style={st.stepContent}>
             <View style={st.iconCircle}><Feather name="shield" size={52} color={RHSColors.blue700} /></View>
             <Text style={st.stepTitle}>Xác minh danh tính</Text>
-            <Text style={st.stepDesc}>3 bước:</Text>
+            <Text style={st.stepDesc}>Xác thực điện tử qua VNPT eKYC — 2 bước:</Text>
             <View style={st.infoList}>
-              <View style={st.infoItem}><Feather name="camera" size={18} color={RHSColors.blue700} /><Text style={st.infoText}>Chụp CCCD</Text></View>
-              <View style={st.infoItem}><Feather name="user-check" size={18} color={RHSColors.blue700} /><Text style={st.infoText}>Chụp ảnh khuôn mặt & so sánh với CCCD</Text></View>
-              <View style={st.infoItem}><Feather name="video" size={18} color={RHSColors.blue700} /><Text style={st.infoText}>Quay video 4s — tự động gửi xác minh</Text></View>
+              <View style={st.infoItem}><Feather name="camera" size={18} color={RHSColors.blue700} /><Text style={st.infoText}>Chụp mặt trước CCCD gắn chip</Text></View>
+              <View style={st.infoItem}><Feather name="user-check" size={18} color={RHSColors.blue700} /><Text style={st.infoText}>Chụp ảnh khuôn mặt & so khớp với CCCD</Text></View>
             </View>
             <TouchableOpacity style={st.primaryBtn} onPress={() => { started.current = true; setStep('ocr'); }} activeOpacity={0.85}>
               <Text style={st.primaryBtnText}>Bắt đầu</Text>
@@ -248,41 +171,46 @@ export const EKycScreen = () => {
           </View>
         )}
 
-        {/* ── Step 1: OCR ── */}
         {step === 'ocr' && (
           <View style={st.stepContent}>
             <View style={st.iconCircle}><Feather name="camera" size={46} color={RHSColors.blue700} /></View>
             <Text style={st.stepTitle}>Bước 1: Chụp CCCD</Text>
-            <Text style={st.stepDesc}>Mặt trước CCCD, rõ nét.</Text>
+            <Text style={st.stepDesc}>Mặt trước CCCD, rõ nét, đủ 4 góc.</Text>
             {busy
-              ? <View style={st.loadBox}><ActivityIndicator size="large" color={RHSColors.blue700} /><Text style={st.loadText}>Đang trích xuất...</Text></View>
-              : <>
-                  <TouchableOpacity style={st.primaryBtn} onPress={shootCccd} activeOpacity={0.85}>
-                    <Text style={st.primaryBtnText}>Chụp CCCD</Text>
-                  </TouchableOpacity>
-                </>
+              ? <View style={st.loadBox}><ActivityIndicator size="large" color={RHSColors.blue700} /><Text style={st.loadText}>Đang trích xuất thông tin...</Text></View>
+              : (
+                <TouchableOpacity style={st.primaryBtn} onPress={shootCccd} activeOpacity={0.85}>
+                  <Feather name="camera" size={16} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={st.primaryBtnText}>Chụp CCCD</Text>
+                </TouchableOpacity>
+              )
             }
           </View>
         )}
 
-        {/* ── Step 2: Face Match ── */}
         {step === 'facematch' && (
           <View style={st.stepContent}>
             <Text style={st.stepTitle}>Bước 2: Xác minh khuôn mặt</Text>
-            <Text style={st.stepDesc}>Chụp ảnh khuôn mặt để so sánh với CCCD</Text>
+            <Text style={st.stepDesc}>Chụp ảnh khuôn mặt để so khớp với ảnh trên CCCD.</Text>
+
+            {ocr && (
+              <View style={st.ocrCard}>
+                <View style={st.ocrRow}><Text style={st.ocrLabel}>Họ tên</Text><Text style={st.ocrValue}>{ocr.name || '—'}</Text></View>
+                <View style={st.ocrRow}><Text style={st.ocrLabel}>Số CCCD</Text><Text style={st.ocrValue}>{ocr.id || '—'}</Text></View>
+                {!!ocr.dob && <View style={st.ocrRow}><Text style={st.ocrLabel}>Ngày sinh</Text><Text style={st.ocrValue}>{ocr.dob}</Text></View>}
+              </View>
+            )}
 
             {busy ? (
               <View style={st.loadBox}>
                 <ActivityIndicator size="large" color={RHSColors.blue700} />
-                <Text style={st.loadText}>Đang kiểm tra...</Text>
+                <Text style={st.loadText}>Đang so khớp & lưu hồ sơ...</Text>
               </View>
             ) : (
               <View style={st.sectionCard}>
                 <View style={st.sectionHeader}>
                   <View style={[st.sectionBadge, selfieUri && { backgroundColor: RHSColors.green600 }]}>
-                    {selfieUri
-                      ? <Feather name="check" size={14} color="#fff" />
-                      : <Text style={st.sectionBadgeNum}>1</Text>}
+                    {selfieUri ? <Feather name="check" size={14} color="#fff" /> : <Text style={st.sectionBadgeNum}>1</Text>}
                   </View>
                   <Text style={st.sectionTitle}>Chụp ảnh khuôn mặt</Text>
                 </View>
@@ -298,7 +226,7 @@ export const EKycScreen = () => {
                       </TouchableOpacity>
                     </View>
                     <TouchableOpacity style={[st.primaryBtn, { marginTop: 14, width: '100%' }]} onPress={verifyFaceMatch}>
-                      <Text style={st.primaryBtnText}>Xác nhận & So sánh</Text>
+                      <Text style={st.primaryBtnText}>Xác nhận & So khớp</Text>
                     </TouchableOpacity>
                   </>
                 ) : (
@@ -312,81 +240,15 @@ export const EKycScreen = () => {
           </View>
         )}
 
-        {/* ── Step 3: Liveness ── */}
-        {step === 'liveness' && (
-          <View style={[st.stepContent, { paddingHorizontal: 0, paddingTop: 0 }]}>
-            {busy ? (
-              <View style={st.loadBox}>
-                <ActivityIndicator size="large" color={RHSColors.blue700} />
-                <Text style={st.loadText}>Đang xử lý</Text>
-              </View>
-            ) : videoUri ? (
-              <View style={[st.sectionCard, { alignSelf: 'center', width: '90%', marginTop: 24 }]}>
-                <View style={st.doneRow}>
-                  <Feather name="check-circle" size={20} color={RHSColors.green600} />
-                  <Text style={st.doneText}>Video đã quay — đang xử lý</Text>
-                  <TouchableOpacity onPress={() => setVideoUri(null)} style={st.retakeBtn}>
-                    <Feather name="refresh-cw" size={14} color={RHSColors.blue700} />
-                    <Text style={st.retakeText}>Quay lại</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <View style={st.cameraWrap}>
-                <CameraView
-                  ref={cam}
-                  style={st.camera}
-                  facing="front"
-                  mode="video"  /* ĐÃ THÊM MODE VIDEO VÀO ĐÂY */
-                  onCameraReady={() => setCamReady(true)}
-                />
-                <View style={st.cameraOverlay} pointerEvents="box-none">
-                  <View style={st.faceGuide}>
-                    <View style={[st.faceOval, isRecording && st.faceOvalRecording]} />
-                  </View>
-                  <Text style={st.cameraHint}>
-                    {isRecording ? 'Đang quay — giữ nguyên khuôn mặt...' : 'Nhấn nút — tự quay 4 giây'}
-                  </Text>
-                  <TouchableOpacity
-                    style={[st.recordBtn, isRecording && st.recordBtnActive]}
-                    onPress={startRecording}
-                    disabled={!camReady || isRecording}
-                  >
-                    <View style={[st.recordInner, isRecording && st.recordInnerActive]} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* ── Complete ── */}
         {step === 'complete' && (
           <View style={st.stepContent}>
             <View style={[st.iconCircle, { backgroundColor: RHSColors.green50 }]}>
               <Feather name="check-circle" size={52} color={RHSColors.green600} />
             </View>
             <Text style={[st.stepTitle, { color: RHSColors.green600 }]}>Thành công!</Text>
-            <Text style={st.stepDesc}>Xác minh danh tính hoàn tất.</Text>
+            <Text style={st.stepDesc}>Xác minh danh tính hoàn tất. Thông tin CCCD đã được lưu và khóa trong hồ sơ.</Text>
             <TouchableOpacity style={st.primaryBtn} onPress={close}>
               <Text style={st.primaryBtnText}>Hoàn tất</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* ── Failed ── */}
-        {step === 'failed' && (
-          <View style={st.stepContent}>
-            <View style={[st.iconCircle, { backgroundColor: RHSColors.red50 }]}>
-              <Feather name="x-circle" size={52} color={RHSColors.red600} />
-            </View>
-            <Text style={[st.stepTitle, { color: RHSColors.red600 }]}>Thất bại</Text>
-            <Text style={st.stepDesc}>Thử lại nhé.</Text>
-            <TouchableOpacity style={[st.primaryBtn, { backgroundColor: RHSColors.red600 }]} onPress={() => reset('welcome')}>
-              <Text style={st.primaryBtnText}>Thử lại</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[st.primaryBtn, { backgroundColor: RHSColors.grey400, marginTop: 12 }]} onPress={close}>
-              <Text style={st.primaryBtnText}>Quay lại</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -396,7 +258,6 @@ export const EKycScreen = () => {
   );
 };
 
-/* ── Styles ─────────────────────────────────────────────────── */
 const st = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
   bar: { flexDirection: 'row', height: 4 },
@@ -426,6 +287,10 @@ const st = StyleSheet.create({
   primaryBtnText: { ...typography.button, color: '#fff' },
   loadBox: { alignItems: 'center', paddingVertical: 36 },
   loadText: { marginTop: 10, ...typography.bodySmall, color: RHSColors.textMuted },
+  ocrCard: { width: '100%', backgroundColor: RHSColors.blue50, borderRadius: borderRadius.lg, padding: 14, marginBottom: 14 },
+  ocrRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  ocrLabel: { ...typography.bodySmall, color: RHSColors.textMuted },
+  ocrValue: { ...typography.bodySmall, color: RHSColors.text, fontWeight: '700', flexShrink: 1, textAlign: 'right', marginLeft: 12 },
   sectionCard: { width: '100%', backgroundColor: '#fff', borderRadius: borderRadius.lg, padding: 14, ...shadows.sm },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   sectionBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: RHSColors.blue700, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
@@ -435,15 +300,4 @@ const st = StyleSheet.create({
   doneText: { flex: 1, fontSize: 13, color: RHSColors.green600, fontWeight: '500' },
   retakeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: RHSColors.blue50 },
   retakeText: { fontSize: 12, color: RHSColors.blue700, fontWeight: '600' },
-  cameraWrap: { width: '100%', height: SCREEN_WIDTH * 1.35, overflow: 'hidden' },
-  camera: { flex: 1 },
-  cameraOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'space-between', alignItems: 'center', paddingBottom: 24, paddingTop: 16 },
-  faceGuide: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  faceOval: { width: 220, height: 280, borderRadius: 110, borderWidth: 3, borderColor: 'rgba(255,255,255,0.85)', borderStyle: 'dashed' },
-  faceOvalRecording: { borderColor: RHSColors.red400, borderWidth: 3, borderStyle: 'solid' },
-  cameraHint: { color: '#fff', fontSize: 12, textAlign: 'center', fontWeight: '500', marginBottom: 10, backgroundColor: 'rgba(0,0,0,0.45)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 },
-  recordBtn: { width: 60, height: 60, borderRadius: 30, borderWidth: 4, borderColor: '#fff', backgroundColor: 'rgba(211,47,47,0.75)', justifyContent: 'center', alignItems: 'center' },
-  recordBtnActive: { backgroundColor: 'rgba(211,47,47,0.95)', borderColor: RHSColors.red400 },
-  recordInner: { width: 20, height: 20, borderRadius: 4, backgroundColor: '#fff' },
-  recordInnerActive: { width: 14, height: 14, borderRadius: 2, backgroundColor: RHSColors.red400 },
 });

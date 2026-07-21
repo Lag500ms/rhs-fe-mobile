@@ -73,8 +73,12 @@ export const ReviewSubmitScreen = () => {
     })();
   }, [applicationId]);
 
-  const totalFiles = detail?.documents?.length || 0;
-  const isDisabled = totalFiles === 0 || submitting;
+  const docs = detail?.documents ?? [];
+  const hasHousingProof = docs.some((d) => d.documentType === 'HOUSING_CONDITION_PROOF');
+  const hasPovertyCert = docs.some((d) => d.documentType === 'POVERTY_HOUSEHOLD_CERTIFICATE');
+  const totalFiles = docs.length;
+  const hasRequiredDocs = hasHousingProof && hasPovertyCert;
+  const isDisabled = !hasRequiredDocs || submitting;
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -129,7 +133,7 @@ export const ReviewSubmitScreen = () => {
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {isSupplementMode ? 'Nộp lại hồ sơ' : 'Kiểm tra & Nộp hồ sơ'}
+          {isSupplementMode ? 'Nộp lại hồ sơ' : 'Bước 3/3 — Kiểm tra & nộp'}
         </Text>
         <View style={{ width: 36 }} />
       </View>
@@ -233,9 +237,9 @@ export const ReviewSubmitScreen = () => {
                   </Text>
                   <Text style={styles.docTypeSmall}>
                     {doc.documentType === 'HOUSING_CONDITION_PROOF'
-                      ? 'Minh chứng nhà ở'
+                      ? 'Giấy xác nhận nhà ở'
                       : doc.documentType === 'POVERTY_HOUSEHOLD_CERTIFICATE'
-                        ? 'Hộ nghèo/cận nghèo'
+                        ? 'Giấy chứng nhận hộ nghèo/cận nghèo'
                         : doc.documentType}
                   </Text>
                   {/* Không hiển thị verification status nữa */}
@@ -264,9 +268,9 @@ export const ReviewSubmitScreen = () => {
             )}
           </View>
         </TouchableOpacity>
-        {isDisabled && totalFiles === 0 && (
+        {isDisabled && !hasRequiredDocs && (
           <Text style={styles.disabledHint}>
-            Vui lòng tải lên ít nhất 1 giấy tờ để nộp hồ sơ
+            Cần đủ 2 giấy tờ: giấy chứng nhận hộ nghèo/cận nghèo và giấy xác nhận nhà ở
           </Text>
         )}
         <View style={{ height: 40 }} />

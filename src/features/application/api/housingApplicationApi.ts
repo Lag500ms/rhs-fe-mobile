@@ -2,6 +2,7 @@ import apiClient from '../../../lib/apiClient';
 import {
   CreateApplicationRequest,
   CreateApplicationResponse,
+  UpdateApplicationRequest,
   ApplicationSummary,
   ApplicationDetail,
   PagedResponse,
@@ -12,6 +13,17 @@ export const housingApplicationApi = {
     const response = await apiClient.post<CreateApplicationResponse>(
       '/housing-applications',
       data
+    );
+    return response.data;
+  },
+
+  updateApplication: async (
+    applicationId: string,
+    data: UpdateApplicationRequest,
+  ): Promise<ApplicationDetail> => {
+    const response = await apiClient.put<ApplicationDetail>(
+      `/housing-applications/${applicationId}`,
+      data,
     );
     return response.data;
   },
@@ -32,5 +44,14 @@ export const housingApplicationApi = {
       `/housing-applications/${applicationId}`
     );
     return response.data;
+  },
+
+  cancelApplication: async (
+    applicationId: string,
+    cancelReason: string,
+  ): Promise<void> => {
+    await apiClient.patch(`/housing-applications/${applicationId}/cancel`, {
+      cancelReason,
+    });
   },
 };

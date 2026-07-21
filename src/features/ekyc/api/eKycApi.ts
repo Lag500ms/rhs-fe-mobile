@@ -1,6 +1,6 @@
 import apiClient from '../../../lib/apiClient';
 import { userApi } from '../../user/api/userApi';
-import { OcrResult, FaceMatchResult, LivenessResult } from '../types/ekyc';
+import { OcrResult, FaceMatchResult } from '../types/ekyc';
 import { extractWardFromAddress } from '../utils/ward';
 
 /** Trích xuất message chi tiết từ lỗi 400 của backend */
@@ -55,42 +55,7 @@ export const eKycApi = {
   },
 
   /**
-   * Bước 3: Liveness - Gửi video + ảnh khuôn mặt để kiểm tra thực thể sống
-   * Backend yêu cầu cả videoFile (video) và cmndImage (ảnh selfie)
-   */
-  liveness: async (videoUri: string, cmndImageUri: string): Promise<LivenessResult> => {
-    const videoFilename = videoUri.split('/').pop()?.split('?')[0] || 'face.mp4';
-    const videoType = getMimeType(videoUri);
-    const imageFilename = cmndImageUri.split('/').pop()?.split('?')[0] || 'selfie.jpg';
-    const imageType = getMimeType(cmndImageUri);
-
-    const formData = new FormData();
-    formData.append('videoFile', {
-      uri: videoUri,
-      name: videoFilename,
-      type: videoType,
-    } as any);
-    formData.append('cmndImage', {
-      uri: cmndImageUri,
-      name: imageFilename,
-      type: imageType,
-    } as any);
-
-    try {
-      const response = await apiClient.post('/EKyc/liveness', formData);
-      return response.data.data;
-    } catch (e: any) {
-      const status = e?.response?.status;
-      const msg = extractErrorMessage(e, 'Lỗi không xác định từ Liveness API');
-      if (status === 400) {
-        throw new Error(`[400] Dữ liệu gửi lên không hợp lệ:\n${msg}\n\nKiểm tra:\n• Dung lượng video (tối đa có thể 5-10MB)\n• Định dạng video (phải là .mp4 / .avi / .mov / .wmv)\n• Ảnh khuôn mặt (cmndImage) không được để trống`);
-      }
-      throw new Error(msg);
-    }
-  },
-
-  /**
-   * Bước 2b: Face Match - So khớp ảnh selfie với ảnh CCCD
+   * Face Match - So khớp ảnh selfie với ảnh CCCD (VNPT eKYC Face Compare)
    */
   faceMatch: async (faceImageUri: string, idCardImageUri: string): Promise<FaceMatchResult> => {
     const formData = new FormData();

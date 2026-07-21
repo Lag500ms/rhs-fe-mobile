@@ -208,8 +208,8 @@ export const ProfileScreen = () => {
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('EditProfile', { profile })}>
-            <Feather name="edit-2" size={15} color="#1565C0" style={{ marginRight: 4 }} />
-            <Text style={{ color: '#1565C0', fontSize: 12, fontWeight: '700' }}>Sửa</Text>
+            <Feather name="phone" size={15} color="#1565C0" style={{ marginRight: 4 }} />
+            <Text style={{ color: '#1565C0', fontSize: 12, fontWeight: '700' }}>Sửa SĐT</Text>
           </TouchableOpacity>
         </View>
         {/* Avatar */}

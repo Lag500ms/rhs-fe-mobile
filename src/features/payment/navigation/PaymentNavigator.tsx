@@ -9,6 +9,7 @@ export type PaymentStackParamList = {
   };
   PaymentSuccess: {
     orderId: string;
+    applicationId: string;
     slotCode: string;
     pdfUrl: string;
     projectName: string;

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,11 +17,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
 import { authApi } from '../api/authApi';
+import { setTokens } from '../../../lib/tokenStorage';
 import { AuthStackParamList } from '../AuthNavigator';
 
 type VerifyOtpRouteProp = RouteProp<AuthStackParamList, 'VerifyOtp'>;
 
 const OTP_LENGTH = 6;
+const RESEND_COUNTDOWN = 60;
 
 export const VerifyOtpScreen = () => {
   const navigation = useNavigation<any>();
@@ -32,9 +34,19 @@ export const VerifyOtpScreen = () => {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
+  const [countdown, setCountdown] = useState(RESEND_COUNTDOWN);
   const inputRefs = useRef<Array<TextInput | null>>(Array(OTP_LENGTH).fill(null));
 
   const otpCode = digits.join('');
+
+  // Bộ đếm ngược cho nút gửi lại mã
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   const focusDigit = (index: number) => {
     if (index >= 0 && index < OTP_LENGTH) {
@@ -85,8 +97,16 @@ export const VerifyOtpScreen = () => {
       const result = await authApi.verifyOtp({ email, otpCode });
 
       if (result.success) {
-        Alert.alert('Thành công', 'Xác thực OTP thành công!', [
-          { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) },
+        // Lưu token nếu backend trả về để đăng nhập luôn sau khi kích hoạt
+        if (result.accessToken) {
+          await setTokens(result.accessToken, result.refreshToken);
+        }
+        Alert.alert('Thành công', 'Kích hoạt tài khoản thành công!', [
+          {
+            text: 'OK',
+            onPress: () =>
+              navigation.reset({ index: 0, routes: [{ name: 'UserProfile' }] }),
+          },
         ]);
       } else {
         setError(result.message || 'Xác thực OTP thất bại');
@@ -99,14 +119,16 @@ export const VerifyOtpScreen = () => {
   };
 
   const handleResendOtp = async () => {
+    if (countdown > 0 || resending) return;
     setResending(true);
     setError('');
     try {
       const result = await authApi.resendOtp(email);
       if (result.success) {
         Alert.alert('Thành công', 'Mã OTP mới đã được gửi đến email của bạn');
-        // Xóa ô cũ
+        // Xóa ô cũ và bắt đầu lại bộ đếm 60 giây
         setDigits(Array(OTP_LENGTH).fill(''));
+        setCountdown(RESEND_COUNTDOWN);
         focusDigit(0);
       } else {
         setError(result.message || 'Gửi lại OTP thất bại');
@@ -203,9 +225,17 @@ export const VerifyOtpScreen = () => {
             </TouchableOpacity>
 
             {/* Resend button */}
-            <TouchableOpacity style={styles.resendBtn} onPress={handleResendOtp} disabled={resending}>
+            <TouchableOpacity
+              style={styles.resendBtn}
+              onPress={handleResendOtp}
+              disabled={resending || countdown > 0}
+            >
               {resending ? (
                 <ActivityIndicator size="small" color={RHSColors.blue700} />
+              ) : countdown > 0 ? (
+                <Text style={styles.resendTextDisabled}>
+                  Gửi lại mã OTP sau {countdown}s
+                </Text>
               ) : (
                 <Text style={styles.resendText}>Gửi lại mã OTP</Text>
               )}
@@ -351,5 +381,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: RHSColors.blue700,
     textDecorationLine: 'underline',
+  },
+  resendTextDisabled: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: RHSColors.textMuted,
   },
 });

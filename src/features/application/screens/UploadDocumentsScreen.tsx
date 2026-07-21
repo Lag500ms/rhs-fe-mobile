@@ -13,7 +13,7 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { BrandBar } from '../../../components/BrandBar';
-import { RHSColors, borderRadius, typography } from '../../../lib/theme';
+import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme';
 import { housingDocumentApi } from '../api/housingDocumentApi';
 import { housingApplicationApi } from '../api/housingApplicationApi';
 import { UploadDocumentResponse, DocumentItem, ReviewHistory, ApplicationDocument } from '../types/application';
@@ -21,13 +21,14 @@ import { UploadDocumentResponse, DocumentItem, ReviewHistory, ApplicationDocumen
 const DOC_TYPES = [
   {
     key: 'HOUSING_CONDITION_PROOF' as const,
-    label: 'Minh chứng điều kiện nhà ở',
-    subtitle: 'Giấy chứng nhận thực trạng nhà ở',
+    label: 'Giấy xác nhận nhà ở',
+    subtitle:
+      'Xác nhận chưa có nhà thuộc sở hữu, hoặc có nhà nhưng diện tích bình quân < 15 m²/người (khớp với thực trạng đã khai)',
   },
   {
     key: 'POVERTY_HOUSEHOLD_CERTIFICATE' as const,
-    label: 'Chứng nhận hộ nghèo/cận nghèo',
-    subtitle: 'Giấy chứng nhận do địa phương cấp',
+    label: 'Giấy chứng nhận hộ nghèo / cận nghèo',
+    subtitle: 'Giấy chứng nhận hộ nghèo hoặc hộ cận nghèo do địa phương cấp',
   },
 ];
 
@@ -113,7 +114,7 @@ export const UploadDocumentsScreen = () => {
     })();
   }, [applicationId, isSupplementMode]);
 
-  // ── Gate Logic (chỉ cần đủ 2 file, bỏ qua AI) ──
+  // ── Gate: bắt buộc đủ 2 loại giấy tờ ──
   const allDocs = Object.values(uploadedFiles);
 
   const applyDocumentsToState = (docs: ApplicationDocument[]) => {
@@ -234,7 +235,7 @@ export const UploadDocumentsScreen = () => {
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {isSupplementMode ? 'Bổ sung giấy tờ' : 'Tải lên giấy tờ'}
+          {isSupplementMode ? 'Bổ sung giấy tờ' : 'Bước 2/3 — Giấy tờ'}
         </Text>
         <View style={{ width: 36 }} />
       </View>
@@ -296,6 +297,17 @@ export const UploadDocumentsScreen = () => {
             ? 'Tải lên file PDF (tối đa 10MB mỗi file) cho các giấy tờ còn thiếu hoặc thay thế giấy tờ cũ.'
             : 'Tải lên file PDF (tối đa 10MB mỗi file) cho từng loại giấy tờ bên dưới. Bạn chỉ cần 1 file cho mỗi loại.'}
         </Text>
+
+        <View style={styles.progressCard}>
+          <View style={styles.progressHeader}>
+            <Feather name="upload-cloud" size={18} color={RHSColors.blue700} />
+            <Text style={styles.progressTitle}>Tiến độ tải lên</Text>
+          </View>
+          <Text style={styles.progressValue}>Đã tải {totalFiles}/2</Text>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${(totalFiles / 2) * 100}%` }]} />
+          </View>
+        </View>
 
         {DOC_TYPES.map(({ key, label, subtitle }) => {
           const file = uploadedFiles[key];
@@ -489,8 +501,42 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: RHSColors.textSecondary,
     paddingHorizontal: 2,
-    marginBottom: 20,
+    marginBottom: spacing.md,
     lineHeight: 20,
+  },
+  progressCard: {
+    backgroundColor: RHSColors.blue50,
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: RHSColors.blue200,
+    gap: spacing.sm,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  progressTitle: {
+    ...typography.bodySmall,
+    fontWeight: '700',
+    color: RHSColors.blue700,
+  },
+  progressValue: {
+    ...typography.h3,
+    color: RHSColors.text,
+  },
+  progressTrack: {
+    height: 8,
+    backgroundColor: RHSColors.white,
+    borderRadius: borderRadius.full,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: RHSColors.blue700,
+    borderRadius: borderRadius.full,
   },
 
   // Upload Zones
@@ -520,7 +566,8 @@ const styles = StyleSheet.create({
     borderColor: '#B0BEC5',
     borderStyle: 'dashed',
     borderRadius: borderRadius.md,
-    paddingVertical: 28,
+    paddingVertical: 40,
+    minHeight: 140,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',

@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import {
@@ -83,6 +84,9 @@ const NOTIFICATION_CONFIG: Record<
 
 export const NotificationListScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const route = useRoute();
+  // Tab root (NotificationHome) không hiện nút back — tránh god/duplicate chrome
+  const showBack = route.name !== 'NotificationHome' && navigation.canGoBack();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -228,13 +232,8 @@ export const NotificationListScreen: React.FC = () => {
       if (!notification.isRead) {
         await handleMarkAsRead(notification);
       }
-
-      // TODO: Thay đổi route và params theo yêu cầu thực tế
-      navigation.navigate('ApplicationDetail', {
-        applicationId: undefined,
-      });
     },
-    [handleMarkAsRead, navigation]
+    [handleMarkAsRead]
   );
 
   // ─── Render item ──────────────────────────────────────────────
@@ -380,10 +379,10 @@ export const NotificationListScreen: React.FC = () => {
   // ─── Main render ──────────────────────────────────────────────
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenHeader
         title="Thông báo"
-        showBack={true}
+        showBack={showBack}
         rightAction={headerRightAction}
         isWhite={true}
       />
@@ -416,7 +415,6 @@ export const NotificationListScreen: React.FC = () => {
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.3}
           showsVerticalScrollIndicator={false}
-          // Performance optimizations
           removeClippedSubviews={true}
           maxToRenderPerBatch={10}
           updateCellsBatchingPeriod={50}
@@ -424,7 +422,7 @@ export const NotificationListScreen: React.FC = () => {
           windowSize={5}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 

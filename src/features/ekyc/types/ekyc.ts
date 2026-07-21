@@ -17,16 +17,5 @@ export interface FaceMatchResult {
   isMatch: boolean;
   similarity: number;
   isBothImgIdCard: boolean;
-  fptMessage: string;
-}
-
-export interface LivenessResult {
-  isLive: boolean;
-  spoofProbability: number;
-  needToReview: boolean;
-  isDeepfake: boolean;
-  warning: string;
-  livenessCode: string;
-  livenessMessage: string;
-  fptMessage: string;
+  providerMessage: string;
 }

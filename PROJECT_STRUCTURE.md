@@ -1,7 +1,8 @@
 # PROJECT_STRUCTURE.md — RHS Fe-Mobile
 
 > Tài liệu kỹ thuật tổng quan cho dự án **rhs-fe-mobile** (React Native / Expo).  
-> Mục tiêu: AI hoặc lập trình viên mới chỉ cần đọc file này là hiểu toàn bộ kiến trúc và sinh code đúng chuẩn.
+> Mục tiêu: lập trình viên mới đọc file này hiểu kiến trúc.  
+> Nghiệp vụ Applicant: xem [`BUSINESS_FLOW.md`](./BUSINESS_FLOW.md).
 
 ---
 
@@ -47,7 +48,7 @@
 
 **Chức năng chính:**
 - Khám phá và tìm kiếm dự án nhà ở xã hội
-- Tạo và quản lý hồ sơ đăng ký mua/thuê nhà
+- Tạo và quản lý hồ sơ đăng ký **mua** nhà ở xã hội (đối tượng hộ nghèo/cận nghèo đô thị)
 - Định danh điện tử (eKYC) qua CCCD + khuôn mặt
 - Thanh toán đặt cọc qua VNPay
 - Quản lý thông tin cá nhân, thông báo, danh sách yêu thích
@@ -255,25 +256,32 @@ State được quản lý qua:
 **API:** `housingApplicationApi` (6 endpoints) + `housingDocumentApi` (4 endpoints)  
 **Utils:** `statusConfig.ts` — map status → màu/nhãn
 
-**Screens (7):**
+**Screens:**
 
 | Screen | Route | Mô tả |
 |--------|-------|-------|
-| `MyApplicationsScreen` | `MyApplications` | Danh sách hồ sơ với status badges, modal chi tiết, nút hủy/xóa/thanh toán |
-| `BasicInformationScreen` | `BasicInformation` | Form thông tin cá nhân (bước 1 của quy trình tạo mới) |
-| `EditInformationScreen` | `EditInformation` | Sửa thông tin hồ sơ đã tạo |
-| `UploadDocumentsScreen` | `UploadDocuments` | Upload giấy tờ PDF, xem kết quả AI verify, upload lại nếu bị reject |
-| `ReviewSubmitScreen` | `ReviewSubmit` | Xem lại toàn bộ trước khi nộp |
-| `ContractViewerScreen` | `ContractViewer` | Xem PDF hợp đồng qua WebView + download/share |
-| `CreateApplicationScreen` | *(alternate)* | Form tạo hồ sơ cũ (có mô tả HOUSING_STATUS) |
+| `MyApplicationsScreen` | `MyApplications` | Danh sách hồ sơ (list only) |
+| `ApplicationDetailScreen` | `ApplicationDetail` | Chi tiết full-screen + CTA sticky (thanh toán, hợp đồng, nộp lại…) |
+| `BasicInformationScreen` | `BasicInformation` | Bước 1/3 — thông tin (eKYC khóa định danh) |
+| `UploadDocumentsScreen` | `UploadDocuments` | Bước 2/3 — đủ 2 giấy tờ bắt buộc |
+| `ReviewSubmitScreen` | `ReviewSubmit` | Bước 3/3 — xem lại & nộp |
+| `ContractViewerScreen` | `ContractViewer` | Xem PDF HĐ / biên nhận |
 
-**Các loại giấy tờ (`DOC_TYPES`):**
-- `HOUSING_CONDITION_PROOF` — Minh chứng điều kiện nhà ở
-- `POVERTY_HOUSEHOLD_CERTIFICATE` — Chứng nhận hộ nghèo/cận nghèo
+**Components:** `ApplicationCard`, `DraftActionSheet`, `ApplicationPaymentSection`
+
+**Các loại giấy tờ (`DOC_TYPES`) — bắt buộc đủ 2:**
+- `HOUSING_CONDITION_PROOF` — Giấy xác nhận nhà ở (`NO_HOUSE` hoặc `SMALL_HOUSE` &lt; 15 m²/người)
+- `POVERTY_HOUSEHOLD_CERTIFICATE` — Giấy chứng nhận hộ nghèo / cận nghèo
+
+**Gate nộp:** đủ 2 loại trên (mobile + BE). AI verify **không** chặn nộp (AI là trợ lý CĐT trên web/BE).
 
 **Trạng thái hồ sơ (`STATUS_CONFIG`):**  
-`DRAFT → SUBMITTED → UNDER_REVIEW → PROPOSED | NEED_MORE_DOCUMENTS → APPROVED → DEPOSIT_PAID`  
+`DRAFT → SUBMITTED → REVIEWING → NEED_MORE_DOCUMENTS → PENDING_SXD_REVIEW → APPROVED → DEPOSIT_PAID`  
 Cũng có: `REJECTED`, `EXPIRED`, `CANCELED`
+
+**Sau APPROVED:** đặt cọc = tham gia bốc thăm (không phải giữ căn). `DEPOSIT_PAID` → xem HĐ nguyên tắc + mã tham dự.
+
+> Nghiệp vụ đầy đủ: [`BUSINESS_FLOW.md`](./BUSINESS_FLOW.md) và backend `BUSINESS_FLOW.md`.
 
 ---
 
@@ -558,7 +566,7 @@ State được quản lý qua:
 | 2 | **Hardcoded API base URL** | High | `apiClient.ts` hardcode `http://192.168.1.4:5112/api`, bỏ qua `.env`. Cần sửa thành `process.env.EXPO_PUBLIC_API_BASE_URL`. |
 | 3 | **Không có global state management** | Medium | Với số lượng feature tăng, việc thiếu global state sẽ gây khó khăn. Cân nhắc thêm Zustand hoặc React Context cho user session, notification count. |
 | 4 | **Trùng lặp `PagedResult<T>`** | Low | Type này được định nghĩa trong ít nhất 3 API files (`housingApi`, `wishlistApi`, `issueReportApi`). Nên tách ra shared types. |
-| 5 | **Trùng lặp màn hình tạo hồ sơ** | Medium | Có cả `BasicInformationScreen` và `CreateApplicationScreen` — dường như là 2 phiên bản của cùng một chức năng. Nên merge hoặc xóa bản cũ. |
+| 5 | ~~**Trùng lặp màn hình tạo hồ sơ**~~ (Đã xử lý) | Medium | Đã xóa `CreateApplicationScreen` và `EditInformationScreen` (orphan, trùng luồng wizard). Luồng tạo hồ sơ hiện chỉ dùng `BasicInformationScreen`. |
 | 6 | **Notification API endpoint sai prefix** | Medium | `notificationApi.ts` dùng `/api/notification/...` thay vì `/notification/...` — khác với pattern của các API khác. Có thể gây lỗi nếu backend không có `/api/api/` route. |
 | 7 | **Empty directories** | Low | `home/components/`, `home/hooks/`, `home/services/`, `home/types/`, `home/utils/`, `src/components/states/` — các thư mục trống không có file nào, gây nhiễu. |
 | 8 | **Cross-feature component import** | Medium | `user/ChangePasswordScreen` import `CustomInput` từ `auth/components/` — đây là component nên được move lên `src/components/` shared. |
@@ -574,7 +582,7 @@ State được quản lý qua:
 3. **Tạo `src/types/common.ts`** → gom các type dùng chung (`PagedResult<T>`, `ApiResponse<T>`)
 4. **Tạo `src/hooks/`** → chứa shared hooks: `usePagination`, `useLoading`, `useErrorAlert`
 5. **Tạo `ErrorBoundary`** component ở `src/components/`
-6. **Dọn dẹp thư mục trống** và merge `CreateApplicationScreen` + `BasicInformationScreen`
+6. **Dọn dẹp thư mục trống** (đã gộp/xóa `CreateApplicationScreen`, `EditInformationScreen`)
 7. **Thêm Zustand** cho user session và notification state
 8. **Fix `notificationApi.ts`** endpoint prefix
 9. **Move `CustomInput`** lên `src/components/` shared

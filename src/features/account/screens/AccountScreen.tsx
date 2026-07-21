@@ -241,7 +241,7 @@ export const AccountScreen = () => {
           <MenuItem 
             icon="file-text" 
             label="Tra cứu thủ tục hành chính" 
-            onPress={() => navigation.navigate('FAQ')} 
+            onPress={() => navigation.navigate('Faq')} 
           />
           <MenuItem 
             icon="shield" 

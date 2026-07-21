@@ -15,14 +15,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { BrandBar } from '../../../components/BrandBar';
-import { RHSColors, borderRadius, typography } from '../../../lib/theme';
+import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme';
 import { userApi } from '../../user/api/userApi';
 import { housingApplicationApi } from '../api/housingApplicationApi';
 import { CreateApplicationRequest } from '../types/application';
 
 const HOUSING_STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: 'NO_HOUSE', label: 'Chưa có nhà ở' },
-  { value: 'SMALL_HOUSE', label: 'Diện tích nhà ở dưới 15m²' },
+  { value: 'NO_HOUSE', label: 'Chưa có nhà ở thuộc sở hữu của mình' },
+  { value: 'SMALL_HOUSE', label: 'Có nhà ở nhưng diện tích bình quân < 15 m²/người' },
+];
+
+const OBJECT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'URBAN_POOR', label: 'Hộ nghèo đô thị' },
+  { value: 'URBAN_NEAR_POOR', label: 'Hộ cận nghèo đô thị' },
 ];
 
 const MARITAL_STATUS_OPTIONS = [
@@ -57,8 +62,10 @@ export const BasicInformationScreen = () => {
   const [fullName, setFullName] = useState('');
   const [citizenId, setCitizenId] = useState('');
   const [permanentAddress, setPermanentAddress] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [ekycReady, setEkycReady] = useState(false);
 
-  // ── User-entered fields ──
+  // ── User-entered fields (Mẫu số 01) ──
   const [currentResidence, setCurrentResidence] = useState('');
   const [sameAsPermanent, setSameAsPermanent] = useState(false);
   const [occupation, setOccupation] = useState('');
@@ -67,6 +74,7 @@ export const BasicInformationScreen = () => {
   const [maritalStatus, setMaritalStatus] = useState('');
   const [householdMembersCount, setHouseholdMembersCount] = useState('');
   const [priorityGroup, setPriorityGroup] = useState('');
+  const [averageHousingAreaPerPerson, setAverageHousingAreaPerPerson] = useState('');
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -81,17 +89,32 @@ export const BasicInformationScreen = () => {
     }
   }, [sameAsPermanent, permanentAddress]);
 
-  // Load profile from eKYC
+  // Load profile from eKYC — paste sẵn theo Mẫu số 01 mục 2, 3, 7
   useEffect(() => {
     (async () => {
       try {
         const result = await userApi.getProfile();
         if (result.success && result.user) {
-          setFullName(result.user.fullName || '');
-          setCitizenId(result.user.citizenId || '');
-          setPermanentAddress(result.user.address || '');
+          const name = (result.user.fullName || '').trim();
+          const cid = (result.user.citizenId || '').trim();
+          const addr = (result.user.address || '').trim();
+          const dob = result.user.dateOfBirth
+            ? String(result.user.dateOfBirth).slice(0, 10)
+            : '';
+
+          setFullName(name);
+          setCitizenId(cid);
+          setPermanentAddress(addr);
+          setDateOfBirth(dob);
+
+          // eKYC đủ khi có họ tên + CCCD + địa chỉ thường trú
+          setEkycReady(!!name && !!cid && !!addr);
+        } else {
+          setEkycReady(false);
         }
-      } catch {} finally {
+      } catch {
+        setEkycReady(false);
+      } finally {
         setLoading(false);
       }
     })();
@@ -115,18 +138,36 @@ export const BasicInformationScreen = () => {
         else delete newErrors.householdMembersCount;
         break;
       }
+      case 'priorityGroup':
+        if (!value) newErrors.priorityGroup = 'Vui lòng chọn đối tượng thụ hưởng';
+        else delete newErrors.priorityGroup;
+        break;
     }
     setErrors(newErrors);
   };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
+    if (!ekycReady) {
+      newErrors.ekyc = 'Chưa đủ thông tin định danh eKYC (họ tên, CCCD, địa chỉ thường trú). Vui lòng xác minh danh tính trước.';
+    }
     if (!currentResidence.trim()) newErrors.currentResidence = 'Vui lòng nhập nơi ở hiện tại';
     if (!housingStatus) newErrors.housingStatus = 'Vui lòng chọn thực trạng nhà ở';
     if (!maritalStatus) newErrors.maritalStatus = 'Vui lòng chọn tình trạng hôn nhân';
+    if (!priorityGroup) newErrors.priorityGroup = 'Vui lòng chọn đối tượng: hộ nghèo hoặc cận nghèo đô thị';
     const membersNum = parseInt(householdMembersCount, 10);
     if (!householdMembersCount.trim()) newErrors.householdMembersCount = 'Vui lòng nhập số thành viên';
     else if (isNaN(membersNum) || membersNum <= 0) newErrors.householdMembersCount = 'Số thành viên không hợp lệ';
+
+    if (housingStatus === 'SMALL_HOUSE') {
+      const areaNum = parseFloat(averageHousingAreaPerPerson.replace(/,/g, ''));
+      if (!averageHousingAreaPerPerson.trim()) {
+        newErrors.averageHousingAreaPerPerson = 'Vui lòng nhập diện tích bình quân đầu người';
+      } else if (isNaN(areaNum) || areaNum < 0) {
+        newErrors.averageHousingAreaPerPerson = 'Diện tích không hợp lệ';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -147,13 +188,19 @@ export const BasicInformationScreen = () => {
         housingStatus,
         maritalStatus,
         householdMembersCount: parseInt(householdMembersCount, 10),
-        priorityGroup: priorityGroup.trim() || undefined,
+        priorityGroup,
+        averageHousingAreaPerPerson:
+          housingStatus === 'SMALL_HOUSE' && averageHousingAreaPerPerson.trim()
+            ? parseFloat(averageHousingAreaPerPerson.replace(/,/g, ''))
+            : undefined,
       };
 
       const result = await housingApplicationApi.createApplication(payload);
-      navigation.replace('UploadDocuments', {
+      navigation.replace('HouseholdMembers', {
         applicationId: result.applicationId,
         projectName,
+        applicationStatus: 'DRAFT',
+        next: 'UploadDocuments',
       });
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Có lỗi xảy ra.';
@@ -183,7 +230,7 @@ export const BasicInformationScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Thông tin đăng ký</Text>
+        <Text style={styles.headerTitle}>Bước 1/3 — Thông tin</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -230,16 +277,23 @@ export const BasicInformationScreen = () => {
             </Text>
           </View>
 
-          {/* ── IDENTITY INFO – LOCKED FROM eKYC ── */}
-          <Text style={styles.sectionTitle}>Thông tin định danh</Text>
-          <View style={styles.card}>
-            {/* Sync badge */}
-            <View style={styles.syncBadge}>
-              <Feather name="check-circle" size={14} color={RHSColors.green600} />
-              <Text style={styles.syncBadgeText}>
-                Thông tin được đồng bộ từ Dữ liệu định danh eKYC
+          {/* ── IDENTITY INFO – LOCKED FROM eKYC (Mẫu 01 mục 2, 3, 7) ── */}
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Thông tin định danh (eKYC)</Text>
+            <View style={styles.card}>
+            <View style={[styles.syncBadge, !ekycReady && { backgroundColor: '#FEF3C7' }]}>
+              <Feather
+                name={ekycReady ? 'check-circle' : 'alert-triangle'}
+                size={14}
+                color={ekycReady ? RHSColors.green600 : '#D97706'}
+              />
+              <Text style={[styles.syncBadgeText, !ekycReady && { color: '#92400E' }]}>
+                {ekycReady
+                  ? 'Đã dán sẵn từ dữ liệu eKYC: họ tên, CCCD, địa chỉ thường trú'
+                  : 'Thiếu dữ liệu eKYC — cần xác minh danh tính trước khi đăng ký'}
               </Text>
             </View>
+            {errors.ekyc && <Text style={styles.errorText}>{errors.ekyc}</Text>}
 
             <Text style={styles.label}>Họ và tên *</Text>
             <View style={styles.lockedInput}>
@@ -253,18 +307,33 @@ export const BasicInformationScreen = () => {
               <Text style={styles.lockedText}>{citizenId || '—'}</Text>
             </View>
 
-            <Text style={styles.label}>Địa chỉ thường trú *</Text>
+            {!!dateOfBirth && (
+              <>
+                <Text style={styles.label}>Ngày sinh</Text>
+                <View style={styles.lockedInput}>
+                  <Feather name="calendar" size={16} color={RHSColors.textMuted} />
+                  <Text style={styles.lockedText}>{dateOfBirth}</Text>
+                </View>
+              </>
+            )}
+
+            <Text style={styles.label}>Đăng ký thường trú / tạm trú *</Text>
             <View style={styles.lockedInput}>
               <Feather name="bookmark" size={16} color={RHSColors.textMuted} />
               <Text style={styles.lockedText} numberOfLines={3}>
                 {permanentAddress || '—'}
               </Text>
             </View>
+            <Text style={{ fontSize: 11, color: RHSColors.textMuted, marginTop: 6 }}>
+              Ngày cấp / nơi cấp CCCD chưa lưu trên hồ sơ eKYC hiện tại — bổ sung khi nộp giấy tờ.
+            </Text>
+          </View>
           </View>
 
           {/* ── CURRENT INFO – USER ENTERS ── */}
-          <Text style={styles.sectionTitle}>Thông tin hiện tại</Text>
-          <View style={styles.card}>
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Thông tin hiện tại</Text>
+            <View style={styles.card}>
             {/* Current Residence */}
             <Text style={styles.label}>Chỗ ở hiện tại *</Text>
             <TextInput
@@ -335,10 +404,12 @@ export const BasicInformationScreen = () => {
               placeholderTextColor={RHSColors.textMuted}
             />
           </View>
+          </View>
 
           {/* ── HỘ GIA ĐÌNH ── */}
-          <Text style={styles.sectionTitle}>Thông tin hộ gia đình</Text>
-          <View style={styles.card}>
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Thông tin hộ gia đình</Text>
+            <View style={styles.card}>
             <Text style={styles.label}>Tình trạng hôn nhân *</Text>
             {MARITAL_STATUS_OPTIONS.map((opt) => (
               <TouchableOpacity
@@ -395,19 +466,47 @@ export const BasicInformationScreen = () => {
             </View>
             {errors.householdMembersCount && <Text style={styles.errorText}>{errors.householdMembersCount}</Text>}
 
-            <Text style={[styles.label, { marginTop: 16 }]}>Nhóm đối tượng ưu tiên</Text>
-            <TextInput
-              style={styles.input}
-              value={priorityGroup}
-              onChangeText={setPriorityGroup}
-              placeholder="VD: Hộ nghèo, gia đình chính sách..."
-              placeholderTextColor={RHSColors.textMuted}
-            />
+            <Text style={[styles.label, { marginTop: 16 }]}>Thuộc đối tượng *</Text>
+            {OBJECT_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt.value}
+                style={[
+                  styles.radio,
+                  priorityGroup === opt.value && styles.radioActive,
+                  errors.priorityGroup && priorityGroup !== opt.value && styles.radioError,
+                ]}
+                onPress={() => {
+                  setPriorityGroup(opt.value);
+                  validateField('priorityGroup', opt.value);
+                }}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.radioDot,
+                    priorityGroup === opt.value && styles.radioDotActive,
+                  ]}
+                >
+                  {priorityGroup === opt.value && <View style={styles.radioDotFill} />}
+                </View>
+                <Text
+                  style={[
+                    styles.radioLabel,
+                    priorityGroup === opt.value && styles.radioLabelActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            {errors.priorityGroup && <Text style={styles.errorText}>{errors.priorityGroup}</Text>}
+          </View>
           </View>
 
           {/* Housing Status */}
-          <Text style={styles.sectionTitle}>Thực trạng nhà ở</Text>
-          <View style={styles.card}>
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Thực trạng nhà ở</Text>
+            <View style={styles.card}>
             <Text style={styles.label}>Thực trạng nhà ở *</Text>
             {HOUSING_STATUS_OPTIONS.map((opt) => (
               <TouchableOpacity
@@ -444,6 +543,31 @@ export const BasicInformationScreen = () => {
             {errors.housingStatus && (
               <Text style={styles.errorText}>{errors.housingStatus}</Text>
             )}
+
+            {housingStatus === 'SMALL_HOUSE' && (
+              <>
+                <Text style={[styles.label, { marginTop: 16 }]}>
+                  Diện tích bình quân đầu người (m²) *
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    errors.averageHousingAreaPerPerson && styles.inputError,
+                  ]}
+                  value={averageHousingAreaPerPerson}
+                  onChangeText={(v) => {
+                    if (/^[\d.,]*$/.test(v)) setAverageHousingAreaPerPerson(v);
+                  }}
+                  placeholder="VD: 12.5"
+                  keyboardType="decimal-pad"
+                  placeholderTextColor={RHSColors.textMuted}
+                />
+                {errors.averageHousingAreaPerPerson && (
+                  <Text style={styles.errorText}>{errors.averageHousingAreaPerPerson}</Text>
+                )}
+              </>
+            )}
+          </View>
           </View>
 
           {/* Submit Button - BLUE */}
@@ -549,19 +673,26 @@ const styles = StyleSheet.create({
   projectName: { flex: 1, fontSize: 15, fontWeight: '700', color: RHSColors.text, lineHeight: 22 },
 
   // Sections
+  sectionCard: {
+    marginBottom: spacing.lg,
+  },
   sectionTitle: {
     ...typography.h3,
     color: RHSColors.text,
-    marginBottom: 10,
+    marginBottom: spacing.sm,
     marginLeft: 2,
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: borderRadius.md,
-    padding: 16,
-    marginBottom: 18,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
     borderWidth: 1,
     borderColor: RHSColors.border,
+    shadowColor: RHSColors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 1,
+    shadowRadius: 3,
+    elevation: 2,
   },
 
   // ── eKYC Sync Badge ──
@@ -654,13 +785,14 @@ const styles = StyleSheet.create({
   radio: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: borderRadius.xs,
+    paddingVertical: 18,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
     borderWidth: 1.5,
     borderColor: RHSColors.grey200,
-    marginBottom: 8,
-    gap: 12,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+    minHeight: 56,
   },
   radioActive: {
     borderColor: RHSColors.blue700,

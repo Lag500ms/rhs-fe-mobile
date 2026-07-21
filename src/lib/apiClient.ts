@@ -1,7 +1,16 @@
 import axios from 'axios';
 import { getToken, getRefreshToken, setTokens, clearTokens } from './tokenStorage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5112/api';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+
+if (!API_BASE_URL) {
+  console.warn(
+    '[apiClient] EXPO_PUBLIC_API_BASE_URL chưa được set. ' +
+      'Android emulator dùng http://10.0.2.2:5112/api — sửa .env rồi restart Metro (npx expo start -c).'
+  );
+} else if (__DEV__) {
+  console.log('[apiClient] baseURL =', API_BASE_URL);
+}
 
 interface FailedQueueItem {
   resolve: (token: string) => void;

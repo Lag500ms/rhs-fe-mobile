@@ -26,6 +26,7 @@ import { useNavigation, CommonActions } from '@react-navigation/native';
 import { getToken } from '../../../lib/tokenStorage';
 import { wishlistApi } from '../../saved/api/wishlistApi';
 import { userApi } from '../../user/api/userApi';
+import { WishlistHeart } from '../../../components/WishlistHeart';
 
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -210,16 +211,13 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>Chi tiết dự án</Text>
-        <TouchableOpacity onPress={toggleWishlist} disabled={wishlistLoading} style={styles.wishlistBtn}>
-          {wishlistLoading ? (
-            <ActivityIndicator size="small" color={RHSColors.blue700} />
-          ) : (
-            <Image
-              source={isWishlisted ? require('../../../../assets/heart.png') : require('../../../../assets/like.png')}
-              style={styles.heartIcon}
-            />
-          )}
-        </TouchableOpacity>
+        <WishlistHeart
+          active={isWishlisted}
+          loading={wishlistLoading}
+          onPress={toggleWishlist}
+          size={24}
+          style={styles.wishlistBtn}
+        />
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -248,7 +246,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           <Text style={styles.name}>{project.projectName}</Text>
           <View style={styles.row}>
             <View style={[styles.chip, { backgroundColor: '#E3F2FD' }]}>
-              <Feather name="dollar-sign" size={13} color={RHSColors.blue700} />
+              <Feather name="tag" size={13} color={RHSColors.blue700} />
               <Text style={[styles.chipText, {color: RHSColors.blue700}]}>{formatPrice(project.minPrice, project.maxPrice)}</Text>
             </View>
             {formatArea(project.minArea, project.maxArea) ? (
@@ -367,7 +365,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
                     </Text>
                     <View style={styles.suggestedMeta}>
                       <View style={styles.suggestedChip}>
-                        <Feather name="dollar-sign" size={10} color={RHSColors.red600} />
+                        <Feather name="tag" size={10} color={RHSColors.red600} />
                         <Text style={styles.suggestedChipText}>
                           {formatPrice(sp.minPrice, sp.maxPrice)}
                         </Text>
@@ -401,8 +399,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E0E6ED',
   },
   backBtn: { padding: 4, marginRight: 10 },
-  wishlistBtn: { padding: 4 },
-  heartIcon: { width: 24, height: 24, resizeMode: 'contain' },
+  wishlistBtn: { marginRight: -4 },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: RHSColors.blue700 },
   scroll: { flex: 1 },
 

@@ -9,7 +9,26 @@ export interface CreateApplicationRequest {
   housingStatus: string;
   maritalStatus: string;
   householdMembersCount: number;
-  priorityGroup?: string;
+  priorityGroup: string;
+  monthlyIncome?: number;
+  spouseMonthlyIncome?: number;
+  averageHousingAreaPerPerson?: number;
+}
+
+export interface UpdateApplicationRequest {
+  fullName: string;
+  citizenId: string;
+  occupation?: string;
+  workPlace?: string;
+  currentResidence: string;
+  permanentAddress: string;
+  housingStatus: string;
+  maritalStatus: string;
+  householdMembersCount: number;
+  priorityGroup: string;
+  monthlyIncome?: number;
+  spouseMonthlyIncome?: number;
+  averageHousingAreaPerPerson?: number;
 }
 
 export interface CreateApplicationResponse {
@@ -61,6 +80,15 @@ export interface ReviewHistory {
   changedByFullName: string;
 }
 
+export interface EligibilityResult {
+  assessmentId: string;
+  applicationId?: string | null;
+  eligible: boolean;
+  estimatedScore: number;
+  reasons: string[];
+  assessmentDate: string;
+}
+
 export interface ApplicationDetail {
   applicationId: string;
   applicationStatus: string;
@@ -84,10 +112,16 @@ export interface ApplicationDetail {
   maritalStatus: string | null;
   householdMembersCount: number;
   priorityGroup: string | null;
+  receiptUrl: string | null;
+  slotCode?: string | null;
+  lotteryResult?: string | null;
+  monthlyIncome?: number | null;
+  spouseMonthlyIncome?: number | null;
+  averageHousingAreaPerPerson?: number | null;
+  eligibility?: EligibilityResult | null;
 
   officerId: string | null;
   officerFullName: string | null;
-  receiptUrl: string | null;
 
   documents: ApplicationDocument[];
   reviewHistories: ReviewHistory[];

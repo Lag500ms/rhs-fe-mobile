@@ -92,7 +92,7 @@ export const EditProfileScreen = () => {
             <View style={styles.ekycBadge}>
               <Feather name="check-circle" size={14} color={RHSColors.green600} />
               <Text style={styles.ekycBadgeText}>
-                Họ tên & Ngày sinh được đồng bộ từ eKYC. Chỉ số điện thoại có thể thay đổi.
+                Họ tên, ngày sinh, địa chỉ, CCCD chỉ cập nhật qua xác minh danh tính (eKYC). Tại đây chỉ đổi số điện thoại.
               </Text>
             </View>
 

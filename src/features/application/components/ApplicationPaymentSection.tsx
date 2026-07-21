@@ -112,8 +112,8 @@ export const ApplicationPaymentSection: React.FC<ApplicationPaymentSectionProps>
             isExpired ? styles.warningTitleExpired : {}
           ]}>
             {isExpired 
-              ? 'Đã quá hạn thanh toán. Hồ sơ của bạn đã bị hủy giữ chỗ.'
-              : 'Hồ sơ của bạn đã được duyệt. Vui lòng thanh toán tiền đặt cọc để giữ chỗ.'
+              ? 'Đã quá hạn thanh toán. Hồ sơ của bạn đã bị hủy.'
+              : 'Hồ sơ của bạn đã được duyệt. Vui lòng thanh toán tiền đặt cọc để đủ điều kiện tham gia bốc thăm.'
             }
           </Text>
           
@@ -126,7 +126,7 @@ export const ApplicationPaymentSection: React.FC<ApplicationPaymentSectionProps>
           {/* Countdown Timer */}
           {!isExpired && (
             <View style={styles.countdownContainer}>
-              <Text style={styles.countdownLabel}>Thời gian giữ chỗ còn lại:</Text>
+              <Text style={styles.countdownLabel}>Thời hạn thanh toán còn lại:</Text>
               <Text style={styles.countdownTime}>{formatTime(timeRemaining)}</Text>
             </View>
           )}

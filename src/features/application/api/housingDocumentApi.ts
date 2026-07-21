@@ -31,9 +31,6 @@ export const housingDocumentApi = {
     const response = await apiClient.post<UploadDocumentResponse>(
       `/housing-applications/${applicationId}/documents`,
       formData,
-      {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      }
     );
     return response.data;
   },
