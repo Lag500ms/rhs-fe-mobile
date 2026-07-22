@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
+import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, shadows, spacing, typography } from '../../../lib/theme';
 import { householdMemberApi } from '../api/householdMemberApi';
 import {
@@ -21,6 +22,7 @@ import {
   RELATIONSHIP_OPTIONS,
   getRelationshipLabel,
 } from '../types/household';
+import { ApplicationStepper } from '../components/ApplicationStepper';
 
 export const HouseholdMembersScreen = () => {
   const navigation = useNavigation<any>();
@@ -146,9 +148,25 @@ export const HouseholdMembersScreen = () => {
     navigation.goBack();
   };
 
+  const isCreateFlow = next === 'UploadDocuments';
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScreenHeader title="Thành viên hộ gia đình" isWhite />
+      {isCreateFlow ? (
+        <>
+          <BrandBar />
+          <View style={styles.whiteHeader}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Bước 2/4 — Thành viên</Text>
+            <View style={{ width: 36 }} />
+          </View>
+          <ApplicationStepper current={2} />
+        </>
+      ) : (
+        <ScreenHeader title="Thành viên hộ gia đình" isWhite />
+      )}
 
       {loading ? (
         <View style={styles.center}>
@@ -158,7 +176,12 @@ export const HouseholdMembersScreen = () => {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <Text style={styles.hint}>
             Thêm các thành viên cùng hộ khẩu (họ tên, CCCD, quan hệ) để phục vụ hậu kiểm chéo.
+            Độc thân / sống một mình: có thể bỏ trống rồi tiếp tục.
             {projectName ? ` Dự án: ${projectName}` : ''}
+          </Text>
+
+          <Text style={styles.countHint}>
+            Số người trong hộ = 1 (bạn) + {members.length} thành viên đã thêm
           </Text>
 
           {members.length === 0 ? (
@@ -269,9 +292,26 @@ export const HouseholdMembersScreen = () => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
+  whiteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E6ED',
+  },
+  backBtn: { padding: 4, marginRight: 10 },
+  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: RHSColors.blue700 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scroll: { padding: spacing.lg, paddingBottom: spacing.huge },
-  hint: { ...typography.bodySmall, color: RHSColors.textSecondary, marginBottom: spacing.lg, lineHeight: 20 },
+  hint: { ...typography.bodySmall, color: RHSColors.textSecondary, marginBottom: spacing.sm, lineHeight: 20 },
+  countHint: {
+    ...typography.caption,
+    color: RHSColors.blue700,
+    fontWeight: '600',
+    marginBottom: spacing.lg,
+  },
   empty: { alignItems: 'center', paddingVertical: spacing.xxl, gap: spacing.sm },
   emptyText: { ...typography.bodySmall, color: RHSColors.textMuted },
   card: {

@@ -12,11 +12,11 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const FAQS = [
   {
     q: 'Ai được mua nhà ở xã hội theo Nghị định 100/2024/NĐ-CP?',
-    a: 'Người thu nhập thấp tại đô thị, hộ nghèo/cận nghèo, công nhân khu công nghiệp, cán bộ công chức... chưa có nhà ở hoặc có nhà nhưng diện tích bình quân dưới mức quy định và chưa từng hưởng chính sách hỗ trợ nhà ở xã hội.',
+    a: 'Theo Điều 76 Luật Nhà ở: người có công; hộ nghèo/cận nghèo (nông thôn, đô thị, vùng thiên tai); thu nhập thấp đô thị; công nhân; lực lượng vũ trang; cán bộ công chức; trả lại nhà công vụ; bị thu hồi đất/giải tỏa; học sinh sinh viên… kèm điều kiện nhà ở (Đ29) và thu nhập/chuẩn nghèo (Đ30).',
   },
   {
     q: 'Cần chuẩn bị những giấy tờ gì?',
-    a: 'CMND/CCCD (2 mặt), sổ hộ khẩu/giấy xác nhận cư trú, giấy xác nhận thu nhập hoặc hộ nghèo do UBND phường/xã cấp, và giấy xác nhận đối tượng ưu tiên (nếu có).',
+    a: 'Theo NĐ 261/2025 và TT 05/2024: (1) Đơn mua Mẫu 01 NĐ 261; (2) Giấy chứng minh đối tượng (khác nhau theo nhóm Điều 76 — hộ nghèo, người có công, Mẫu 01 TT 05, LLVT…); (3) Giấy điều kiện nhà ở Mẫu 02/03 (vợ/chồng cũng kê Mẫu 02 nếu đã kết hôn); (4) Với nhóm (5)(6)(7)(8): giấy thu nhập Mẫu 04/05 (vợ/chồng cũng kê nếu đã kết hôn). App hiện đúng danh sách theo hồ sơ của bạn.',
   },
   {
     q: 'Điều kiện về thu nhập được xác định thế nào?',
@@ -24,7 +24,7 @@ const FAQS = [
   },
   {
     q: 'Xin giấy xác nhận về nhà ở ở đâu?',
-    a: 'Liên hệ UBND phường/xã nơi đăng ký thường trú/tạm trú để xin giấy xác nhận về tình trạng nhà ở và thu nhập theo mẫu.',
+    a: 'Dùng Mẫu số 02 (chưa có nhà) hoặc Mẫu số 03 (đã có nhà) Phụ lục I TT 05/2024/TT-BXD, kê khai theo hướng dẫn và xác nhận tại địa phương / cơ quan có thẩm quyền rồi upload PDF lên app.',
   },
   {
     q: 'Bốc thăm được tổ chức khi nào?',

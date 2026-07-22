@@ -1,24 +1,30 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+  Image,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { RHSColors, borderRadius, shadows, typography } from '../../../lib/theme';
+import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
 import { eKycApi } from '../api/eKycApi';
 import { OcrResult } from '../types/ekyc';
+import { EKycStepProgress } from '../components/EKycStepProgress';
 
 const VERIFIED_KEY = 'identityVerified';
 
 /**
- * Luồng eKYC theo VNPT eKYC (REST):
- *   1. OCR mặt trước CCCD  -> /EKyc/ocr
- *   2. Kiểm tra CCCD trùng -> /EKyc/check-citizen-id
- *   3. So khớp khuôn mặt   -> /EKyc/face-match
- *   4. Lưu & khóa profile  -> PUT /users/profile
- * (VNPT không hỗ trợ Liveness qua REST nên không có bước quay video.)
+ * Luồng eKYC VNPT REST:
+ * 1. OCR mặt trước CCCD → check CCCD
+ * 2. Face-match selfie ↔ CCCD → lưu profile
  */
 type EKycStep = 'welcome' | 'ocr' | 'facematch' | 'complete';
 
@@ -31,24 +37,34 @@ export const EKycScreen = () => {
   const [selfieUri, setSelfieUri] = useState<string | null>(null);
   const started = useRef(false);
 
-  /* Bước 1: Chụp CCCD -> OCR -> kiểm tra CCCD trùng */
   const shootCccd = async () => {
     await ImagePicker.requestCameraPermissionsAsync();
-    const r = await ImagePicker.launchCameraAsync({ mediaTypes: 'images', quality: 0.8, allowsEditing: false });
+    const r = await ImagePicker.launchCameraAsync({
+      mediaTypes: 'images',
+      quality: 0.8,
+      allowsEditing: false,
+    });
     if (r.canceled || !r.assets?.length) return;
+
     setBusy(true);
     try {
-      const o = await eKycApi.ocr(r.assets[0].uri);
+      const uri = r.assets[0].uri;
+      const o = await eKycApi.ocr(uri);
       setOcr(o);
-      setCccdUri(r.assets[0].uri);
+      setCccdUri(uri);
 
       if (o.id) {
         const check = await eKycApi.checkCitizenId(o.id);
         if (!check.available) {
-          setBusy(false);
           Alert.alert('CCCD không khả dụng', check.message, [
             { text: 'Quay lại', style: 'cancel' },
-            { text: 'Chụp lại', onPress: () => { setOcr(null); setCccdUri(null); } },
+            {
+              text: 'Chụp lại',
+              onPress: () => {
+                setOcr(null);
+                setCccdUri(null);
+              },
+            },
           ]);
           return;
         }
@@ -62,7 +78,6 @@ export const EKycScreen = () => {
     }
   };
 
-  /* Bước 2a: Chụp ảnh khuôn mặt */
   const takeSelfie = async () => {
     await ImagePicker.requestCameraPermissionsAsync();
     const p = await ImagePicker.launchCameraAsync({
@@ -75,19 +90,23 @@ export const EKycScreen = () => {
     setSelfieUri(p.assets[0].uri);
   };
 
-  /* Bước 2b: face-match -> nếu khớp: lưu profile & hoàn tất */
   const verifyFaceMatch = async () => {
-    if (!selfieUri) { Alert.alert('Chưa chụp ảnh khuôn mặt'); return; }
-    if (!cccdUri) { Alert.alert('Thiếu ảnh CCCD'); return; }
+    if (!selfieUri) {
+      Alert.alert('Thiếu ảnh', 'Vui lòng chụp ảnh khuôn mặt trước.');
+      return;
+    }
+    if (!cccdUri) {
+      Alert.alert('Thiếu ảnh CCCD', 'Vui lòng quay lại bước chụp CCCD.');
+      return;
+    }
 
     setBusy(true);
     try {
       const m = await eKycApi.faceMatch(selfieUri, cccdUri);
       if (!m.isMatch) {
-        setBusy(false);
         Alert.alert(
           'Khuôn mặt không khớp',
-          `Độ tương đồng: ${m.similarity ?? ''}%. Vui lòng chụp lại ảnh rõ nét hơn.`,
+          `Độ tương đồng: ${m.similarity ?? '—'}%. Chụp lại ảnh rõ, đủ ánh sáng.`,
           [{ text: 'Chụp lại', onPress: () => setSelfieUri(null) }],
         );
         return;
@@ -95,209 +114,441 @@ export const EKycScreen = () => {
 
       await eKycApi.updateProfileFromOcr(ocr!);
       await AsyncStorage.setItem(VERIFIED_KEY, 'true');
-      setBusy(false);
       setStep('complete');
     } catch (e: any) {
-      setBusy(false);
       Alert.alert('Lỗi xác minh', e?.message ?? 'Vui lòng thử lại.');
+    } finally {
+      setBusy(false);
     }
   };
 
   const close = () => {
     if (started.current && step !== 'complete') {
-      Alert.alert('Dừng?', 'Mất tiến trình xác minh.', [
+      Alert.alert('Dừng xác minh?', 'Tiến trình hiện tại sẽ không được lưu.', [
         { text: 'Tiếp tục', style: 'cancel' },
-        { text: 'Thoát', style: 'destructive', onPress: () => { started.current = false; nav.goBack(); } },
+        {
+          text: 'Thoát',
+          style: 'destructive',
+          onPress: () => {
+            started.current = false;
+            nav.goBack();
+          },
+        },
       ]);
     } else {
       nav.goBack();
     }
   };
 
-  const steps = [
-    { k: 'ocr', l: 'CCCD' },
-    { k: 'facematch', l: 'Khuôn mặt' },
-  ];
-  const stepOrder: EKycStep[] = ['ocr', 'facematch'];
-  const completedCount = stepOrder.findIndex((s) => s === step);
+  const showProgress = step === 'ocr' || step === 'facematch';
 
   return (
-    <SafeAreaView style={st.safe}>
-      <View style={st.bar}>
-        <View style={[st.stripe, { flex: 2, backgroundColor: RHSColors.red600 }]} />
-        <View style={[st.stripe, { flex: 0.4, backgroundColor: RHSColors.amber600 }]} />
-        <View style={[st.stripe, { flex: 2, backgroundColor: RHSColors.blue700 }]} />
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={close} style={styles.headerBtn} hitSlop={8}>
+          <Feather name={step === 'complete' ? 'x' : 'arrow-left'} size={22} color={RHSColors.blue700} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Xác minh danh tính</Text>
+        <View style={styles.headerBtn} />
       </View>
-      <LinearGradient colors={['#0A3A85', '#1565C0', '#1E88E5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.header}>
-        <TouchableOpacity onPress={close} style={st.closeBtn}><Feather name="x" size={22} color="#fff" /></TouchableOpacity>
-        <Text style={st.headerTitle}>Xác minh danh tính</Text>
-        <View style={{ width: 36 }} />
-      </LinearGradient>
 
-      {step !== 'welcome' && step !== 'complete' && (
-        <View style={st.stepBar}>
-          {steps.map((stp, i) => {
-            const isActive = completedCount >= 0 && i <= completedCount;
-            const isDone = completedCount >= 0 && i < completedCount;
-            return (
-              <View key={stp.k} style={st.stepItem}>
-                <View style={[st.stepDot, isActive && st.stepDotActive]}>
-                  {isDone
-                    ? <Feather name="check" size={12} color="#fff" />
-                    : <Text style={[st.stepDotNum, isActive && { color: '#fff' }]}>{i + 1}</Text>}
-                </View>
-                <Text style={[st.stepLabel, isActive && st.stepLabelActive]}>{stp.l}</Text>
-                {i < steps.length - 1 && <View style={[st.stepLine, isDone && st.stepLineActive]} />}
-              </View>
-            );
-          })}
-        </View>
-      )}
+      {showProgress && <EKycStepProgress current={step} />}
 
-      <ScrollView style={st.scroll} contentContainerStyle={st.scrollContent} showsVerticalScrollIndicator={false}>
-
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {step === 'welcome' && (
-          <View style={st.stepContent}>
-            <View style={st.iconCircle}><Feather name="shield" size={52} color={RHSColors.blue700} /></View>
-            <Text style={st.stepTitle}>Xác minh danh tính</Text>
-            <Text style={st.stepDesc}>Xác thực điện tử qua VNPT eKYC — 2 bước:</Text>
-            <View style={st.infoList}>
-              <View style={st.infoItem}><Feather name="camera" size={18} color={RHSColors.blue700} /><Text style={st.infoText}>Chụp mặt trước CCCD gắn chip</Text></View>
-              <View style={st.infoItem}><Feather name="user-check" size={18} color={RHSColors.blue700} /><Text style={st.infoText}>Chụp ảnh khuôn mặt & so khớp với CCCD</Text></View>
+          <View style={styles.panel}>
+            <View style={styles.heroIcon}>
+              <Feather name="shield" size={36} color={RHSColors.blue700} />
             </View>
-            <TouchableOpacity style={st.primaryBtn} onPress={() => { started.current = true; setStep('ocr'); }} activeOpacity={0.85}>
-              <Text style={st.primaryBtnText}>Bắt đầu</Text>
+            <Text style={styles.title}>Xác thực CCCD điện tử</Text>
+            <Text style={styles.desc}>
+              Hoàn tất 2 bước với VNPT eKYC để đăng ký nhà ở xã hội.
+            </Text>
+
+            <View style={styles.process}>
+              <ProcessRow
+                index={1}
+                icon="credit-card"
+                title="Chụp mặt trước CCCD"
+                subtitle="Trích xuất thông tin và kiểm tra số CCCD"
+                last={false}
+              />
+              <ProcessRow
+                index={2}
+                icon="user"
+                title="Chụp khuôn mặt"
+                subtitle="So khớp với ảnh trên CCCD"
+                last
+              />
+            </View>
+
+            <View style={styles.noteBox}>
+              <Feather name="info" size={16} color={RHSColors.blue700} />
+              <Text style={styles.noteText}>
+                Dùng CCCD gắn chip, ánh sáng đủ, không bị che góc.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={() => {
+                started.current = true;
+                setStep('ocr');
+              }}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.primaryBtnText}>Bắt đầu xác minh</Text>
+              <Feather name="arrow-right" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
         )}
 
         {step === 'ocr' && (
-          <View style={st.stepContent}>
-            <View style={st.iconCircle}><Feather name="camera" size={46} color={RHSColors.blue700} /></View>
-            <Text style={st.stepTitle}>Bước 1: Chụp CCCD</Text>
-            <Text style={st.stepDesc}>Mặt trước CCCD, rõ nét, đủ 4 góc.</Text>
-            {busy
-              ? <View style={st.loadBox}><ActivityIndicator size="large" color={RHSColors.blue700} /><Text style={st.loadText}>Đang trích xuất thông tin...</Text></View>
-              : (
-                <TouchableOpacity style={st.primaryBtn} onPress={shootCccd} activeOpacity={0.85}>
-                  <Feather name="camera" size={16} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={st.primaryBtnText}>Chụp CCCD</Text>
-                </TouchableOpacity>
-              )
-            }
+          <View style={styles.panel}>
+            <Text style={styles.title}>Chụp mặt trước CCCD</Text>
+            <Text style={styles.desc}>Đặt thẻ trong khung, rõ nét, đủ 4 góc.</Text>
+
+            <CaptureZone
+              uri={cccdUri}
+              emptyIcon="credit-card"
+              emptyLabel="Chưa có ảnh CCCD"
+              aspect="card"
+            />
+
+            {busy ? (
+              <View style={styles.loadBox}>
+                <ActivityIndicator size="large" color={RHSColors.blue700} />
+                <Text style={styles.loadText}>Đang đọc thông tin CCCD...</Text>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.primaryBtn} onPress={shootCccd} activeOpacity={0.88}>
+                <Feather name="camera" size={18} color="#fff" />
+                <Text style={styles.primaryBtnText}>
+                  {cccdUri ? 'Chụp lại CCCD' : 'Mở camera chụp CCCD'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
         {step === 'facematch' && (
-          <View style={st.stepContent}>
-            <Text style={st.stepTitle}>Bước 2: Xác minh khuôn mặt</Text>
-            <Text style={st.stepDesc}>Chụp ảnh khuôn mặt để so khớp với ảnh trên CCCD.</Text>
+          <View style={styles.panel}>
+            <Text style={styles.title}>Xác minh khuôn mặt</Text>
+            <Text style={styles.desc}>
+              Chụp selfie rõ mặt, nhìn thẳng camera. Hệ thống sẽ so khớp với CCCD.
+            </Text>
 
             {ocr && (
-              <View style={st.ocrCard}>
-                <View style={st.ocrRow}><Text style={st.ocrLabel}>Họ tên</Text><Text style={st.ocrValue}>{ocr.name || '—'}</Text></View>
-                <View style={st.ocrRow}><Text style={st.ocrLabel}>Số CCCD</Text><Text style={st.ocrValue}>{ocr.id || '—'}</Text></View>
-                {!!ocr.dob && <View style={st.ocrRow}><Text style={st.ocrLabel}>Ngày sinh</Text><Text style={st.ocrValue}>{ocr.dob}</Text></View>}
+              <View style={styles.ocrCard}>
+                <Text style={styles.ocrHeading}>Thông tin từ CCCD</Text>
+                <InfoLine label="Họ tên" value={ocr.name || '—'} />
+                <InfoLine label="Số CCCD" value={ocr.id || '—'} />
+                {!!ocr.dob && <InfoLine label="Ngày sinh" value={ocr.dob} />}
               </View>
             )}
 
+            <CaptureZone
+              uri={selfieUri}
+              emptyIcon="user"
+              emptyLabel="Chưa có ảnh khuôn mặt"
+              aspect="portrait"
+            />
+
             {busy ? (
-              <View style={st.loadBox}>
+              <View style={styles.loadBox}>
                 <ActivityIndicator size="large" color={RHSColors.blue700} />
-                <Text style={st.loadText}>Đang so khớp & lưu hồ sơ...</Text>
+                <Text style={styles.loadText}>Đang so khớp khuôn mặt...</Text>
               </View>
             ) : (
-              <View style={st.sectionCard}>
-                <View style={st.sectionHeader}>
-                  <View style={[st.sectionBadge, selfieUri && { backgroundColor: RHSColors.green600 }]}>
-                    {selfieUri ? <Feather name="check" size={14} color="#fff" /> : <Text style={st.sectionBadgeNum}>1</Text>}
-                  </View>
-                  <Text style={st.sectionTitle}>Chụp ảnh khuôn mặt</Text>
-                </View>
+              <View style={styles.actions}>
+                <TouchableOpacity style={styles.secondaryBtn} onPress={takeSelfie} activeOpacity={0.88}>
+                  <Feather name="camera" size={18} color={RHSColors.blue700} />
+                  <Text style={styles.secondaryBtnText}>
+                    {selfieUri ? 'Chụp lại' : 'Chụp khuôn mặt'}
+                  </Text>
+                </TouchableOpacity>
 
-                {selfieUri ? (
-                  <>
-                    <View style={st.doneRow}>
-                      <Feather name="check-circle" size={20} color={RHSColors.green600} />
-                      <Text style={st.doneText}>Ảnh đã chụp xong</Text>
-                      <TouchableOpacity onPress={() => setSelfieUri(null)} style={st.retakeBtn}>
-                        <Feather name="refresh-cw" size={14} color={RHSColors.blue700} />
-                        <Text style={st.retakeText}>Chụp lại</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <TouchableOpacity style={[st.primaryBtn, { marginTop: 14, width: '100%' }]} onPress={verifyFaceMatch}>
-                      <Text style={st.primaryBtnText}>Xác nhận & So khớp</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <TouchableOpacity style={[st.primaryBtn, { marginTop: 8 }]} onPress={takeSelfie} activeOpacity={0.85}>
-                    <Feather name="camera" size={16} color="#fff" style={{ marginRight: 8 }} />
-                    <Text style={st.primaryBtnText}>Chụp ảnh khuôn mặt</Text>
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                  style={[styles.primaryBtn, !selfieUri && styles.primaryBtnDisabled]}
+                  onPress={verifyFaceMatch}
+                  disabled={!selfieUri}
+                  activeOpacity={0.88}
+                >
+                  <Text style={styles.primaryBtnText}>Xác nhận & so khớp</Text>
+                  <Feather name="check" size={18} color="#fff" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.linkBtn}
+                  onPress={() => {
+                    setSelfieUri(null);
+                    setStep('ocr');
+                  }}
+                >
+                  <Feather name="arrow-left" size={14} color={RHSColors.textMuted} />
+                  <Text style={styles.linkBtnText}>Quay lại chụp CCCD</Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>
         )}
 
         {step === 'complete' && (
-          <View style={st.stepContent}>
-            <View style={[st.iconCircle, { backgroundColor: RHSColors.green50 }]}>
-              <Feather name="check-circle" size={52} color={RHSColors.green600} />
+          <View style={styles.panel}>
+            <View style={[styles.heroIcon, styles.heroSuccess]}>
+              <Feather name="check" size={36} color={RHSColors.green600} />
             </View>
-            <Text style={[st.stepTitle, { color: RHSColors.green600 }]}>Thành công!</Text>
-            <Text style={st.stepDesc}>Xác minh danh tính hoàn tất. Thông tin CCCD đã được lưu và khóa trong hồ sơ.</Text>
-            <TouchableOpacity style={st.primaryBtn} onPress={close}>
-              <Text style={st.primaryBtnText}>Hoàn tất</Text>
+            <Text style={[styles.title, { color: RHSColors.green700 }]}>Xác minh thành công</Text>
+            <Text style={styles.desc}>
+              Thông tin CCCD đã được lưu và khóa trong hồ sơ. Bạn có thể đăng ký nhà ở xã hội.
+            </Text>
+
+            {ocr && (
+              <View style={styles.ocrCard}>
+                <InfoLine label="Họ tên" value={ocr.name || '—'} />
+                <InfoLine label="Số CCCD" value={ocr.id || '—'} />
+              </View>
+            )}
+
+            <TouchableOpacity style={styles.primaryBtn} onPress={close} activeOpacity={0.88}>
+              <Text style={styles.primaryBtnText}>Hoàn tất</Text>
             </TouchableOpacity>
           </View>
         )}
-
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const st = StyleSheet.create({
+const ProcessRow = ({
+  index,
+  icon,
+  title,
+  subtitle,
+  last,
+}: {
+  index: number;
+  icon: keyof typeof Feather.glyphMap;
+  title: string;
+  subtitle: string;
+  last?: boolean;
+}) => (
+  <View style={styles.processRow}>
+    <View style={styles.processLeft}>
+      <View style={styles.processIndex}>
+        <Text style={styles.processIndexText}>{index}</Text>
+      </View>
+      {!last && <View style={styles.processRail} />}
+    </View>
+    <View style={[styles.processBody, last && { marginBottom: 0 }]}>
+      <View style={styles.processIcon}>
+        <Feather name={icon} size={18} color={RHSColors.blue700} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.processTitle}>{title}</Text>
+        <Text style={styles.processSub}>{subtitle}</Text>
+      </View>
+    </View>
+  </View>
+);
+
+const CaptureZone = ({
+  uri,
+  emptyIcon,
+  emptyLabel,
+  aspect,
+}: {
+  uri: string | null;
+  emptyIcon: keyof typeof Feather.glyphMap;
+  emptyLabel: string;
+  aspect: 'card' | 'portrait';
+}) => (
+  <View style={[styles.capture, aspect === 'portrait' && styles.capturePortrait]}>
+    {uri ? (
+      <Image source={{ uri }} style={styles.captureImage} resizeMode="cover" />
+    ) : (
+      <View style={styles.captureEmpty}>
+        <Feather name={emptyIcon} size={32} color={RHSColors.grey400} />
+        <Text style={styles.captureEmptyText}>{emptyLabel}</Text>
+      </View>
+    )}
+  </View>
+);
+
+const InfoLine = ({ label, value }: { label: string; value: string }) => (
+  <View style={styles.infoLine}>
+    <Text style={styles.infoLabel}>{label}</Text>
+    <Text style={styles.infoValue} numberOfLines={2}>{value}</Text>
+  </View>
+);
+
+const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
-  bar: { flexDirection: 'row', height: 4 },
-  stripe: { height: '100%' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12 },
-  closeBtn: { padding: 4, marginRight: 10 },
-  headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: RHSColors.surfaceCard,
+    borderBottomWidth: 1,
+    borderBottomColor: RHSColors.border,
+  },
+  headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: RHSColors.text },
   scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 40 },
-  stepBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#fff', marginHorizontal: 14, marginTop: 14, borderRadius: borderRadius.lg, ...shadows.sm },
-  stepItem: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  stepDot: { width: 24, height: 24, borderRadius: 12, backgroundColor: RHSColors.grey200, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: RHSColors.grey300 },
-  stepDotActive: { backgroundColor: RHSColors.blue700, borderColor: RHSColors.blue700 },
-  stepDotNum: { fontSize: 11, fontWeight: '700', color: RHSColors.textMuted },
-  stepLabel: { fontSize: 10, color: RHSColors.textMuted, marginLeft: 4 },
-  stepLabelActive: { color: RHSColors.blue700, fontWeight: '600' },
-  stepLine: { flex: 1, height: 2, backgroundColor: RHSColors.grey200, marginHorizontal: 4 },
-  stepLineActive: { backgroundColor: RHSColors.blue700 },
-  stepContent: { alignItems: 'center', paddingTop: 24, paddingHorizontal: 12 },
-  iconCircle: { width: 110, height: 110, borderRadius: 55, backgroundColor: RHSColors.blue50, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  stepTitle: { ...typography.h2, color: RHSColors.text, marginBottom: 8, textAlign: 'center' },
-  stepDesc: { ...typography.bodySmall, color: RHSColors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 20, paddingHorizontal: 10 },
-  infoList: { width: '100%', marginBottom: 28 },
-  infoItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 18, backgroundColor: RHSColors.blue50, borderRadius: borderRadius.md, marginBottom: 10 },
-  infoText: { ...typography.bodySmall, color: RHSColors.text, marginLeft: 12, fontWeight: '500', flex: 1 },
-  primaryBtn: { backgroundColor: RHSColors.blue700, paddingHorizontal: 24, paddingVertical: 16, borderRadius: borderRadius.lg, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', ...shadows.md },
+  scrollContent: { padding: spacing.lg, paddingBottom: 40 },
+  panel: { gap: spacing.md },
+  heroIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: RHSColors.blue50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginTop: spacing.sm,
+  },
+  heroSuccess: { backgroundColor: RHSColors.green50 },
+  title: {
+    ...typography.h2,
+    color: RHSColors.text,
+    textAlign: 'center',
+  },
+  desc: {
+    ...typography.bodySmall,
+    color: RHSColors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: spacing.sm,
+  },
+  process: {
+    backgroundColor: RHSColors.surfaceCard,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
+    marginTop: spacing.sm,
+  },
+  processRow: { flexDirection: 'row' },
+  processLeft: { width: 28, alignItems: 'center' },
+  processIndex: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: RHSColors.blue700,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  processIndexText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  processRail: {
+    width: 2,
+    flex: 1,
+    backgroundColor: RHSColors.blue200,
+    marginVertical: 4,
+    minHeight: 20,
+  },
+  processBody: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: RHSColors.blue50,
+    borderRadius: borderRadius.md,
+    padding: 12,
+    marginLeft: 10,
+    marginBottom: 12,
+  },
+  processIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  processTitle: { fontSize: 14, fontWeight: '700', color: RHSColors.text },
+  processSub: { fontSize: 12, color: RHSColors.textSecondary, marginTop: 2 },
+  noteBox: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+    backgroundColor: RHSColors.blue50,
+    borderRadius: borderRadius.md,
+    padding: 12,
+  },
+  noteText: { flex: 1, fontSize: 12, color: RHSColors.textSecondary, lineHeight: 18 },
+  capture: {
+    width: '100%',
+    height: 180,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: RHSColors.border,
+    borderStyle: 'dashed',
+    backgroundColor: RHSColors.grey100,
+    overflow: 'hidden',
+  },
+  capturePortrait: { height: 220, alignSelf: 'center', width: '72%' },
+  captureImage: { width: '100%', height: '100%' },
+  captureEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  captureEmptyText: { fontSize: 13, color: RHSColors.textMuted, fontWeight: '500' },
+  ocrCard: {
+    backgroundColor: RHSColors.surfaceCard,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
+    gap: 8,
+  },
+  ocrHeading: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: RHSColors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 2,
+  },
+  infoLine: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  infoLabel: { fontSize: 13, color: RHSColors.textMuted },
+  infoValue: { flex: 1, fontSize: 13, fontWeight: '700', color: RHSColors.text, textAlign: 'right' },
+  actions: { gap: 10 },
+  primaryBtn: {
+    backgroundColor: RHSColors.blue700,
+    borderRadius: borderRadius.lg,
+    minHeight: 52,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    ...shadows.sm,
+  },
+  primaryBtnDisabled: { opacity: 0.45 },
   primaryBtnText: { ...typography.button, color: '#fff' },
-  loadBox: { alignItems: 'center', paddingVertical: 36 },
-  loadText: { marginTop: 10, ...typography.bodySmall, color: RHSColors.textMuted },
-  ocrCard: { width: '100%', backgroundColor: RHSColors.blue50, borderRadius: borderRadius.lg, padding: 14, marginBottom: 14 },
-  ocrRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
-  ocrLabel: { ...typography.bodySmall, color: RHSColors.textMuted },
-  ocrValue: { ...typography.bodySmall, color: RHSColors.text, fontWeight: '700', flexShrink: 1, textAlign: 'right', marginLeft: 12 },
-  sectionCard: { width: '100%', backgroundColor: '#fff', borderRadius: borderRadius.lg, padding: 14, ...shadows.sm },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  sectionBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: RHSColors.blue700, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  sectionBadgeNum: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: RHSColors.text },
-  doneRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
-  doneText: { flex: 1, fontSize: 13, color: RHSColors.green600, fontWeight: '500' },
-  retakeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: RHSColors.blue50 },
-  retakeText: { fontSize: 12, color: RHSColors.blue700, fontWeight: '600' },
+  secondaryBtn: {
+    backgroundColor: RHSColors.blue50,
+    borderRadius: borderRadius.lg,
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: RHSColors.blue200,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  secondaryBtnText: { fontSize: 15, fontWeight: '700', color: RHSColors.blue700 },
+  linkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  linkBtnText: { fontSize: 13, color: RHSColors.textMuted, fontWeight: '500' },
+  loadBox: { alignItems: 'center', paddingVertical: 28, gap: 10 },
+  loadText: { ...typography.bodySmall, color: RHSColors.textMuted },
 });

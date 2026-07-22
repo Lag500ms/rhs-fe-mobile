@@ -304,8 +304,8 @@ export const ApplicationDetailScreen = () => {
         permanentAddress: detail.permanentAddress,
         housingStatus: detail.housingStatus,
         maritalStatus: detail.maritalStatus || 'SINGLE',
-        householdMembersCount: detail.householdMembersCount || 1,
         priorityGroup: detail.priorityGroup || 'URBAN_POOR',
+        averageHousingAreaPerPerson: detail.averageHousingAreaPerPerson ?? undefined,
       });
       navigation.replace('UploadDocuments', {
         applicationId: result.applicationId,

@@ -56,24 +56,39 @@ export const VerifyOtpScreen = () => {
 
   const handleDigitChange = (text: string, index: number) => {
     setError('');
-    const newDigits = [...digits];
+    const cleaned = text.replace(/\D/g, '');
 
-    // Paste: nếu người dùng dán chuỗi dài
-    if (text.length >= OTP_LENGTH) {
-      const pasted = text.replace(/[^0-9]/g, '').slice(0, OTP_LENGTH).split('');
-      const filled = [...pasted, ...Array(OTP_LENGTH - pasted.length).fill('')].slice(0, OTP_LENGTH);
-      setDigits(filled);
-      focusDigit(Math.min(pasted.length, OTP_LENGTH - 1));
+    // Xóa ô
+    if (!cleaned) {
+      const next = [...digits];
+      next[index] = '';
+      setDigits(next);
+      return;
+    }
+
+    // Paste / autofill: maxLength phải > 1 thì mới nhận đủ chuỗi
+    if (cleaned.length > 1) {
+      const chars = cleaned.slice(0, OTP_LENGTH).split('');
+      // Dán đủ 6 số → ghi đè toàn bộ; dán một phần → điền từ ô hiện tại
+      if (chars.length >= OTP_LENGTH) {
+        setDigits(chars.slice(0, OTP_LENGTH));
+        focusDigit(OTP_LENGTH - 1);
+      } else {
+        const next = [...digits];
+        chars.forEach((ch, i) => {
+          if (index + i < OTP_LENGTH) next[index + i] = ch;
+        });
+        setDigits(next);
+        focusDigit(Math.min(index + chars.length, OTP_LENGTH - 1));
+      }
       return;
     }
 
     // Nhập từng số
-    newDigits[index] = text.replace(/[^0-9]/g, '').slice(-1);
-    setDigits(newDigits);
-
-    if (text && index < OTP_LENGTH - 1) {
-      focusDigit(index + 1);
-    }
+    const next = [...digits];
+    next[index] = cleaned;
+    setDigits(next);
+    if (index < OTP_LENGTH - 1) focusDigit(index + 1);
   };
 
   const handleKeyPress = (e: any, index: number) => {
@@ -190,9 +205,13 @@ export const VerifyOtpScreen = () => {
                   onChangeText={(text) => handleDigitChange(text, index)}
                   onKeyPress={(e) => handleKeyPress(e, index)}
                   keyboardType="number-pad"
-                  maxLength={1}
+                  // maxLength=1 chặn paste — để OTP_LENGTH để nhận đủ chuỗi khi copy/paste
+                  maxLength={OTP_LENGTH}
                   selectTextOnFocus
                   caretHidden
+                  textContentType="oneTimeCode"
+                  autoComplete="sms-otp"
+                  importantForAutofill="yes"
                   placeholderTextColor={RHSColors.textMuted}
                 />
               ))}

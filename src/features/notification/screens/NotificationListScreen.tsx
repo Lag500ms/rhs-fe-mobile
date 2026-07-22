@@ -19,6 +19,7 @@ import {
   markAllAsRead,
 } from '../api/notificationApi';
 import { Notification, NotificationListResponse } from '../types/notification';
+import { getToken } from '../../../lib/tokenStorage';
 import {
   RHSColors,
   spacing,
@@ -90,6 +91,7 @@ export const NotificationListScreen: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
@@ -102,6 +104,18 @@ export const NotificationListScreen: React.FC = () => {
 
   const fetchNotifications = useCallback(
     async (page: number, isRefresh: boolean = false): Promise<void> => {
+      const token = await getToken();
+      if (!token) {
+        setIsLoggedIn(false);
+        setNotifications([]);
+        setIsLoading(false);
+        setIsRefreshing(false);
+        setIsLoadingMore(false);
+        setHasError(false);
+        return;
+      }
+
+      setIsLoggedIn(true);
       if (isFetchingRef.current) return;
       isFetchingRef.current = true;
 
@@ -126,17 +140,8 @@ export const NotificationListScreen: React.FC = () => {
         );
         setCurrentPage(response.page);
         setTotalPages(response.totalPages);
-      } catch (error) {
-        console.error('Failed to fetch notifications:', error);
+      } catch {
         setHasError(true);
-
-        if (page === 1 && !isRefresh) {
-          Alert.alert(
-            'Lỗi',
-            'Không thể tải danh sách thông báo. Vui lòng thử lại.',
-            [{ text: 'OK', onPress: () => setHasError(false) }]
-          );
-        }
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);
@@ -151,13 +156,31 @@ export const NotificationListScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
-      fetchNotifications(1);
+      void (async () => {
+        const token = await getToken();
+        // Chưa đăng nhập: không reload / không gọi API
+        if (!token) {
+          setIsLoggedIn(false);
+          setNotifications([]);
+          setIsLoading(false);
+          setIsRefreshing(false);
+          setHasError(false);
+          return;
+        }
+        await fetchNotifications(1);
+      })();
     }, [fetchNotifications])
   );
 
   // ─── Pull to refresh ──────────────────────────────────────────
 
   const handleRefresh = useCallback(async (): Promise<void> => {
+    const token = await getToken();
+    if (!token) {
+      setIsLoggedIn(false);
+      setIsRefreshing(false);
+      return;
+    }
     await fetchNotifications(1, true);
   }, [fetchNotifications]);
 
@@ -165,13 +188,15 @@ export const NotificationListScreen: React.FC = () => {
 
   const handleEndReached = useCallback((): void => {
     if (
-      !isFetchingRef.current &&
-      !isLoadingMore &&
-      currentPage < totalPages
+      !isLoggedIn
+      || isFetchingRef.current
+      || isLoadingMore
+      || currentPage >= totalPages
     ) {
-      fetchNotifications(currentPage + 1);
+      return;
     }
-  }, [currentPage, totalPages, isLoadingMore, fetchNotifications]);
+    void fetchNotifications(currentPage + 1);
+  }, [isLoggedIn, currentPage, totalPages, isLoadingMore, fetchNotifications]);
 
   // ─── Mark as read ─────────────────────────────────────────────
 
@@ -323,12 +348,28 @@ export const NotificationListScreen: React.FC = () => {
 
   // ─── Render empty state ───────────────────────────────────────
 
+  const handleLoginPress = useCallback((): void => {
+    navigation.navigate('Auth', { screen: 'Login' });
+  }, [navigation]);
+
   const renderEmptyState = useCallback((): React.ReactNode => {
-    if (isLoading) {
+    if (isLoading || isLoggedIn === null) {
       return (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={RHSColors.blue700} />
           <Text style={styles.emptyText}>Đang tải thông báo...</Text>
+        </View>
+      );
+    }
+
+    if (isLoggedIn === false) {
+      return (
+        <View style={styles.centerContainer}>
+          <Ionicons name="lock-closed-outline" size={56} color={RHSColors.grey400} />
+          <Text style={styles.emptyText}>Đăng nhập để xem thông báo</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={handleLoginPress}>
+            <Text style={styles.retryButtonText}>Đăng nhập</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -344,7 +385,7 @@ export const NotificationListScreen: React.FC = () => {
           <Text style={styles.emptyText}>Không thể tải thông báo</Text>
           <TouchableOpacity
             style={styles.retryButton}
-            onPress={() => fetchNotifications(1)}
+            onPress={() => void fetchNotifications(1)}
           >
             <Text style={styles.retryButtonText}>Thử lại</Text>
           </TouchableOpacity>
@@ -362,11 +403,11 @@ export const NotificationListScreen: React.FC = () => {
         <Text style={styles.emptyText}>Không có thông báo nào</Text>
       </View>
     );
-  }, [isLoading, hasError, fetchNotifications]);
+  }, [isLoading, isLoggedIn, hasError, fetchNotifications, handleLoginPress]);
 
   // ─── Header right action ──────────────────────────────────────
 
-  const headerRightAction = (
+  const headerRightAction = isLoggedIn ? (
     <TouchableOpacity
       onPress={handleMarkAllAsRead}
       style={styles.markAllButton}
@@ -374,7 +415,7 @@ export const NotificationListScreen: React.FC = () => {
     >
       <Text style={styles.markAllButtonText}>Đánh dấu tất cả đã đọc</Text>
     </TouchableOpacity>
-  );
+  ) : undefined;
 
   // ─── Main render ──────────────────────────────────────────────
 
@@ -387,11 +428,13 @@ export const NotificationListScreen: React.FC = () => {
         isWhite={true}
       />
 
-      {isLoading ? (
+      {isLoading || isLoggedIn === null ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={RHSColors.blue700} />
           <Text style={styles.emptyText}>Đang tải thông báo...</Text>
         </View>
+      ) : isLoggedIn === false ? (
+        renderEmptyState()
       ) : (
         <FlatList
           data={notifications}
@@ -403,14 +446,16 @@ export const NotificationListScreen: React.FC = () => {
           ListEmptyComponent={renderEmptyState}
           ListFooterComponent={renderFooter}
           refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              colors={[RHSColors.blue700]}
-              tintColor={RHSColors.blue700}
-              title="Đang làm mới..."
-              titleColor={RHSColors.textSecondary}
-            />
+            isLoggedIn ? (
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                colors={[RHSColors.blue700]}
+                tintColor={RHSColors.blue700}
+                title="Đang làm mới..."
+                titleColor={RHSColors.textSecondary}
+              />
+            ) : undefined
           }
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.3}

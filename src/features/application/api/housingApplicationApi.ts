@@ -6,7 +6,11 @@ import {
   ApplicationSummary,
   ApplicationDetail,
   PagedResponse,
+  RequiredDocumentsResponse,
+  RequiredDocumentItem,
 } from '../types/application';
+
+type LookupDocItem = { code: string; label: string };
 
 export const housingApplicationApi = {
   createApplication: async (data: CreateApplicationRequest): Promise<CreateApplicationResponse> => {
@@ -44,6 +48,44 @@ export const housingApplicationApi = {
       `/housing-applications/${applicationId}`
     );
     return response.data;
+  },
+
+  /**
+   * Giấy tờ bắt buộc theo PriorityGroup — dùng lookup BE.
+   * GET /api/lookup/document-types/required?priorityGroup=...
+   */
+  getRequiredDocuments: async (
+    applicationId: string,
+  ): Promise<RequiredDocumentsResponse> => {
+    const detail = await housingApplicationApi.getApplicationDetail(applicationId);
+    const priorityGroup = detail.priorityGroup || undefined;
+    const response = await apiClient.get<LookupDocItem[]>(
+      '/lookup/document-types/required',
+      { params: priorityGroup ? { priorityGroup } : undefined },
+    );
+    const requiredDocuments: RequiredDocumentItem[] = (response.data || []).map((item) => ({
+      documentType: item.code,
+      label: item.label,
+      subtitle: 'PDF, tối đa 10MB',
+      isUploaded: (detail.documents || []).some((d) => d.documentType === item.code),
+      documentId: (detail.documents || []).find((d) => d.documentType === item.code)?.documentId,
+    }));
+    return { priorityGroup: detail.priorityGroup, requiredDocuments };
+  },
+
+  /** Chỉ lấy checklist theo priorityGroup (khi đã có detail). */
+  getRequiredDocumentsByPriorityGroup: async (
+    priorityGroup: string | null | undefined,
+  ): Promise<RequiredDocumentItem[]> => {
+    const response = await apiClient.get<LookupDocItem[]>(
+      '/lookup/document-types/required',
+      { params: priorityGroup ? { priorityGroup } : undefined },
+    );
+    return (response.data || []).map((item) => ({
+      documentType: item.code,
+      label: item.label,
+      subtitle: 'PDF, tối đa 10MB',
+    }));
   },
 
   cancelApplication: async (

@@ -19,15 +19,26 @@ import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme
 import { userApi } from '../../user/api/userApi';
 import { housingApplicationApi } from '../api/housingApplicationApi';
 import { CreateApplicationRequest } from '../types/application';
+import { ApplicationStepper } from '../components/ApplicationStepper';
 
 const HOUSING_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'NO_HOUSE', label: 'Chưa có nhà ở thuộc sở hữu của mình' },
   { value: 'SMALL_HOUSE', label: 'Có nhà ở nhưng diện tích bình quân < 15 m²/người' },
 ];
 
+/** Khớp PriorityGroupConstants trên BE (Đ76 Luật Nhà ở 2023). */
 const OBJECT_OPTIONS: { value: string; label: string }[] = [
-  { value: 'URBAN_POOR', label: 'Hộ nghèo đô thị' },
-  { value: 'URBAN_NEAR_POOR', label: 'Hộ cận nghèo đô thị' },
+  { value: 'MERIT_PERSON', label: '(1) Người có công với cách mạng' },
+  { value: 'RURAL_POOR', label: '(2) Hộ nghèo nông thôn' },
+  { value: 'RURAL_NEAR_POOR', label: '(3) Hộ cận nghèo nông thôn' },
+  { value: 'URBAN_POOR', label: '(4) Hộ nghèo đô thị' },
+  { value: 'URBAN_NEAR_POOR', label: '(4) Hộ cận nghèo đô thị' },
+  { value: 'LOW_INCOME_URBAN', label: '(5) Người thu nhập thấp tại đô thị' },
+  { value: 'WORKER', label: '(6) Công nhân, người lao động tại DN/HTX/KCN' },
+  { value: 'MILITARY_PERSONNEL', label: '(7) Lực lượng vũ trang, cơ yếu' },
+  { value: 'CIVIL_SERVANT', label: '(8) Cán bộ, công chức, viên chức' },
+  { value: 'PUBLIC_HOUSING_RETURN', label: '(9) Đối tượng trả lại nhà công vụ' },
+  { value: 'LAND_RECOVERY_AFFECTED', label: '(10) Bị thu hồi đất / giải tỏa nhà ở' },
 ];
 
 const MARITAL_STATUS_OPTIONS = [
@@ -72,7 +83,6 @@ export const BasicInformationScreen = () => {
   const [workPlace, setWorkPlace] = useState('');
   const [housingStatus, setHousingStatus] = useState('');
   const [maritalStatus, setMaritalStatus] = useState('');
-  const [householdMembersCount, setHouseholdMembersCount] = useState('');
   const [priorityGroup, setPriorityGroup] = useState('');
   const [averageHousingAreaPerPerson, setAverageHousingAreaPerPerson] = useState('');
 
@@ -131,17 +141,18 @@ export const BasicInformationScreen = () => {
         if (!value) newErrors.housingStatus = 'Vui lòng chọn thực trạng nhà ở';
         else delete newErrors.housingStatus;
         break;
-      case 'householdMembersCount': {
-        const num = parseInt(value, 10);
-        if (!value.trim()) newErrors.householdMembersCount = 'Vui lòng nhập số thành viên';
-        else if (isNaN(num) || num <= 0) newErrors.householdMembersCount = 'Số thành viên không hợp lệ';
-        else delete newErrors.householdMembersCount;
-        break;
-      }
       case 'priorityGroup':
         if (!value) newErrors.priorityGroup = 'Vui lòng chọn đối tượng thụ hưởng';
         else delete newErrors.priorityGroup;
         break;
+      case 'averageHousingAreaPerPerson': {
+        const areaNum = parseFloat(value.replace(/,/g, ''));
+        if (!value.trim()) newErrors.averageHousingAreaPerPerson = 'Vui lòng nhập diện tích bình quân đầu người';
+        else if (isNaN(areaNum) || areaNum < 0) newErrors.averageHousingAreaPerPerson = 'Diện tích không hợp lệ';
+        else if (areaNum >= 15) newErrors.averageHousingAreaPerPerson = 'Diện tích phải dưới 15 m²/người';
+        else delete newErrors.averageHousingAreaPerPerson;
+        break;
+      }
     }
     setErrors(newErrors);
   };
@@ -154,10 +165,7 @@ export const BasicInformationScreen = () => {
     if (!currentResidence.trim()) newErrors.currentResidence = 'Vui lòng nhập nơi ở hiện tại';
     if (!housingStatus) newErrors.housingStatus = 'Vui lòng chọn thực trạng nhà ở';
     if (!maritalStatus) newErrors.maritalStatus = 'Vui lòng chọn tình trạng hôn nhân';
-    if (!priorityGroup) newErrors.priorityGroup = 'Vui lòng chọn đối tượng: hộ nghèo hoặc cận nghèo đô thị';
-    const membersNum = parseInt(householdMembersCount, 10);
-    if (!householdMembersCount.trim()) newErrors.householdMembersCount = 'Vui lòng nhập số thành viên';
-    else if (isNaN(membersNum) || membersNum <= 0) newErrors.householdMembersCount = 'Số thành viên không hợp lệ';
+    if (!priorityGroup) newErrors.priorityGroup = 'Vui lòng chọn đối tượng thụ hưởng theo Điều 76 Luật Nhà ở';
 
     if (housingStatus === 'SMALL_HOUSE') {
       const areaNum = parseFloat(averageHousingAreaPerPerson.replace(/,/g, ''));
@@ -165,6 +173,8 @@ export const BasicInformationScreen = () => {
         newErrors.averageHousingAreaPerPerson = 'Vui lòng nhập diện tích bình quân đầu người';
       } else if (isNaN(areaNum) || areaNum < 0) {
         newErrors.averageHousingAreaPerPerson = 'Diện tích không hợp lệ';
+      } else if (areaNum >= 15) {
+        newErrors.averageHousingAreaPerPerson = 'Diện tích phải dưới 15 m²/người';
       }
     }
 
@@ -187,7 +197,6 @@ export const BasicInformationScreen = () => {
         workPlace: workPlace.trim() || undefined,
         housingStatus,
         maritalStatus,
-        householdMembersCount: parseInt(householdMembersCount, 10),
         priorityGroup,
         averageHousingAreaPerPerson:
           housingStatus === 'SMALL_HOUSE' && averageHousingAreaPerPerson.trim()
@@ -230,33 +239,11 @@ export const BasicInformationScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bước 1/3 — Thông tin</Text>
+        <Text style={styles.headerTitle}>Bước 1/4 — Thông tin</Text>
         <View style={{ width: 36 }} />
       </View>
 
-      {/* Stepper - refined */}
-      <View style={styles.stepper}>
-        <View style={styles.stepItem}>
-          <View style={[styles.stepCircle, styles.stepCircleActive]}>
-            <Text style={styles.stepCircleText}>1</Text>
-          </View>
-          <Text style={[styles.stepLabel, styles.stepLabelActive]}>Thông tin</Text>
-        </View>
-        <View style={[styles.stepLine, styles.stepLineActive]} />
-        <View style={styles.stepItem}>
-          <View style={styles.stepCircle}>
-            <Text style={styles.stepCircleTextInactive}>2</Text>
-          </View>
-          <Text style={styles.stepLabel}>Giấy tờ</Text>
-        </View>
-        <View style={styles.stepLine} />
-        <View style={styles.stepItem}>
-          <View style={styles.stepCircle}>
-            <Text style={styles.stepCircleTextInactive}>3</Text>
-          </View>
-          <Text style={styles.stepLabel}>Nộp hồ sơ</Text>
-        </View>
-      </View>
+      <ApplicationStepper current={1} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -447,24 +434,9 @@ export const BasicInformationScreen = () => {
               <Text style={styles.errorText}>{errors.maritalStatus}</Text>
             )}
 
-            <Text style={[styles.label, { marginTop: 16 }]}>Số thành viên hộ gia đình *</Text>
-            <View style={styles.incomeRow}>
-              <Feather name="users" size={18} color={RHSColors.blue700} />
-              <TextInput
-                style={[styles.input, { flex: 1 }, errors.householdMembersCount && styles.inputError]}
-                value={householdMembersCount}
-                onChangeText={(v) => {
-                  if (/^\d*$/.test(v)) {
-                    setHouseholdMembersCount(v);
-                    validateField('householdMembersCount', v);
-                  }
-                }}
-                placeholder="4"
-                keyboardType="numeric"
-                placeholderTextColor={RHSColors.textMuted}
-              />
-            </View>
-            {errors.householdMembersCount && <Text style={styles.errorText}>{errors.householdMembersCount}</Text>}
+            <Text style={[styles.helperText, { marginTop: 12 }]}>
+              Số thành viên hộ = 1 (bạn) + thành viên thêm ở bước tiếp theo. Độc thân có thể bỏ trống bước đó.
+            </Text>
 
             <Text style={[styles.label, { marginTop: 16 }]}>Thuộc đối tượng *</Text>
             {OBJECT_OPTIONS.map((opt) => (
@@ -556,12 +528,16 @@ export const BasicInformationScreen = () => {
                   ]}
                   value={averageHousingAreaPerPerson}
                   onChangeText={(v) => {
-                    if (/^[\d.,]*$/.test(v)) setAverageHousingAreaPerPerson(v);
+                    if (/^[\d.,]*$/.test(v)) {
+                      setAverageHousingAreaPerPerson(v);
+                      validateField('averageHousingAreaPerPerson', v);
+                    }
                   }}
-                  placeholder="VD: 12.5"
+                  placeholder="VD: 12.5 (phải dưới 15)"
                   keyboardType="decimal-pad"
                   placeholderTextColor={RHSColors.textMuted}
                 />
+                <Text style={styles.helperText}>Theo Đ29: diện tích bình quân phải dưới 15 m²/người.</Text>
                 {errors.averageHousingAreaPerPerson && (
                   <Text style={styles.errorText}>{errors.averageHousingAreaPerPerson}</Text>
                 )}
@@ -583,7 +559,7 @@ export const BasicInformationScreen = () => {
               ) : (
                 <>
                   <Feather name="save" size={18} color="#fff" />
-                  <Text style={styles.submitText}>Lưu & Tiếp tục</Text>
+                  <Text style={styles.submitText}>Lưu nháp & tiếp tục</Text>
                 </>
               )}
             </View>
@@ -611,42 +587,6 @@ const styles = StyleSheet.create({
   },
   backBtn: { padding: 4, marginRight: 10 },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: RHSColors.blue700 },
-
-  // Stepper - refined
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: RHSColors.grey200,
-  },
-  stepItem: { alignItems: 'center', gap: 4 },
-  stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: RHSColors.grey300,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stepCircleActive: { backgroundColor: RHSColors.blue700, borderColor: RHSColors.blue700 },
-  stepCircleText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  stepCircleTextInactive: { fontSize: 13, fontWeight: '700', color: RHSColors.grey500 },
-  stepLabel: { fontSize: 11, fontWeight: '500', color: RHSColors.grey500 },
-  stepLabelActive: { color: RHSColors.blue700, fontWeight: '700' },
-  stepLine: {
-    flex: 1,
-    height: 1.5,
-    backgroundColor: RHSColors.grey300,
-    marginHorizontal: 8,
-    marginBottom: 16,
-  },
-  stepLineActive: { backgroundColor: RHSColors.blue700 },
 
   // Header
   headerGrad: {
@@ -751,6 +691,7 @@ const styles = StyleSheet.create({
   textArea: { minHeight: 72, paddingTop: 12 },
   charCount: { fontSize: 11, color: RHSColors.textMuted, textAlign: 'right', marginTop: 2 },
   errorText: { fontSize: 12, color: RHSColors.red600, marginTop: 4, fontWeight: '500' },
+  helperText: { fontSize: 12, color: RHSColors.textMuted, marginTop: 6, lineHeight: 18 },
 
   // ── Checkbox ──
   checkboxRow: {
@@ -810,7 +751,7 @@ const styles = StyleSheet.create({
   },
   radioDotActive: { borderColor: RHSColors.blue700 },
   radioDotFill: { width: 12, height: 12, borderRadius: 6, backgroundColor: RHSColors.blue700 },
-  radioLabel: { fontSize: 15, fontWeight: '600', color: RHSColors.text, flex: 1 },
+  radioLabel: { fontSize: 13, fontWeight: '600', color: RHSColors.text, flex: 1, lineHeight: 18 },
   radioLabelActive: { color: RHSColors.blue700 },
 
   // Income

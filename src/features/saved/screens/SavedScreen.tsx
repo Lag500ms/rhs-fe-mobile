@@ -50,16 +50,19 @@ export const SavedScreen = () => {
   }, []);
 
   const checkAuthAndLoad = useCallback(async () => {
+    const token = await getToken();
+    // Chưa đăng nhập: không reload / không gọi API
+    if (!token) {
+      setIsLoggedIn(false);
+      setItems([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    setIsLoggedIn(true);
     setLoading(true);
     try {
-      const token = await getToken();
-      if (!token) {
-        setIsLoggedIn(false);
-        setItems([]);
-        setLoading(false);
-        return;
-      }
-      setIsLoggedIn(true);
       await fetchWishlist(1, false);
     } catch {
       Alert.alert('Lỗi', 'Không thể tải danh sách yêu thích.');
@@ -70,18 +73,24 @@ export const SavedScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      checkAuthAndLoad();
+      void checkAuthAndLoad();
     }, [checkAuthAndLoad])
   );
 
   const onRefresh = async () => {
+    const token = await getToken();
+    if (!token) {
+      setIsLoggedIn(false);
+      setRefreshing(false);
+      return;
+    }
     setRefreshing(true);
     await fetchWishlist(1, false);
     setRefreshing(false);
   };
 
   const onLoadMore = async () => {
-    if (!hasNextPage || loadingMore) return;
+    if (!isLoggedIn || !hasNextPage || loadingMore) return;
     setLoadingMore(true);
     await fetchWishlist(pageIndex + 1, true);
     setLoadingMore(false);
@@ -252,7 +261,9 @@ export const SavedScreen = () => {
             contentContainerStyle={items.length === 0 ? styles.emptyList : styles.listContent}
             showsVerticalScrollIndicator={false}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[RHSColors.blue700]} />
+              isLoggedIn ? (
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[RHSColors.blue700]} />
+              ) : undefined
             }
             onEndReached={onLoadMore}
             onEndReachedThreshold={0.3}

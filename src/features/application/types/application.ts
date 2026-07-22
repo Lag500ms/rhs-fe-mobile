@@ -8,7 +8,6 @@ export interface CreateApplicationRequest {
   permanentAddress: string;
   housingStatus: string;
   maritalStatus: string;
-  householdMembersCount: number;
   priorityGroup: string;
   monthlyIncome?: number;
   spouseMonthlyIncome?: number;
@@ -24,7 +23,6 @@ export interface UpdateApplicationRequest {
   permanentAddress: string;
   housingStatus: string;
   maritalStatus: string;
-  householdMembersCount: number;
   priorityGroup: string;
   monthlyIncome?: number;
   spouseMonthlyIncome?: number;
@@ -48,6 +46,19 @@ export interface ApplicationDocument {
   aiRejectedReason?: string;
   uploadedAt: string;
   uploadedBy?: string;
+}
+
+export interface RequiredDocumentItem {
+  documentType: string;
+  label: string;
+  subtitle?: string;
+  isUploaded?: boolean;
+  documentId?: string | null;
+}
+
+export interface RequiredDocumentsResponse {
+  priorityGroup?: string | null;
+  requiredDocuments: RequiredDocumentItem[];
 }
 
 export interface ApplicationSummary {

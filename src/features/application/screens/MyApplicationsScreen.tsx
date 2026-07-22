@@ -31,6 +31,15 @@ export const MyApplicationsScreen = () => {
   const [actionSheetApp, setActionSheetApp] = useState<ApplicationSummary | null>(null);
 
   const fetchData = useCallback(async (isRefresh = false) => {
+    const token = await getToken();
+    if (!token) {
+      setIsLoggedIn(false);
+      setApplications([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
@@ -47,17 +56,18 @@ export const MyApplicationsScreen = () => {
   }, []);
 
   const checkAuthAndLoad = useCallback(async () => {
-    setLoading(true);
-    try {
-      const token = await getToken();
-      if (!token) {
-        setIsLoggedIn(false);
-        setApplications([]);
-        setLoading(false);
-        return;
-      }
+    const token = await getToken();
+    // Chưa đăng nhập: không reload / không gọi API
+    if (!token) {
+      setIsLoggedIn(false);
+      setApplications([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
 
-      setIsLoggedIn(true);
+    setIsLoggedIn(true);
+    try {
       await fetchData(false);
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Không thể tải danh sách hồ sơ.';
@@ -68,7 +78,7 @@ export const MyApplicationsScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      checkAuthAndLoad();
+      void checkAuthAndLoad();
     }, [checkAuthAndLoad])
   );
 

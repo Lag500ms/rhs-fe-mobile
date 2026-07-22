@@ -50,6 +50,13 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Chưa đăng nhập / không có refresh → trả 401 gốc, không spam "No refresh token"
+      const refreshToken = await getRefreshToken();
+      if (!refreshToken) {
+        await clearTokens();
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({
@@ -66,11 +73,6 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = await getRefreshToken();
-        if (!refreshToken) {
-          processQueue(new Error('No refresh token'));
-          throw new Error('No refresh token available');
-        }
 
         const response = await axios.post<{ success: boolean; message: string; accessToken?: string; refreshToken?: string }>(`${API_BASE_URL}/auth/refresh-token`, {
           refreshToken,

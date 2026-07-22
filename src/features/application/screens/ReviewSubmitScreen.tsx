@@ -16,9 +16,9 @@ import { useNavigation, useRoute, CommonActions } from '@react-navigation/native
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { housingApplicationApi } from '../api/housingApplicationApi';
-import { housingDocumentApi } from '../api/housingDocumentApi';
-import { ApplicationDetail, ApplicationDocument } from '../types/application';
+import { ApplicationDetail, ApplicationDocument, RequiredDocumentItem } from '../types/application';
 import { getHousingStatusLabel } from '../utils/statusConfig';
+import { ApplicationStepper } from '../components/ApplicationStepper';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -28,6 +28,39 @@ function formatDate(dateStr: string): string {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
   } catch {
     return dateStr;
+  }
+}
+
+function resolveDocLabel(
+  documentType: string,
+  requiredItems: RequiredDocumentItem[],
+): string {
+  const fromApi = requiredItems.find((r) => r.documentType === documentType);
+  if (fromApi?.label) return fromApi.label;
+
+  switch (documentType) {
+    case 'HOUSING_CONDITION_PROOF':
+      return 'Giấy xác nhận điều kiện nhà ở';
+    case 'POVERTY_HOUSEHOLD_CERTIFICATE':
+      return 'Giấy chứng nhận hộ nghèo/cận nghèo';
+    case 'MERIT_PERSON_CERTIFICATE':
+      return 'Giấy xác nhận người có công với cách mạng';
+    case 'LOW_INCOME_CERTIFICATE':
+      return 'Giấy xác nhận thu nhập thấp tại đô thị';
+    case 'EMPLOYMENT_CERTIFICATE':
+      return 'Giấy xác nhận đang làm việc tại DN/HTX/KCN';
+    case 'MILITARY_SERVICE_CERTIFICATE':
+      return 'Giấy xác nhận phục vụ lực lượng vũ trang/cơ yếu';
+    case 'CIVIL_SERVANT_CERTIFICATE':
+      return 'Giấy xác nhận cán bộ/công chức/viên chức';
+    case 'PUBLIC_HOUSING_RETURN_CERTIFICATE':
+      return 'Văn bản trả lại nhà ở công vụ';
+    case 'LAND_RECOVERY_DECISION':
+      return 'Quyết định thu hồi đất/giải tỏa nhà ở';
+    case 'INCOME_CERTIFICATE':
+      return 'Giấy xác nhận thu nhập';
+    default:
+      return documentType;
   }
 }
 
@@ -53,16 +86,19 @@ export const ReviewSubmitScreen = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [detail, setDetail] = useState<ApplicationDetail | null>(null);
+  const [requiredItems, setRequiredItems] = useState<RequiredDocumentItem[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showConflictSheet, setShowConflictSheet] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-      const result = await housingApplicationApi.getApplicationDetail(applicationId);
+        const result = await housingApplicationApi.getApplicationDetail(applicationId);
+        const requiredDocs = await housingApplicationApi.getRequiredDocumentsByPriorityGroup(
+          result.priorityGroup,
+        );
         setDetail(result);
-
-        // Không cần fetch verification results nữa
+        setRequiredItems(requiredDocs);
       } catch (e: any) {
         const msg = e?.response?.data?.message || 'Không thể tải thông tin hồ sơ.';
         Alert.alert('Lỗi', msg);
@@ -74,10 +110,9 @@ export const ReviewSubmitScreen = () => {
   }, [applicationId]);
 
   const docs = detail?.documents ?? [];
-  const hasHousingProof = docs.some((d) => d.documentType === 'HOUSING_CONDITION_PROOF');
-  const hasPovertyCert = docs.some((d) => d.documentType === 'POVERTY_HOUSEHOLD_CERTIFICATE');
-  const totalFiles = docs.length;
-  const hasRequiredDocs = hasHousingProof && hasPovertyCert;
+  const uploadedTypes = new Set(docs.map((d) => d.documentType));
+  const missingRequired = requiredItems.filter((r) => !uploadedTypes.has(r.documentType));
+  const hasRequiredDocs = requiredItems.length > 0 && missingRequired.length === 0;
   const isDisabled = !hasRequiredDocs || submitting;
 
   const handleSubmit = async () => {
@@ -93,6 +128,8 @@ export const ReviewSubmitScreen = () => {
       if (status === 409) {
         // Conflict - duplicate CCCD
         setShowConflictSheet(true);
+      } else if (status === 422) {
+        Alert.alert('Không thể nộp hồ sơ', msg);
       } else {
         Alert.alert('Lỗi', msg);
       }
@@ -133,36 +170,13 @@ export const ReviewSubmitScreen = () => {
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {isSupplementMode ? 'Nộp lại hồ sơ' : 'Bước 3/3 — Kiểm tra & nộp'}
+          {isSupplementMode ? 'Nộp lại hồ sơ' : 'Bước 4/4 — Kiểm tra & nộp'}
         </Text>
         <View style={{ width: 36 }} />
       </View>
 
       {/* Stepper - chỉ hiện khi tạo mới */}
-      {!isSupplementMode && (
-      <View style={styles.stepper}>
-        <View style={styles.stepItem}>
-          <View style={[styles.stepCircle, styles.stepCircleDone]}>
-            <Feather name="check" size={14} color="#fff" />
-          </View>
-          <Text style={[styles.stepLabel, styles.stepLabelDone]}>Thông tin</Text>
-        </View>
-        <View style={[styles.stepLine, styles.stepLineDone]} />
-        <View style={styles.stepItem}>
-          <View style={[styles.stepCircle, styles.stepCircleDone]}>
-            <Feather name="check" size={14} color="#fff" />
-          </View>
-          <Text style={[styles.stepLabel, styles.stepLabelDone]}>Giấy tờ</Text>
-        </View>
-        <View style={[styles.stepLine, styles.stepLineActive]} />
-        <View style={styles.stepItem}>
-          <View style={[styles.stepCircle, styles.stepCircleActive]}>
-            <Text style={styles.stepCircleText}>3</Text>
-          </View>
-          <Text style={[styles.stepLabel, styles.stepLabelActive]}>Nộp hồ sơ</Text>
-        </View>
-      </View>
-      )}
+      {!isSupplementMode && <ApplicationStepper current={4} />}
 
       <ScrollView
         style={styles.scroll}
@@ -236,11 +250,7 @@ export const ReviewSubmitScreen = () => {
                     {doc.fileName}
                   </Text>
                   <Text style={styles.docTypeSmall}>
-                    {doc.documentType === 'HOUSING_CONDITION_PROOF'
-                      ? 'Giấy xác nhận nhà ở'
-                      : doc.documentType === 'POVERTY_HOUSEHOLD_CERTIFICATE'
-                        ? 'Giấy chứng nhận hộ nghèo/cận nghèo'
-                        : doc.documentType}
+                    {resolveDocLabel(doc.documentType, requiredItems)}
                   </Text>
                   {/* Không hiển thị verification status nữa */}
                 </View>
@@ -270,7 +280,8 @@ export const ReviewSubmitScreen = () => {
         </TouchableOpacity>
         {isDisabled && !hasRequiredDocs && (
           <Text style={styles.disabledHint}>
-            Cần đủ 2 giấy tờ: giấy chứng nhận hộ nghèo/cận nghèo và giấy xác nhận nhà ở
+            Còn thiếu {missingRequired.length} giấy tờ bắt buộc theo nhóm đối tượng. Quay lại bước
+            giấy tờ để bổ sung.
           </Text>
         )}
         <View style={{ height: 40 }} />
@@ -368,45 +379,6 @@ const styles = StyleSheet.create({
   },
   backBtn: { padding: 4, marginRight: 10 },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: RHSColors.blue700 },
-
-  // Stepper - refined
-  stepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: RHSColors.grey200,
-  },
-  stepItem: { alignItems: 'center', gap: 4 },
-  stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: RHSColors.grey300,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stepCircleActive: { backgroundColor: RHSColors.blue700, borderColor: RHSColors.blue700 },
-  stepCircleDone: { backgroundColor: RHSColors.green600, borderColor: RHSColors.green600 },
-  stepCircleText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  stepCircleTextInactive: { fontSize: 13, fontWeight: '700', color: RHSColors.grey500 },
-  stepLabel: { fontSize: 11, fontWeight: '500', color: RHSColors.grey500 },
-  stepLabelActive: { color: RHSColors.blue700, fontWeight: '700' },
-  stepLabelDone: { color: RHSColors.green600, fontWeight: '700' },
-  stepLine: {
-    flex: 1,
-    height: 1.5,
-    backgroundColor: RHSColors.grey300,
-    marginHorizontal: 8,
-    marginBottom: 16,
-  },
-  stepLineActive: { backgroundColor: RHSColors.blue700 },
-  stepLineDone: { backgroundColor: RHSColors.green600 },
 
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 40 },

@@ -139,19 +139,34 @@ export const LoginScreen = () => {
           }, 100);
         }
       } else {
-        setErrors({ password: result.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại.' });
+        setErrors({
+          email: ' ',
+          password: result.message || 'Email hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.',
+        });
       }
     } catch (error: any) {
       const status = error.response?.status;
-      const serverMsg = error.response?.data?.message || error.response?.data?.title;
+      const serverMsg =
+        error.response?.data?.message
+        || error.response?.data?.title
+        || error.message;
 
-      if (status === 401 || serverMsg?.toLowerCase().includes('password') || serverMsg?.toLowerCase().includes('mật khẩu')) {
-        setErrors({ password: 'Mật khẩu hoặc email không đúng' });
-      } else if (status === 400 && serverMsg?.toLowerCase().includes('otp')) {
+      if (status === 400 && String(serverMsg).toLowerCase().includes('otp')) {
         Alert.alert('Chưa xác thực', 'Tài khoản chưa xác thực email. Vui lòng nhập mã OTP.', [
           { text: 'Nhập OTP', onPress: () => navigation.navigate('VerifyOtp', { email: email.trim() }) },
           { text: 'Để sau', style: 'cancel' },
         ]);
+      } else if (
+        status === 401
+        || status === 400
+        || String(serverMsg).toLowerCase().includes('password')
+        || String(serverMsg).toLowerCase().includes('mật khẩu')
+        || String(serverMsg).toLowerCase().includes('invalid')
+      ) {
+        setErrors({
+          email: ' ',
+          password: 'Email hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.',
+        });
       } else {
         setErrors({ password: 'Không thể kết nối đến máy chủ. Vui lòng thử lại.' });
       }
@@ -174,7 +189,7 @@ export const LoginScreen = () => {
             <Text style={styles.title}>Đăng nhập</Text>
 
             {/* Email */}
-            <View style={[styles.inputWrap, errors.email && styles.inputError]}>
+            <View style={[styles.inputWrap, !!errors.email && styles.inputError]}>
               <Feather name="user" size={20} color={RHSColors.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.textInputInner}
@@ -186,10 +201,12 @@ export const LoginScreen = () => {
                 placeholderTextColor={RHSColors.textMuted}
               />
             </View>
-            {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+            {errors.email && errors.email.trim() ? (
+              <Text style={styles.errorText}>{errors.email}</Text>
+            ) : null}
 
             {/* Password */}
-            <View style={[styles.inputWrap, errors.password && styles.inputError, { marginTop: 16 }]}>
+            <View style={[styles.inputWrap, !!errors.password && styles.inputError, { marginTop: 16 }]}>
               <Feather name="lock" size={20} color={RHSColors.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.textInputInner}
@@ -203,6 +220,7 @@ export const LoginScreen = () => {
                 <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color={RHSColors.textMuted} />
               </TouchableOpacity>
             </View>
+            {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
 
             {/* Remember & Forgot */}
             <View style={styles.rowBetween}>
