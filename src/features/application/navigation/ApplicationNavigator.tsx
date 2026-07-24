@@ -13,6 +13,9 @@ import { PaymentWebViewScreen } from '../../payment/screens/PaymentWebViewScreen
 import { PaymentProcessingScreen } from '../../payment/screens/PaymentProcessingScreen';
 import { PaymentSuccessScreen } from '../../payment/screens/PaymentSuccessScreen';
 import { PaymentScheduleScreen } from '../../payment/screens/PaymentScheduleScreen';
+import { LotteryScheduleScreen } from '../../lottery/screens/LotteryScheduleScreen';
+import { LotteryLobbyScreen } from '../../lottery/screens/LotteryLobbyScreen';
+import { LotteryResultScreen } from '../../lottery/screens/LotteryResultScreen';
 
 import { PaymentStackParamList } from '../../payment/navigation/PaymentNavigator';
 
@@ -36,6 +39,9 @@ export type ApplicationStackParamList = {
     next?: 'UploadDocuments';
   };
   PaymentSchedule: { applicationId: string; projectName?: string };
+  LotterySchedule: { projectId: string; projectName?: string; applicationId?: string };
+  LotteryLobby: { projectId: string; projectName?: string; applicationId?: string };
+  LotteryResult: { projectId: string; projectName?: string; applicationId?: string };
 } & PaymentStackParamList;
 
 const Stack = createNativeStackNavigator<ApplicationStackParamList>();
@@ -55,6 +61,9 @@ export const ApplicationNavigator = () => {
       <Stack.Screen name="WithdrawApplication" component={WithdrawApplicationScreen} />
       <Stack.Screen name="HouseholdMembers" component={HouseholdMembersScreen} />
       <Stack.Screen name="PaymentSchedule" component={PaymentScheduleScreen} />
+      <Stack.Screen name="LotterySchedule" component={LotteryScheduleScreen} />
+      <Stack.Screen name="LotteryLobby" component={LotteryLobbyScreen} />
+      <Stack.Screen name="LotteryResult" component={LotteryResultScreen} />
     </Stack.Navigator>
   );
 };

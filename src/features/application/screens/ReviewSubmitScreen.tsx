@@ -16,6 +16,7 @@ import { useNavigation, useRoute, CommonActions } from '@react-navigation/native
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { housingApplicationApi } from '../api/housingApplicationApi';
+import { lookupApi } from '../api/lookupApi';
 import { ApplicationDetail, ApplicationDocument, RequiredDocumentItem } from '../types/application';
 import { getHousingStatusLabel } from '../utils/statusConfig';
 import { ApplicationStepper } from '../components/ApplicationStepper';
@@ -87,6 +88,8 @@ export const ReviewSubmitScreen = () => {
   const [submitting, setSubmitting] = useState(false);
   const [detail, setDetail] = useState<ApplicationDetail | null>(null);
   const [requiredItems, setRequiredItems] = useState<RequiredDocumentItem[]>([]);
+  const [priorityGroupLabel, setPriorityGroupLabel] = useState<string | null>(null);
+  const [missingPriorityGroup, setMissingPriorityGroup] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showConflictSheet, setShowConflictSheet] = useState(false);
 
@@ -94,12 +97,30 @@ export const ReviewSubmitScreen = () => {
     (async () => {
       try {
         const result = await housingApplicationApi.getApplicationDetail(applicationId);
-        const requiredDocs = await housingApplicationApi.getRequiredDocumentsByPriorityGroup(
-          result.priorityGroup,
-        );
+
+        if (!result.priorityGroup?.trim()) {
+          setDetail(result);
+          setMissingPriorityGroup(true);
+          setRequiredItems([]);
+          setPriorityGroupLabel(null);
+          return;
+        }
+
+        setMissingPriorityGroup(false);
+        const [requiredDocs, groups] = await Promise.all([
+          housingApplicationApi.getRequiredDocumentsByPriorityGroup(result.priorityGroup),
+          lookupApi.getPriorityGroups().catch(() => []),
+        ]);
+        const group = groups.find((g) => g.code === result.priorityGroup);
+        setPriorityGroupLabel(group?.label ?? result.priorityGroup);
         setDetail(result);
         setRequiredItems(requiredDocs);
       } catch (e: any) {
+        if (e?.message === 'MISSING_PRIORITY_GROUP') {
+          setMissingPriorityGroup(true);
+          setRequiredItems([]);
+          return;
+        }
         const msg = e?.response?.data?.message || 'Không thể tải thông tin hồ sơ.';
         Alert.alert('Lỗi', msg);
         navigation.goBack();
@@ -107,12 +128,13 @@ export const ReviewSubmitScreen = () => {
         setLoading(false);
       }
     })();
-  }, [applicationId]);
+  }, [applicationId, navigation]);
 
   const docs = detail?.documents ?? [];
   const uploadedTypes = new Set(docs.map((d) => d.documentType));
   const missingRequired = requiredItems.filter((r) => !uploadedTypes.has(r.documentType));
-  const hasRequiredDocs = requiredItems.length > 0 && missingRequired.length === 0;
+  const hasRequiredDocs =
+    !missingPriorityGroup && requiredItems.length > 0 && missingRequired.length === 0;
   const isDisabled = !hasRequiredDocs || submitting;
 
   const handleSubmit = async () => {
@@ -226,14 +248,21 @@ export const ReviewSubmitScreen = () => {
           <InfoRow
             icon="star"
             label="Nhóm ưu tiên"
-            value={detail.priorityGroup || '—'}
+            value={priorityGroupLabel || detail.priorityGroup || '—'}
           />
         </View>
 
         {/* Documents */}
         <View style={styles.sectionCard}>
           <Text style={styles.cardTitle}>Giấy tờ đính kèm</Text>
-          {detail.documents.length === 0 ? (
+          {missingPriorityGroup ? (
+            <View style={styles.noDocs}>
+              <Feather name="alert-triangle" size={16} color={RHSColors.amber600} />
+              <Text style={styles.noDocsText}>
+                Thiếu nhóm đối tượng — chưa xác định được giấy tờ bắt buộc (2 hoặc 3 file).
+              </Text>
+            </View>
+          ) : detail.documents.length === 0 ? (
             <View style={styles.noDocs}>
               <Feather name="alert-triangle" size={16} color={RHSColors.amber600} />
               <Text style={styles.noDocsText}>Chưa có giấy tờ nào được tải lên</Text>
@@ -280,8 +309,9 @@ export const ReviewSubmitScreen = () => {
         </TouchableOpacity>
         {isDisabled && !hasRequiredDocs && (
           <Text style={styles.disabledHint}>
-            Còn thiếu {missingRequired.length} giấy tờ bắt buộc theo nhóm đối tượng. Quay lại bước
-            giấy tờ để bổ sung.
+            {missingPriorityGroup
+              ? 'Hồ sơ thiếu nhóm đối tượng thụ hưởng. Quay lại bước thông tin để chọn đối tượng.'
+              : `Còn thiếu ${missingRequired.length} giấy tờ bắt buộc theo nhóm đối tượng. Quay lại bước giấy tờ để bổ sung.`}
           </Text>
         )}
         <View style={{ height: 40 }} />

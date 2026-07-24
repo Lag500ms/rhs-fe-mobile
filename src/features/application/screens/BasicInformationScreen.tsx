@@ -18,27 +18,13 @@ import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme';
 import { userApi } from '../../user/api/userApi';
 import { housingApplicationApi } from '../api/housingApplicationApi';
-import { CreateApplicationRequest } from '../types/application';
+import { lookupApi } from '../api/lookupApi';
+import { CreateApplicationRequest, PriorityGroupItem } from '../types/application';
 import { ApplicationStepper } from '../components/ApplicationStepper';
 
 const HOUSING_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'NO_HOUSE', label: 'Chưa có nhà ở thuộc sở hữu của mình' },
   { value: 'SMALL_HOUSE', label: 'Có nhà ở nhưng diện tích bình quân < 15 m²/người' },
-];
-
-/** Khớp PriorityGroupConstants trên BE (Đ76 Luật Nhà ở 2023). */
-const OBJECT_OPTIONS: { value: string; label: string }[] = [
-  { value: 'MERIT_PERSON', label: '(1) Người có công với cách mạng' },
-  { value: 'RURAL_POOR', label: '(2) Hộ nghèo nông thôn' },
-  { value: 'RURAL_NEAR_POOR', label: '(3) Hộ cận nghèo nông thôn' },
-  { value: 'URBAN_POOR', label: '(4) Hộ nghèo đô thị' },
-  { value: 'URBAN_NEAR_POOR', label: '(4) Hộ cận nghèo đô thị' },
-  { value: 'LOW_INCOME_URBAN', label: '(5) Người thu nhập thấp tại đô thị' },
-  { value: 'WORKER', label: '(6) Công nhân, người lao động tại DN/HTX/KCN' },
-  { value: 'MILITARY_PERSONNEL', label: '(7) Lực lượng vũ trang, cơ yếu' },
-  { value: 'CIVIL_SERVANT', label: '(8) Cán bộ, công chức, viên chức' },
-  { value: 'PUBLIC_HOUSING_RETURN', label: '(9) Đối tượng trả lại nhà công vụ' },
-  { value: 'LAND_RECOVERY_AFFECTED', label: '(10) Bị thu hồi đất / giải tỏa nhà ở' },
 ];
 
 const MARITAL_STATUS_OPTIONS = [
@@ -47,6 +33,12 @@ const MARITAL_STATUS_OPTIONS = [
   { value: 'DIVORCED', label: 'Ly hôn' },
   { value: 'WIDOWED', label: 'Góa' },
 ];
+
+function requiredDocCount(group: PriorityGroupItem | undefined): number {
+  if (!group) return 0;
+  // (A) điều kiện nhà ở + (B) chứng minh đối tượng + (C) thu nhập nếu cần
+  return group.requiresIncomeCertificate ? 3 : 2;
+}
 
 export const BasicInformationScreen = () => {
   const navigation = useNavigation<any>();
@@ -68,6 +60,7 @@ export const BasicInformationScreen = () => {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [objectOptions, setObjectOptions] = useState<PriorityGroupItem[]>([]);
 
   // ── Locked fields from eKYC ──
   const [fullName, setFullName] = useState('');
@@ -89,6 +82,8 @@ export const BasicInformationScreen = () => {
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const selectedGroup = objectOptions.find((g) => g.code === priorityGroup);
+
   // Sync currentResidence when checkbox is toggled
   useEffect(() => {
     if (sameAsPermanent && permanentAddress) {
@@ -99,31 +94,39 @@ export const BasicInformationScreen = () => {
     }
   }, [sameAsPermanent, permanentAddress]);
 
-  // Load profile from eKYC — paste sẵn theo Mẫu số 01 mục 2, 3, 7
+  // Load profile + danh mục đối tượng từ BE
   useEffect(() => {
     (async () => {
       try {
-        const result = await userApi.getProfile();
-        if (result.success && result.user) {
-          const name = (result.user.fullName || '').trim();
-          const cid = (result.user.citizenId || '').trim();
-          const addr = (result.user.address || '').trim();
-          const dob = result.user.dateOfBirth
-            ? String(result.user.dateOfBirth).slice(0, 10)
+        const [profileResult, groups] = await Promise.all([
+          userApi.getProfile(),
+          lookupApi.getPriorityGroups(),
+        ]);
+
+        setObjectOptions(groups);
+
+        if (profileResult.success && profileResult.user) {
+          const name = (profileResult.user.fullName || '').trim();
+          const cid = (profileResult.user.citizenId || '').trim();
+          const addr = (profileResult.user.address || '').trim();
+          const dob = profileResult.user.dateOfBirth
+            ? String(profileResult.user.dateOfBirth).slice(0, 10)
             : '';
 
           setFullName(name);
           setCitizenId(cid);
           setPermanentAddress(addr);
           setDateOfBirth(dob);
-
-          // eKYC đủ khi có họ tên + CCCD + địa chỉ thường trú
           setEkycReady(!!name && !!cid && !!addr);
         } else {
           setEkycReady(false);
         }
       } catch {
         setEkycReady(false);
+        Alert.alert(
+          'Lỗi',
+          'Không thể tải danh sách đối tượng thụ hưởng. Kiểm tra kết nối và thử lại.',
+        );
       } finally {
         setLoading(false);
       }
@@ -166,6 +169,9 @@ export const BasicInformationScreen = () => {
     if (!housingStatus) newErrors.housingStatus = 'Vui lòng chọn thực trạng nhà ở';
     if (!maritalStatus) newErrors.maritalStatus = 'Vui lòng chọn tình trạng hôn nhân';
     if (!priorityGroup) newErrors.priorityGroup = 'Vui lòng chọn đối tượng thụ hưởng theo Điều 76 Luật Nhà ở';
+    else if (objectOptions.length > 0 && !objectOptions.some((g) => g.code === priorityGroup)) {
+      newErrors.priorityGroup = 'Đối tượng không hợp lệ. Vui lòng chọn lại.';
+    }
 
     if (housingStatus === 'SMALL_HOUSE') {
       const areaNum = parseFloat(averageHousingAreaPerPerson.replace(/,/g, ''));
@@ -184,6 +190,10 @@ export const BasicInformationScreen = () => {
 
   const handleSaveAndContinue = async () => {
     if (!validate()) return;
+    if (objectOptions.length === 0) {
+      Alert.alert('Lỗi', 'Chưa có danh sách đối tượng. Vui lòng thử lại.');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -439,39 +449,62 @@ export const BasicInformationScreen = () => {
             </Text>
 
             <Text style={[styles.label, { marginTop: 16 }]}>Thuộc đối tượng *</Text>
-            {OBJECT_OPTIONS.map((opt) => (
-              <TouchableOpacity
-                key={opt.value}
-                style={[
-                  styles.radio,
-                  priorityGroup === opt.value && styles.radioActive,
-                  errors.priorityGroup && priorityGroup !== opt.value && styles.radioError,
-                ]}
-                onPress={() => {
-                  setPriorityGroup(opt.value);
-                  validateField('priorityGroup', opt.value);
-                }}
-                activeOpacity={0.7}
-              >
-                <View
+            {objectOptions.length === 0 ? (
+              <Text style={styles.helperText}>
+                Không tải được danh sách đối tượng. Quay lại màn hình trước và thử lại.
+              </Text>
+            ) : (
+              objectOptions.map((opt) => (
+                <TouchableOpacity
+                  key={opt.code}
                   style={[
-                    styles.radioDot,
-                    priorityGroup === opt.value && styles.radioDotActive,
+                    styles.radio,
+                    priorityGroup === opt.code && styles.radioActive,
+                    errors.priorityGroup && priorityGroup !== opt.code && styles.radioError,
                   ]}
+                  onPress={() => {
+                    setPriorityGroup(opt.code);
+                    validateField('priorityGroup', opt.code);
+                  }}
+                  activeOpacity={0.7}
                 >
-                  {priorityGroup === opt.value && <View style={styles.radioDotFill} />}
-                </View>
-                <Text
-                  style={[
-                    styles.radioLabel,
-                    priorityGroup === opt.value && styles.radioLabelActive,
-                  ]}
-                >
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <View
+                    style={[
+                      styles.radioDot,
+                      priorityGroup === opt.code && styles.radioDotActive,
+                    ]}
+                  >
+                    {priorityGroup === opt.code && <View style={styles.radioDotFill} />}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.radioLabel,
+                        priorityGroup === opt.code && styles.radioLabelActive,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                    {priorityGroup === opt.code && (
+                      <Text style={styles.helperText}>
+                        Cần nộp {requiredDocCount(opt)} giấy tờ
+                        {opt.requiredDocumentLabel
+                          ? ` · gồm ${opt.requiredDocumentLabel}`
+                          : ''}
+                        {opt.requiresIncomeCertificate ? ' + giấy xác nhận thu nhập' : ''}
+                      </Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
             {errors.priorityGroup && <Text style={styles.errorText}>{errors.priorityGroup}</Text>}
+            {selectedGroup && !errors.priorityGroup && (
+              <Text style={[styles.helperText, { marginTop: 8 }]}>
+                Bước giấy tờ sẽ yêu cầu đúng {requiredDocCount(selectedGroup)} file PDF theo đối
+                tượng này.
+              </Text>
+            )}
           </View>
           </View>
 

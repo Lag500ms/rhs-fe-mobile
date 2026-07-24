@@ -258,6 +258,54 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           </View>
           <View style={styles.detailRow}><Feather name="map-pin" size={15} color={RHSColors.blue700}/><Text style={styles.detailText}>{fullAddress}</Text></View>
           <View style={styles.detailRow}><Feather name="users" size={15} color={RHSColors.textMuted}/><Text style={styles.detailText}>Còn lại: <Text style={{color:RHSColors.blue700, fontWeight:'700'}}>{project.availableUnits}</Text> căn hộ</Text></View>
+          {project.depositAmount > 0 && (
+            <View style={styles.detailRow}>
+              <Feather name="credit-card" size={15} color={RHSColors.textMuted}/>
+              <Text style={styles.detailText}>
+                Tiền đặt cọc:{' '}
+                <Text style={{ color: RHSColors.blue700, fontWeight: '700' }}>
+                  {project.depositAmount.toLocaleString('vi-VN')} VNĐ
+                </Text>
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Lịch bốc thăm công khai */}
+        <View style={styles.card}>
+          <View style={styles.sectionHead}>
+            <Feather name="calendar" size={16} color={RHSColors.blue700}/>
+            <Text style={styles.sectionTitle}>Bốc thăm / phân suất</Text>
+          </View>
+          {project.lotteryDate ? (
+            <>
+              <Text style={styles.desc}>
+                Thời gian: {new Date(project.lotteryDate).toLocaleString('vi-VN')}
+              </Text>
+              {!!project.lotteryLocation && (
+                <Text style={[styles.desc, { marginTop: 6 }]}>
+                  Địa điểm / kênh: {project.lotteryLocation}
+                </Text>
+              )}
+              <TouchableOpacity
+                style={styles.lotteryBtn}
+                onPress={() =>
+                  navigation.navigate('LotterySchedule', {
+                    projectId: project.id,
+                    projectName: project.projectName,
+                  })
+                }
+                activeOpacity={0.85}
+              >
+                <Feather name="radio" size={16} color="#fff" />
+                <Text style={styles.lotteryBtnText}>Xem lịch & kênh bốc thăm</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={styles.desc}>
+              Chưa công bố lịch bốc thăm. Khi số hồ sơ vượt số căn, chủ đầu tư sẽ lên lịch và thông báo.
+            </Text>
+          )}
         </View>
 
         {/* Description */}
@@ -449,6 +497,19 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   suggestedChipText: { fontSize: 10, fontWeight: '700', color: RHSColors.red600 },
+
+  // Lottery CTA
+  lotteryBtn: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: RHSColors.blue700,
+    borderRadius: borderRadius.md,
+    paddingVertical: 12,
+  },
+  lotteryBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
   // Register button - BLUE no gradient
   registerBtn: { marginHorizontal: 14, borderRadius: borderRadius.md, overflow: 'hidden' },

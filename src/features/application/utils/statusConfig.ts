@@ -43,10 +43,28 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: '#FF9800',
   },
   APPROVED: {
-    label: 'Chờ thanh toán',
+    label: 'Đã duyệt (SXD)',
     bg: '#E8F5E9',
     textColor: '#2E7D32',
     dotColor: '#4CAF50',
+  },
+  APPROVED_BY_TIMEOUT: {
+    label: 'Duyệt tự động (quá hạn Sở)',
+    bg: '#E8F5E9',
+    textColor: '#2E7D32',
+    dotColor: '#4CAF50',
+  },
+  CONTRACT_PENDING: {
+    label: 'Chờ ký hợp đồng',
+    bg: '#E8EAF6',
+    textColor: '#283593',
+    dotColor: '#3F51B5',
+  },
+  LOTTERY_LOST: {
+    label: 'Không trúng bốc thăm',
+    bg: '#FFEBEE',
+    textColor: '#C62828',
+    dotColor: '#EF5350',
   },
   REJECTED: {
     label: 'Bị từ chối',
@@ -123,9 +141,14 @@ export function getActionForStatus(status: string): StatusAction | null {
     case 'PENDING_SXD_REVIEW':
       return { label: 'Xem chi tiết', icon: 'eye', color: RHSColors.blue700 };
     case 'APPROVED':
-      return { label: 'Thanh toán ngay', icon: 'credit-card', color: RHSColors.red600 };
+    case 'APPROVED_BY_TIMEOUT':
+      return { label: 'Thanh toán / bốc thăm', icon: 'credit-card', color: RHSColors.red600 };
+    case 'CONTRACT_PENDING':
+      return { label: 'Ký hợp đồng / đặt cọc', icon: 'file-text', color: RHSColors.blue700 };
     case 'DEPOSIT_PAID':
       return { label: 'Xem hợp đồng / kết quả', icon: 'award', color: RHSColors.green600 };
+    case 'LOTTERY_LOST':
+      return { label: 'Xem chi tiết', icon: 'eye', color: RHSColors.red600 };
     case 'CONTRACT_SIGNED':
       return { label: 'Lịch thanh toán', icon: 'calendar', color: RHSColors.blue700 };
     case 'FULLY_PAID':

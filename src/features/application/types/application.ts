@@ -61,6 +61,16 @@ export interface RequiredDocumentsResponse {
   requiredDocuments: RequiredDocumentItem[];
 }
 
+/** Đồng bộ LookupController.GetPriorityGroups */
+export interface PriorityGroupItem {
+  code: string;
+  label: string;
+  requiresIncomeCertificate?: boolean;
+  isPovertyGroup?: boolean;
+  requiredDocumentType?: string | null;
+  requiredDocumentLabel?: string | null;
+}
+
 export interface ApplicationSummary {
   applicationId: string;
   projectId: string;

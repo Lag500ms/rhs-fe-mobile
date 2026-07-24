@@ -4,12 +4,18 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { HomeScreen } from '../screens/HomeScreen';
 import { HousingProjectDetailScreen } from '../screens/HousingProjectDetailScreen';
 import { MapFullScreen } from '../screens/MapFullScreen';
+import { LotteryScheduleScreen } from '../../lottery/screens/LotteryScheduleScreen';
+import { LotteryLobbyScreen } from '../../lottery/screens/LotteryLobbyScreen';
+import { LotteryResultScreen } from '../../lottery/screens/LotteryResultScreen';
 import { HousingProjectResponse } from '../types/housing';
 
 export type HomeStackParamList = {
   HomeList: undefined;
   HousingProjectDetail: { project: HousingProjectResponse };
   MapFull: { latitude: number; longitude: number; projectName: string };
+  LotterySchedule: { projectId: string; projectName?: string; applicationId?: string };
+  LotteryLobby: { projectId: string; projectName?: string; applicationId?: string };
+  LotteryResult: { projectId: string; projectName?: string; applicationId?: string };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -22,6 +28,9 @@ export const HomeNavigator = () => {
       <Stack.Screen name="HomeList" component={HomeScreen} />
       <Stack.Screen name="HousingProjectDetail" component={HousingProjectDetailScreen} />
       <Stack.Screen name="MapFull" component={MapFullScreen} />
+      <Stack.Screen name="LotterySchedule" component={LotteryScheduleScreen} />
+      <Stack.Screen name="LotteryLobby" component={LotteryLobbyScreen} />
+      <Stack.Screen name="LotteryResult" component={LotteryResultScreen} />
     </Stack.Navigator>
   );
 };

@@ -79,6 +79,16 @@ const NOTIFICATION_CONFIG: Record<
     color: RHSColors.blue600,
     bg: RHSColors.blue50,
   },
+  LOTTERY_SCHEDULED: {
+    icon: 'calendar-outline',
+    color: RHSColors.amber700,
+    bg: RHSColors.amber50,
+  },
+  LOTTERY_RESULT_PUBLISHED: {
+    icon: 'trophy-outline',
+    color: RHSColors.green700,
+    bg: RHSColors.green50,
+  },
 };
 
 // ─── Component ──────────────────────────────────────────────────
@@ -257,8 +267,35 @@ export const NotificationListScreen: React.FC = () => {
       if (!notification.isRead) {
         await handleMarkAsRead(notification);
       }
+      const type = notification.notificationType;
+      // Deep-link gần đúng: mở tab Hồ sơ; lịch bốc thăm mở qua Applications stack nếu có projectId trong content
+      if (type === 'LOTTERY_SCHEDULED' || type === 'LOTTERY_RESULT_PUBLISHED') {
+        const projectMatch = notification.content?.match(
+          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
+        );
+        if (projectMatch) {
+          navigation.navigate('Applications', {
+            screen: type === 'LOTTERY_RESULT_PUBLISHED' ? 'LotteryResult' : 'LotterySchedule',
+            params: { projectId: projectMatch[0] },
+          });
+          return;
+        }
+        navigation.navigate('Applications');
+        return;
+      }
+      if (
+        type === 'APPLICATION_APPROVED' ||
+        type === 'APPLICATION_REJECTED' ||
+        type === 'DEPOSIT_PAID' ||
+        type === 'CONTRACT_SIGNED' ||
+        type === 'NEED_MORE_DOCUMENTS' ||
+        type === 'PAYMENT_DUE' ||
+        type === 'PAYMENT_OVERDUE'
+      ) {
+        navigation.navigate('Applications');
+      }
     },
-    [handleMarkAsRead]
+    [handleMarkAsRead, navigation],
   );
 
   // ─── Render item ──────────────────────────────────────────────

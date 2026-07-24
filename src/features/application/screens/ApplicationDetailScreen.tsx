@@ -125,7 +125,9 @@ export const ApplicationDetailScreen = () => {
   useEffect(() => {
     if (
       detail?.applicationStatus === 'APPROVED'
+      || detail?.applicationStatus === 'APPROVED_BY_TIMEOUT'
       || detail?.applicationStatus === 'DEPOSIT_PAID'
+      || detail?.applicationStatus === 'CONTRACT_PENDING'
       || detail?.applicationStatus === 'CONTRACT_SIGNED'
       || detail?.applicationStatus === 'FULLY_PAID'
     ) {
@@ -239,7 +241,7 @@ export const ApplicationDetailScreen = () => {
       navigation.navigate('ContractViewer', {
         applicationId: appId,
         title: name ? `Hợp đồng - ${name}` : 'Hợp đồng nguyên tắc',
-        canSign: status === 'DEPOSIT_PAID' || status === 'FULLY_PAID',
+        canSign: status === 'DEPOSIT_PAID' || status === 'FULLY_PAID' || status === 'CONTRACT_PENDING' || status === 'APPROVED',
       });
     } else {
       Alert.alert('Không có hợp đồng', 'Hợp đồng chưa được tạo. Vui lòng thử lại sau.');
@@ -294,6 +296,13 @@ export const ApplicationDetailScreen = () => {
 
   const handleReApplyFromExpired = async () => {
     if (!detail || reapplying) return;
+    if (!detail.priorityGroup?.trim()) {
+      Alert.alert(
+        'Thiếu đối tượng',
+        'Hồ sơ cũ không có nhóm đối tượng thụ hưởng. Vui lòng tạo hồ sơ mới và chọn đối tượng.',
+      );
+      return;
+    }
     setReapplying(true);
     try {
       const result = await housingApplicationApi.createApplication({
@@ -304,7 +313,7 @@ export const ApplicationDetailScreen = () => {
         permanentAddress: detail.permanentAddress,
         housingStatus: detail.housingStatus,
         maritalStatus: detail.maritalStatus || 'SINGLE',
-        priorityGroup: detail.priorityGroup || 'URBAN_POOR',
+        priorityGroup: detail.priorityGroup,
         averageHousingAreaPerPerson: detail.averageHousingAreaPerPerson ?? undefined,
       });
       navigation.replace('UploadDocuments', {
@@ -349,41 +358,136 @@ export const ApplicationDetailScreen = () => {
       }];
     }
 
-    if (status === 'APPROVED') {
+    const goLottery = () => {
+      navigation.navigate('LotterySchedule', {
+        projectId: detail.projectId,
+        projectName: detail.projectName,
+        applicationId: detail.applicationId,
+      });
+    };
+
+    if (status === 'APPROVED' || status === 'APPROVED_BY_TIMEOUT') {
       if (existingPayment?.status === 'Success') {
-        return [{
-          label: 'Xem hợp đồng nguyên tắc',
-          icon: 'file-text',
-          onPress: handleViewContract,
-          variant: 'primary',
-        }];
+        return [
+          {
+            label: 'Xem hợp đồng nguyên tắc',
+            icon: 'file-text',
+            onPress: handleViewContract,
+            variant: 'primary',
+          },
+          {
+            label: 'Lịch bốc thăm',
+            icon: 'calendar',
+            onPress: goLottery,
+            variant: 'secondary',
+          },
+        ];
       }
       if (!isExpired) {
         const isPending = existingPayment?.status === 'Pending';
-        return [{
-          label: isPending ? 'Kiểm tra giao dịch' : 'Thanh toán ngay',
-          icon: isPending ? 'search' : 'credit-card',
-          onPress: handleStartPayment,
-          variant: 'destructive',
-          loading: processingPayment || checkingPayment,
-          disabled: processingPayment || checkingPayment,
-        }];
+        return [
+          {
+            label: isPending ? 'Kiểm tra giao dịch' : 'Đặt cọc ngay',
+            icon: isPending ? 'search' : 'credit-card',
+            onPress: handleStartPayment,
+            variant: 'destructive',
+            loading: processingPayment || checkingPayment,
+            disabled: processingPayment || checkingPayment,
+          },
+          {
+            label: 'Lịch / sảnh bốc thăm',
+            icon: 'radio',
+            onPress: goLottery,
+            variant: 'secondary',
+          },
+        ];
       }
     }
 
-    if (status === 'DEPOSIT_PAID') {
-      return [
+    if (status === 'CONTRACT_PENDING') {
+      const actions: BottomAction[] = [
         {
           label: 'Xem & ký hợp đồng',
           icon: 'file-text',
           onPress: handleViewContract,
           variant: 'primary',
-          disabled: checkingPayment,
+        },
+      ];
+      if (!existingPayment || existingPayment.status !== 'Success') {
+        actions.push({
+          label: 'Đặt cọc VNPay',
+          icon: 'credit-card',
+          onPress: handleStartPayment,
+          variant: 'destructive',
+          loading: processingPayment || checkingPayment,
+          disabled: processingPayment || checkingPayment,
+        });
+      }
+      return actions;
+    }
+
+    if (status === 'DEPOSIT_PAID') {
+      const lr = detail.lotteryResult;
+      if (lr === 'LOST') {
+        return [
+          {
+            label: 'Xem kết quả bốc thăm',
+            icon: 'award',
+            onPress: () =>
+              navigation.navigate('LotteryResult', {
+                projectId: detail.projectId,
+                projectName: detail.projectName,
+                applicationId: detail.applicationId,
+              }),
+            variant: 'secondary',
+          },
+        ];
+      }
+      if (lr === 'WON' || lr === 'PRIORITY_WON') {
+        return [
+          {
+            label: 'Xem & ký hợp đồng',
+            icon: 'file-text',
+            onPress: handleViewContract,
+            variant: 'primary',
+            disabled: checkingPayment,
+          },
+          {
+            label: 'Lịch thanh toán',
+            icon: 'calendar',
+            onPress: handlePaymentSchedule,
+            variant: 'secondary',
+          },
+        ];
+      }
+      return [
+        {
+          label: 'Vào sảnh bốc thăm',
+          icon: 'radio',
+          onPress: goLottery,
+          variant: 'primary',
         },
         {
-          label: 'Lịch thanh toán',
-          icon: 'calendar',
-          onPress: handlePaymentSchedule,
+          label: 'Xem hợp đồng tạm',
+          icon: 'file-text',
+          onPress: handleViewContract,
+          variant: 'secondary',
+          disabled: checkingPayment,
+        },
+      ];
+    }
+
+    if (status === 'LOTTERY_LOST') {
+      return [
+        {
+          label: 'Xem kết quả bốc thăm',
+          icon: 'award',
+          onPress: () =>
+            navigation.navigate('LotteryResult', {
+              projectId: detail.projectId,
+              projectName: detail.projectName,
+              applicationId: detail.applicationId,
+            }),
           variant: 'secondary',
         },
       ];
@@ -594,6 +698,35 @@ export const ApplicationDetailScreen = () => {
                 slotCodeCopied={slotCodeCopied}
                 onCopySlotCode={handleCopySlotCode}
               />
+            )}
+
+            {(detail.applicationStatus === 'APPROVED' ||
+              detail.applicationStatus === 'APPROVED_BY_TIMEOUT' ||
+              detail.applicationStatus === 'DEPOSIT_PAID' ||
+              detail.applicationStatus === 'CONTRACT_PENDING') && (
+              <View style={styles.lotteryInfoCard}>
+                <View style={styles.lotteryInfoHead}>
+                  <Feather name="radio" size={18} color={RHSColors.blue700} />
+                  <Text style={styles.lotteryInfoTitle}>Bốc thăm công khai</Text>
+                </View>
+                <Text style={styles.lotteryInfoText}>
+                  {detail.lotteryResult
+                    ? `Kết quả của bạn: ${detail.lotteryResult}`
+                    : 'Xem lịch, địa điểm/kênh và vào sảnh chờ khi đến giờ. Sở Xây dựng giám sát phiên bốc thăm.'}
+                </Text>
+                <TouchableOpacity
+                  style={styles.lotteryInfoBtn}
+                  onPress={() =>
+                    navigation.navigate('LotterySchedule', {
+                      projectId: detail.projectId,
+                      projectName: detail.projectName,
+                      applicationId: detail.applicationId,
+                    })
+                  }
+                >
+                  <Text style={styles.lotteryInfoBtnText}>Mở lịch & sảnh bốc thăm</Text>
+                </TouchableOpacity>
+              </View>
             )}
 
             {detail.applicationStatus === 'DEPOSIT_PAID' && (
@@ -953,6 +1086,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   receiptCardTitle: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text, marginBottom: 4 },
+
+  lotteryInfoCard: {
+    marginBottom: spacing.lg,
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
+    padding: spacing.md,
+  },
+  lotteryInfoHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  lotteryInfoTitle: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text },
+  lotteryInfoText: { ...typography.caption, color: RHSColors.textMuted, lineHeight: 18, marginBottom: 10 },
+  lotteryInfoBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: RHSColors.blue700,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: borderRadius.sm,
+  },
+  lotteryInfoBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   receiptCardMeta: { ...typography.caption, color: RHSColors.textMuted, lineHeight: 17 },
 
   paymentSection: {

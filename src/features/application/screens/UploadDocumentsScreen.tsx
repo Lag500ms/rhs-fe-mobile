@@ -16,6 +16,7 @@ import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme';
 import { housingDocumentApi } from '../api/housingDocumentApi';
 import { housingApplicationApi } from '../api/housingApplicationApi';
+import { lookupApi } from '../api/lookupApi';
 import {
   UploadDocumentResponse,
   ReviewHistory,
@@ -72,6 +73,8 @@ export const UploadDocumentsScreen = () => {
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
   const [reviewNote, setReviewNote] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [missingPriorityGroup, setMissingPriorityGroup] = useState(false);
+  const [priorityGroupLabel, setPriorityGroupLabel] = useState<string | null>(null);
 
   const applyDocumentsToState = useCallback((docs: ApplicationDocument[], types: string[]) => {
     const next: Record<string, UploadedFile | null> = {};
@@ -95,9 +98,24 @@ export const UploadDocumentsScreen = () => {
 
   const loadRequired = useCallback(async () => {
     const detail = await housingApplicationApi.getApplicationDetail(applicationId);
-    const requiredDocs = await housingApplicationApi.getRequiredDocumentsByPriorityGroup(
-      detail.priorityGroup,
-    );
+
+    if (!detail.priorityGroup?.trim()) {
+      setMissingPriorityGroup(true);
+      setRequiredItems([]);
+      setUploadedFiles({});
+      setPriorityGroupLabel(null);
+      return;
+    }
+
+    setMissingPriorityGroup(false);
+
+    const [requiredDocs, groups] = await Promise.all([
+      housingApplicationApi.getRequiredDocumentsByPriorityGroup(detail.priorityGroup),
+      lookupApi.getPriorityGroups().catch(() => []),
+    ]);
+
+    const group = groups.find((g) => g.code === detail.priorityGroup);
+    setPriorityGroupLabel(group?.label ?? detail.priorityGroup);
 
     setRequiredItems(requiredDocs);
     const types = requiredDocs.map((d) => d.documentType);
@@ -113,8 +131,16 @@ export const UploadDocumentsScreen = () => {
       try {
         await loadRequired();
       } catch (e: any) {
-        const msg = e?.response?.data?.message || 'Không thể tải danh sách giấy tờ bắt buộc.';
-        Alert.alert('Lỗi', msg);
+        const isMissingPg =
+          e?.message === 'MISSING_PRIORITY_GROUP' ||
+          e?.response?.data?.message?.includes?.('priority');
+        if (isMissingPg) {
+          setMissingPriorityGroup(true);
+          setRequiredItems([]);
+        } else {
+          const msg = e?.response?.data?.message || 'Không thể tải danh sách giấy tờ bắt buộc.';
+          Alert.alert('Lỗi', msg);
+        }
       } finally {
         setLoading(false);
       }
@@ -123,7 +149,8 @@ export const UploadDocumentsScreen = () => {
 
   const requiredCount = requiredItems.length;
   const uploadedCount = requiredItems.filter((item) => !!uploadedFiles[item.documentType]).length;
-  const canProceed = requiredCount > 0 && uploadedCount === requiredCount;
+  const canProceed =
+    !missingPriorityGroup && requiredCount > 0 && uploadedCount === requiredCount;
 
   const MAX_PDF_BYTES = 10 * 1024 * 1024;
 
@@ -246,6 +273,16 @@ export const UploadDocumentsScreen = () => {
           </View>
         )}
 
+        {missingPriorityGroup && (
+          <View style={styles.supplementBanner}>
+            <Feather name="alert-circle" size={18} color={RHSColors.amber700} />
+            <Text style={styles.supplementBannerText}>
+              Hồ sơ chưa có nhóm đối tượng thụ hưởng. Quay lại bước thông tin để chọn đối tượng — hệ
+              thống mới biết cần nộp 2 hay 3 giấy tờ.
+            </Text>
+          </View>
+        )}
+
         {reviewNote && (
           <View style={styles.noteCard}>
             <Feather name="message-square" size={16} color={RHSColors.amber700} />
@@ -257,7 +294,11 @@ export const UploadDocumentsScreen = () => {
         )}
 
         <Text style={styles.description}>
-          Bộ giấy tờ bắt buộc theo nhóm đối tượng đã khai (Đ76 / Đ29–30). Upload PDF, tối đa 10MB mỗi loại.
+          {missingPriorityGroup
+            ? 'Không thể xác định bộ giấy tờ bắt buộc khi thiếu nhóm đối tượng.'
+            : `Bộ giấy tờ bắt buộc theo đối tượng${
+                priorityGroupLabel ? ` «${priorityGroupLabel}»` : ''
+              } (Đ76 / Đ29–30). Upload PDF, tối đa 10MB mỗi loại.`}
         </Text>
 
         <View style={styles.progressCard}>
@@ -392,7 +433,9 @@ export const UploadDocumentsScreen = () => {
         </TouchableOpacity>
         {!canProceed && (
           <Text style={styles.gateHint}>
-            Vui lòng upload đủ {requiredCount} loại giấy tờ bắt buộc
+            {missingPriorityGroup
+              ? 'Cần chọn nhóm đối tượng trước khi tải giấy tờ.'
+              : `Vui lòng upload đủ ${requiredCount || '—'} loại giấy tờ bắt buộc`}
           </Text>
         )}
         <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAndBack} activeOpacity={0.9}>
