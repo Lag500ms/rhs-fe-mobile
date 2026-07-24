@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme';
 import { userApi } from '../../user/api/userApi';
@@ -21,6 +21,7 @@ import { housingApplicationApi } from '../api/housingApplicationApi';
 import { lookupApi } from '../api/lookupApi';
 import { CreateApplicationRequest, PriorityGroupItem } from '../types/application';
 import { ApplicationStepper } from '../components/ApplicationStepper';
+import { isReadyForApplicationForm } from '../../user/utils/ekycGate';
 
 const HOUSING_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'NO_HOUSE', label: 'Chưa có nhà ở thuộc sở hữu của mình' },
@@ -61,6 +62,7 @@ export const BasicInformationScreen = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [objectOptions, setObjectOptions] = useState<PriorityGroupItem[]>([]);
+  const [activeBlock, setActiveBlock] = useState<string | null>(null);
 
   // ── Locked fields from eKYC ──
   const [fullName, setFullName] = useState('');
@@ -94,16 +96,24 @@ export const BasicInformationScreen = () => {
     }
   }, [sameAsPermanent, permanentAddress]);
 
-  // Load profile + danh mục đối tượng từ BE
+  // Load profile + danh mục đối tượng từ BE + active-check
   useEffect(() => {
     (async () => {
       try {
-        const [profileResult, groups] = await Promise.all([
+        const [profileResult, groups, active] = await Promise.all([
           userApi.getProfile(),
           lookupApi.getPriorityGroups(),
+          housingApplicationApi.activeCheck().catch(() => null),
         ]);
 
         setObjectOptions(groups);
+
+        if (active?.hasActiveApplication) {
+          setActiveBlock(
+            active.message ||
+              'Bạn đang có hồ sơ khác đang hoạt động. Không thể tạo hồ sơ mới.',
+          );
+        }
 
         if (profileResult.success && profileResult.user) {
           const name = (profileResult.user.fullName || '').trim();
@@ -117,7 +127,7 @@ export const BasicInformationScreen = () => {
           setCitizenId(cid);
           setPermanentAddress(addr);
           setDateOfBirth(dob);
-          setEkycReady(!!name && !!cid && !!addr);
+          setEkycReady(isReadyForApplicationForm(profileResult.user));
         } else {
           setEkycReady(false);
         }
@@ -189,6 +199,10 @@ export const BasicInformationScreen = () => {
   };
 
   const handleSaveAndContinue = async () => {
+    if (activeBlock) {
+      Alert.alert('Không thể tạo hồ sơ', activeBlock);
+      return;
+    }
     if (!validate()) return;
     if (objectOptions.length === 0) {
       Alert.alert('Lỗi', 'Chưa có danh sách đối tượng. Vui lòng thử lại.');
@@ -273,6 +287,27 @@ export const BasicInformationScreen = () => {
               {projectName}
             </Text>
           </View>
+
+          {!!activeBlock && (
+            <View style={styles.activeBlockCard}>
+              <Feather name="alert-circle" size={18} color={RHSColors.red600} />
+              <View style={{ flex: 1, gap: 8 }}>
+                <Text style={styles.activeBlockText}>{activeBlock}</Text>
+                <TouchableOpacity
+                  onPress={() =>
+                    navigation.dispatch(
+                      CommonActions.reset({
+                        index: 0,
+                        routes: [{ name: 'MyApplications' }],
+                      }),
+                    )
+                  }
+                >
+                  <Text style={styles.activeBlockLink}>Xem hồ sơ của tôi →</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           {/* ── IDENTITY INFO – LOCKED FROM eKYC (Mẫu 01 mục 2, 3, 7) ── */}
           <View style={styles.sectionCard}>
@@ -581,9 +616,9 @@ export const BasicInformationScreen = () => {
 
           {/* Submit Button - BLUE */}
           <TouchableOpacity
-            style={styles.submitBtn}
+            style={[styles.submitBtn, !!activeBlock && { opacity: 0.5 }]}
             onPress={handleSaveAndContinue}
-            disabled={submitting}
+            disabled={submitting || !!activeBlock}
             activeOpacity={0.9}
           >
             <View style={styles.submitGrad}>
@@ -644,6 +679,19 @@ const styles = StyleSheet.create({
     borderLeftColor: RHSColors.blue700,
   },
   projectName: { flex: 1, fontSize: 15, fontWeight: '700', color: RHSColors.text, lineHeight: 22 },
+  activeBlockCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#FFEBEE',
+    borderRadius: borderRadius.md,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
+  },
+  activeBlockText: { fontSize: 13, color: '#C62828', fontWeight: '600', lineHeight: 18 },
+  activeBlockLink: { fontSize: 13, color: RHSColors.blue700, fontWeight: '700' },
 
   // Sections
   sectionCard: {

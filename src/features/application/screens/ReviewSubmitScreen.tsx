@@ -92,6 +92,7 @@ export const ReviewSubmitScreen = () => {
   const [missingPriorityGroup, setMissingPriorityGroup] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showConflictSheet, setShowConflictSheet] = useState(false);
+  const [commitment, setCommitment] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -135,9 +136,13 @@ export const ReviewSubmitScreen = () => {
   const missingRequired = requiredItems.filter((r) => !uploadedTypes.has(r.documentType));
   const hasRequiredDocs =
     !missingPriorityGroup && requiredItems.length > 0 && missingRequired.length === 0;
-  const isDisabled = !hasRequiredDocs || submitting;
+  const isDisabled = !hasRequiredDocs || submitting || !commitment;
 
   const handleSubmit = async () => {
+    if (!commitment) {
+      Alert.alert('Cam kết bắt buộc', 'Vui lòng tích cam kết thông tin chính xác trước khi nộp.');
+      return;
+    }
     setSubmitting(true);
     try {
       await housingApplicationApi.submitApplication(applicationId);
@@ -281,13 +286,25 @@ export const ReviewSubmitScreen = () => {
                   <Text style={styles.docTypeSmall}>
                     {resolveDocLabel(doc.documentType, requiredItems)}
                   </Text>
-                  {/* Không hiển thị verification status nữa */}
                 </View>
                 <Feather name="file" size={18} color={RHSColors.blue700} />
               </View>
             ))
           )}
         </View>
+
+        <TouchableOpacity
+          style={styles.commitmentRow}
+          onPress={() => setCommitment((v) => !v)}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.checkbox, commitment && styles.checkboxChecked]}>
+            {commitment && <Feather name="check" size={14} color="#fff" />}
+          </View>
+          <Text style={styles.commitmentText}>
+            Tôi cam kết thông tin và tài liệu đã cung cấp là chính xác. Sau khi nộp, hồ sơ sẽ được đóng băng để thẩm định.
+          </Text>
+        </TouchableOpacity>
 
         {/* Submit Button - BLUE */}
         <TouchableOpacity
@@ -313,6 +330,9 @@ export const ReviewSubmitScreen = () => {
               ? 'Hồ sơ thiếu nhóm đối tượng thụ hưởng. Quay lại bước thông tin để chọn đối tượng.'
               : `Còn thiếu ${missingRequired.length} giấy tờ bắt buộc theo nhóm đối tượng. Quay lại bước giấy tờ để bổ sung.`}
           </Text>
+        )}
+        {hasRequiredDocs && !commitment && (
+          <Text style={styles.disabledHint}>Vui lòng tích cam kết thông tin chính xác để nộp hồ sơ.</Text>
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -551,6 +571,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     fontWeight: '500',
+  },
+  commitmentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
+    padding: 12,
+    marginBottom: 14,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: RHSColors.blue700,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: RHSColors.blue700,
+  },
+  commitmentText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    color: RHSColors.text,
   },
 
   // Success Modal

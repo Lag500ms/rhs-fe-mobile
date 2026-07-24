@@ -25,7 +25,8 @@ import { geocode, LatLng, VIETNAM_FALLBACK, MAPBOX_TOKEN } from '../services/geo
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { getToken } from '../../../lib/tokenStorage';
 import { wishlistApi } from '../../saved/api/wishlistApi';
-import { userApi } from '../../user/api/userApi';
+import { ensureEkycForApplication } from '../../user/utils/ekycGate';
+import { housingApplicationApi } from '../../application/api/housingApplicationApi';
 import { WishlistHeart } from '../../../components/WishlistHeart';
 
 
@@ -143,17 +144,49 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
         return;
       }
 
-      // 2. Check identity verified
-      const profileRes = await userApi.getProfile();
-      if (!profileRes?.success || !profileRes?.user?.citizenId) {
-        Alert.alert('Chưa xác minh danh tính', 'Bạn cần xác thực danh tính (eKYC) trước khi đăng ký nhà ở.', [
-          { text: 'Huỷ', style: 'cancel' },
-          { text: 'Xác minh ngay', onPress: () => rootNav?.navigate('EKyc') },
-        ]);
+      // 2. Check identity verified (đồng bộ web: hard gate lúc đăng ký)
+      const user = await ensureEkycForApplication();
+      if (!user) {
+        Alert.alert(
+          'Chưa xác minh danh tính',
+          'Bạn cần xác thực danh tính (eKYC) trước khi đăng ký hồ sơ. Vẫn xem dự án và lưu quan tâm được.',
+          [
+            { text: 'Huỷ', style: 'cancel' },
+            { text: 'Xác minh ngay', onPress: () => rootNav?.navigate('EKyc') },
+          ],
+        );
         return;
       }
 
-      // 3. OK → chuyển sang Application tab
+      // 3. Chặn nếu đã có hồ sơ đang hoạt động
+      try {
+        const check = await housingApplicationApi.activeCheck();
+        if (check.hasActiveApplication) {
+          Alert.alert(
+            'Đã có hồ sơ đang xử lý',
+            check.message ||
+              'Bạn đang có hồ sơ khác ở trạng thái đã nộp hoặc đã được duyệt. Mỗi người chỉ được một hồ sơ hoạt động tại một thời điểm.',
+            [
+              { text: 'Đóng', style: 'cancel' },
+              {
+                text: 'Xem hồ sơ của tôi',
+                onPress: () =>
+                  navigation.dispatch(
+                    CommonActions.navigate({
+                      name: 'MainTabs',
+                      params: { screen: 'Applications' },
+                    }),
+                  ),
+              },
+            ],
+          );
+          return;
+        }
+      } catch {
+        /* BE vẫn chặn khi tạo — tiếp tục */
+      }
+
+      // 4. OK → chuyển sang Application tab
       navigation.dispatch(
         CommonActions.navigate({
           name: 'MainTabs',

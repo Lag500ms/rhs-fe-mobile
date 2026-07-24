@@ -18,6 +18,7 @@ import { housingApplicationApi } from '../api/housingApplicationApi';
 import { ApplicationDetail, ApplicationDocument } from '../types/application';
 import { getStatusConfig } from '../utils/statusConfig';
 import { formatDate, formatDateTime } from '../utils/format';
+import { ApplicationTimeline } from '../components/ApplicationTimeline';
 import { paymentApi } from '../../payment/api/paymentApi';
 import { PaymentInfo } from '../../payment/types/payment';
 
@@ -623,6 +624,11 @@ export const ApplicationDetailScreen = () => {
               </View>
             )}
 
+            <View style={styles.timelineCard}>
+              <Text style={styles.timelineTitle}>Tiến độ hồ sơ</Text>
+              <ApplicationTimeline currentStatus={detail.applicationStatus} />
+            </View>
+
             {requestNote && (
               <View style={styles.noteCard}>
                 <Feather name="message-square" size={16} color={RHSColors.amber700} />
@@ -1007,6 +1013,20 @@ const styles = StyleSheet.create({
   scrollContentWithBar: { paddingBottom: spacing.huge },
 
   statusRow: { marginBottom: spacing.lg, gap: spacing.sm },
+  timelineCard: {
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
+  },
+  timelineTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: RHSColors.text,
+    marginBottom: 10,
+  },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',

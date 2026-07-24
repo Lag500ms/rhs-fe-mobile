@@ -12,7 +12,7 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +24,9 @@ import { HCM_PROVINCE, HCM_PROVINCE_SHORT, HCM_DISTRICTS } from '../utils/hcmLoc
 import { HomeStackParamList } from '../navigation/HomeNavigator';
 import { ProjectCard } from '../components/ProjectCard';
 import { HomeFilterBar, SortKey, SORT_OPTIONS } from '../components/HomeFilterBar';
+import { getToken } from '../../../lib/tokenStorage';
+import { userApi } from '../../user/api/userApi';
+import { isEkycVerified } from '../../user/utils/ekycGate';
 
 type Nav = NativeStackNavigationProp<HomeStackParamList, 'HomeList'>;
 type FilterSheet = 'district' | 'price' | 'area' | 'sort' | null;
@@ -75,6 +78,7 @@ export const HomeScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [pageIndex, setPageIndex] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [showEkycHint, setShowEkycHint] = useState(false);
 
   const [filterDistrict, setFilterDistrict] = useState<string | null>(null);
   const [filterMinPrice, setFilterMinPrice] = useState<number | undefined>();
@@ -84,6 +88,29 @@ export const HomeScreen = () => {
   const [sortKey, setSortKey] = useState<SortKey>('default');
   const [activeSheet, setActiveSheet] = useState<FilterSheet>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Nhắc nhẹ eKYC (không khóa duyệt dự án) — đồng bộ web EkycNotice
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        try {
+          const token = await getToken();
+          if (!token) {
+            if (active) setShowEkycHint(false);
+            return;
+          }
+          const res = await userApi.getProfile();
+          if (active) setShowEkycHint(!!(res.success && res.user && !isEkycVerified(res.user)));
+        } catch {
+          if (active) setShowEkycHint(false);
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   // Debounce search 400ms
   useEffect(() => {
@@ -220,6 +247,14 @@ export const HomeScreen = () => {
             <Text style={styles.heroTitle}>Tra cứu nhà ở xã hội</Text>
             <Text style={styles.heroSub}>TP. Hồ Chí Minh · Đang mở đăng ký</Text>
           </View>
+          <TouchableOpacity
+            style={styles.announceBtn}
+            onPress={() => navigation.navigate('Announcements')}
+            activeOpacity={0.85}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name="megaphone" size={18} color="#fff" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.searchWrap}>
@@ -258,6 +293,34 @@ export const HomeScreen = () => {
       />
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+        {showEkycHint && (
+          <View style={styles.ekycHint}>
+            <Feather name="shield" size={16} color="#92400E" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.ekycHintTitle}>Chưa xác minh danh tính</Text>
+              <Text style={styles.ekycHintText}>
+                Vẫn xem dự án và lưu quan tâm được. Chỉ cần eKYC trước khi đăng ký hồ sơ.
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.ekycHintBtn}
+              onPress={() => {
+                const rootNav = navigation.getParent()?.getParent();
+                rootNav?.navigate('EKyc');
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.ekycHintBtnText}>Xác minh</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowEkycHint(false)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Feather name="x" size={16} color="#92400E" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle}>Danh sách dự án</Text>
           <View style={styles.countBadge}>
@@ -435,6 +498,14 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 24,
   },
   heroTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: spacing.md },
+  announceBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heroTitle: { fontSize: 17, fontWeight: '800', color: '#fff' },
   heroSub: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 2, fontWeight: '500' },
   searchWrap: {
@@ -453,6 +524,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.lg,
     marginBottom: spacing.md,
+  },
+  ekycHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: spacing.md,
+    padding: 12,
+    borderRadius: borderRadius.md,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  ekycHintTitle: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  ekycHintText: {
+    ...typography.caption,
+    color: '#92400E',
+    marginTop: 2,
+  },
+  ekycHintBtn: {
+    backgroundColor: '#D97706',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: borderRadius.sm,
+  },
+  ekycHintBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   sectionTitle: { ...typography.h3, color: RHSColors.text, flex: 1 },
   countBadge: {

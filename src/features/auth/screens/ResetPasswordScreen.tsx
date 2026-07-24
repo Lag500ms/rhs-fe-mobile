@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,8 @@ import { AuthStackParamList } from '../AuthNavigator';
 
 type ResetPasswordRouteProp = RouteProp<AuthStackParamList, 'ResetPassword'>;
 
+const RESEND_COUNTDOWN = 60;
+
 export const ResetPasswordScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<ResetPasswordRouteProp>();
@@ -29,8 +31,18 @@ export const ResetPasswordScreen = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [countdown, setCountdown] = useState(RESEND_COUNTDOWN);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [hasInteracted, setHasInteracted] = useState<{ [key: string]: boolean }>({});
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   const isSubmitEnabled = otpCode.length > 0 && newPassword.length >= 6 && confirmPassword.length >= 6;
 
@@ -87,6 +99,24 @@ export const ResetPasswordScreen = () => {
     }
   };
 
+  const handleResendOtp = async () => {
+    if (countdown > 0 || resending || !email) return;
+    setResending(true);
+    try {
+      const result = await authApi.resendOtp(email);
+      if (result.success) {
+        setCountdown(RESEND_COUNTDOWN);
+        Alert.alert('Thành công', 'Mã OTP mới đã được gửi đến email của bạn');
+      } else {
+        Alert.alert('Lỗi', result.message || 'Gửi lại OTP thất bại');
+      }
+    } catch (error: any) {
+      Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      setResending(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.brandBar}>
@@ -106,7 +136,8 @@ export const ResetPasswordScreen = () => {
 
         <Text style={styles.title}>Đặt lại mật khẩu</Text>
         <Text style={styles.subtitle}>
-          Nhập mã OTP và mật khẩu mới để đặt lại mật khẩu
+          Nhập mã OTP và mật khẩu mới để đặt lại mật khẩu{'\n'}
+          <Text style={{ fontWeight: '700', color: RHSColors.govBlue }}>{email}</Text>
         </Text>
 
         <View style={styles.formContainer}>
@@ -121,6 +152,20 @@ export const ResetPasswordScreen = () => {
             errorMessage={hasInteracted.otpCode ? errors.otpCode : undefined}
             keyboardType="number-pad"
           />
+
+          <TouchableOpacity
+            style={styles.resendBtn}
+            disabled={countdown > 0 || resending}
+            onPress={handleResendOtp}
+          >
+            {resending ? (
+              <ActivityIndicator size="small" color={RHSColors.govBlue} />
+            ) : (
+              <Text style={[styles.resendText, countdown > 0 && styles.resendDisabled]}>
+                {countdown > 0 ? `Gửi lại OTP sau ${countdown}s` : 'Gửi lại mã OTP'}
+              </Text>
+            )}
+          </TouchableOpacity>
 
           <CustomInput
             iconName="lock"
@@ -196,6 +241,21 @@ const styles = StyleSheet.create({
     fontSize: 14, color: RHSColors.textMuted, textAlign: 'center', marginBottom: 40, lineHeight: 20,
   },
   formContainer: { marginBottom: 30 },
+  resendBtn: {
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: -4,
+    minHeight: 28,
+    justifyContent: 'center',
+  },
+  resendText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: RHSColors.govBlue,
+  },
+  resendDisabled: {
+    color: RHSColors.textMuted,
+  },
   submitBtn: {
     backgroundColor: RHSColors.surface,
     height: 52,

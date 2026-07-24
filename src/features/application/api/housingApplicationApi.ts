@@ -82,4 +82,18 @@ export const housingApplicationApi = {
       cancelReason,
     });
   },
+
+  /** Kiểm tra hồ sơ đang hoạt động — chặn tạo mới nếu đã có. */
+  activeCheck: async (): Promise<{ hasActiveApplication: boolean; message?: string }> => {
+    const response = await apiClient.get<{
+      hasActiveApplication?: boolean;
+      HasActiveApplication?: boolean;
+      message?: string;
+    }>('/housing-applications/active-check');
+    const data = response.data ?? {};
+    return {
+      hasActiveApplication: Boolean(data.hasActiveApplication ?? data.HasActiveApplication),
+      message: data.message,
+    };
+  },
 };
