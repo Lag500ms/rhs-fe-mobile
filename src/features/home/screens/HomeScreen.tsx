@@ -11,7 +11,7 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -130,12 +130,14 @@ export const HomeScreen = () => {
     };
   }, [searchText]);
 
-  // Ẩn tab bar khi mở sheet lọc
+  // Ẩn tab bar khi mở sheet — Home nằm trong Stack → parent trực tiếp là Tab
   useEffect(() => {
-    const tabNav = navigation.getParent()?.getParent() ?? navigation.getParent();
+    const tabNav = navigation.getParent();
     if (!tabNav) return;
     tabNav.setOptions({
-      tabBarStyle: activeSheet ? { display: 'none' } : TAB_BAR_STYLE,
+      tabBarStyle: activeSheet
+        ? { display: 'none', height: 0, overflow: 'hidden' }
+        : TAB_BAR_STYLE,
     });
     return () => {
       tabNav.setOptions({ tabBarStyle: TAB_BAR_STYLE });
@@ -468,18 +470,28 @@ const FilterSheetModal = ({
   title: string;
   onClose: () => void;
   children: React.ReactNode;
-}) => (
-  <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-    <View style={styles.sheetOverlay}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-      <View style={styles.sheetContainer}>
-        <View style={styles.sheetHandle} />
-        <Text style={styles.sheetTitle}>{title}</Text>
-        {children}
+}) => {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      statusBarTranslucent
+      presentationStyle="overFullScreen"
+    >
+      <View style={styles.sheetOverlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={[styles.sheetContainer, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitle}>{title}</Text>
+          {children}
+        </View>
       </View>
-    </View>
-  </Modal>
-);
+    </Modal>
+  );
+};
 
 const SheetItem = ({
   label,
@@ -618,9 +630,10 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: borderRadius.xxl,
     borderTopRightRadius: borderRadius.xxl,
     paddingHorizontal: 20,
-    paddingBottom: 28,
     paddingTop: 12,
     maxHeight: '70%',
+    zIndex: 2,
+    elevation: 8,
   },
   sheetHandle: {
     width: 40,
