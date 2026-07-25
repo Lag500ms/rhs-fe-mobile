@@ -13,14 +13,17 @@ export const housingDocumentApi = {
     applicationId: string,
     documentType: string,
     fileUri: string,
+    fileName?: string,
   ): Promise<UploadDocumentResponse> => {
-    const fileName = fileUri.split('/').pop()?.split('?')[0] || 'document.pdf';
+    // Bắt buộc tên có .pdf — Android cache URI thường không có extension → BE báo lỗi sai
+    let name = (fileName || fileUri.split('/').pop()?.split('?')[0] || 'document.pdf').trim();
+    if (!/\.pdf$/i.test(name)) name = `${name}.pdf`;
 
     const formData = new FormData();
     formData.append('DocumentType', documentType);
     formData.append('File', {
       uri: fileUri,
-      name: fileName,
+      name,
       type: 'application/pdf',
     } as any);
 

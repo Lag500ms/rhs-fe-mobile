@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme';
 import { housingDocumentApi } from '../api/housingDocumentApi';
@@ -154,6 +155,16 @@ export const UploadDocumentsScreen = () => {
 
   const MAX_PDF_BYTES = 10 * 1024 * 1024;
 
+  const resolveFileBytes = async (uri: string, pickerSize?: number | null): Promise<number> => {
+    try {
+      const info = await FileSystem.getInfoAsync(uri);
+      if (info.exists && typeof info.size === 'number' && info.size > 0) return info.size;
+    } catch {
+      /* fallback picker size */
+    }
+    return typeof pickerSize === 'number' && pickerSize > 0 ? pickerSize : 0;
+  };
+
   const pickAndUpload = async (docKey: string) => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -164,8 +175,12 @@ export const UploadDocumentsScreen = () => {
       if (result.canceled || !result.assets?.length) return;
 
       const file = result.assets[0];
-      if (file.size && file.size > MAX_PDF_BYTES) {
-        Alert.alert('File quá lớn', 'Chỉ chấp nhận PDF tối đa 10MB.');
+      const bytes = await resolveFileBytes(file.uri, file.size);
+      if (bytes > MAX_PDF_BYTES) {
+        Alert.alert(
+          'File quá lớn',
+          `Chỉ chấp nhận PDF tối đa 10MB (file hiện tại ~${formatFileSize(bytes)}).`,
+        );
         return;
       }
 
@@ -175,14 +190,15 @@ export const UploadDocumentsScreen = () => {
         applicationId,
         docKey,
         file.uri,
+        file.name,
       );
 
       setUploadedFiles((prev) => ({
         ...prev,
         [docKey]: {
           documentId: response.documentId,
-          fileName: file.name,
-          fileSize: file.size || 0,
+          fileName: file.name || 'document.pdf',
+          fileSize: bytes,
           documentType: docKey,
         },
       }));
