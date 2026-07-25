@@ -5,7 +5,7 @@ import type {
   LotteryScheduleDetail,
 } from '../types/lottery';
 
-function pick<T extends Record<string, unknown>>(raw: unknown): T {
+function pick<T>(raw: unknown): T {
   if (!raw || typeof raw !== 'object') return {} as T;
   const o = raw as Record<string, unknown>;
   const nested = o.data ?? o.Data;

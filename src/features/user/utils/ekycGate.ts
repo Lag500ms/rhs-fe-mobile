@@ -1,6 +1,6 @@
-import { getToken } from '../../lib/tokenStorage';
-import { userApi } from '../user/api/userApi';
-import type { UserProfileDto } from '../user/types/user';
+import { getToken } from '../../../lib/tokenStorage';
+import { userApi } from '../api/userApi';
+import type { UserProfileDto } from '../types/user';
 
 /**
  * Đồng bộ quy tắc web: đã eKYC khi có CCCD trên profile

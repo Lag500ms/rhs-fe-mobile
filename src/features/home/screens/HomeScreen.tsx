@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
@@ -253,7 +253,7 @@ export const HomeScreen = () => {
             activeOpacity={0.85}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Feather name="megaphone" size={18} color="#fff" />
+            <Ionicons name="megaphone" size={18} color="#fff" />
           </TouchableOpacity>
         </View>
 

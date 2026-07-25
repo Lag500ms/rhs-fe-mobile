@@ -12,7 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { RHSColors, borderRadius, spacing, typography } from '../../../lib/theme';
@@ -195,7 +195,7 @@ export const AnnouncementsScreen = () => {
           }
           ListEmptyComponent={
             <View style={styles.center}>
-              <Feather name="megaphone" size={40} color={RHSColors.textMuted} />
+              <Ionicons name="megaphone" size={40} color={RHSColors.textMuted} />
               <Text style={styles.emptyText}>
                 {error || 'Chưa có thông báo công khai.'}
               </Text>

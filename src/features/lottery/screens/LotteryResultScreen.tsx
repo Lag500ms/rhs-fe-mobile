@@ -91,7 +91,7 @@ export const LotteryResultScreen = () => {
                     {isMine ? ' (Bạn)' : ''}
                   </Text>
                   <Text style={styles.sub}>
-                    {LOTTERY_RESULT_LABEL[code] ?? code || '—'}
+                    {LOTTERY_RESULT_LABEL[code] ?? (code || '—')}
                     {p.slotCode ? ` · ${p.slotCode}` : ''}
                   </Text>
                 </View>
