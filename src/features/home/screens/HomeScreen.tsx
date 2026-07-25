@@ -20,7 +20,7 @@ import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../
 import { RHSLogo } from '../../../lib/Logo';
 import { housingApi } from '../api/housingApi';
 import { HousingProjectResponse } from '../types/housing';
-import { HCM_PROVINCE, HCM_PROVINCE_SHORT, HCM_DISTRICTS } from '../utils/hcmLocations';
+import { HCM_PROVINCE, HCM_PROVINCE_SHORT, fetchHcmWards } from '../utils/hcmLocations';
 import { HomeStackParamList } from '../navigation/HomeNavigator';
 import { ProjectCard } from '../components/ProjectCard';
 import { HomeFilterBar, SortKey, SORT_OPTIONS } from '../components/HomeFilterBar';
@@ -80,7 +80,8 @@ export const HomeScreen = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [showEkycHint, setShowEkycHint] = useState(false);
 
-  const [filterDistrict, setFilterDistrict] = useState<string | null>(null);
+  const [filterWard, setFilterWard] = useState<string | null>(null);
+  const [hcmWards, setHcmWards] = useState<string[]>([]);
   const [filterMinPrice, setFilterMinPrice] = useState<number | undefined>();
   const [filterMaxPrice, setFilterMaxPrice] = useState<number | undefined>();
   const [filterMinArea, setFilterMinArea] = useState<number | undefined>();
@@ -88,6 +89,14 @@ export const HomeScreen = () => {
   const [sortKey, setSortKey] = useState<SortKey>('default');
   const [activeSheet, setActiveSheet] = useState<FilterSheet>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetchHcmWards()
+      .then((wards) => { if (active) setHcmWards(wards); })
+      .catch(() => { if (active) setHcmWards([]); });
+    return () => { active = false; };
+  }, []);
 
   // Nhắc nhẹ eKYC (không khóa duyệt dự án) — đồng bộ web EkycNotice
   useFocusEffect(
@@ -134,7 +143,7 @@ export const HomeScreen = () => {
   }, [activeSheet, navigation]);
 
   const hasActiveFilters =
-    !!filterDistrict
+    !!filterWard
     || filterMinPrice !== undefined
     || filterMaxPrice !== undefined
     || filterMinArea !== undefined
@@ -142,7 +151,7 @@ export const HomeScreen = () => {
     || sortKey !== 'default';
 
   const resetFilters = () => {
-    setFilterDistrict(null);
+    setFilterWard(null);
     setFilterMinPrice(undefined);
     setFilterMaxPrice(undefined);
     setFilterMinArea(undefined);
@@ -161,7 +170,7 @@ export const HomeScreen = () => {
         pageSize: 12,
         search: debouncedSearch || undefined,
         province: HCM_PROVINCE,
-        district: filterDistrict || undefined,
+        ward: filterWard || undefined,
         minPrice: filterMinPrice,
         maxPrice: filterMaxPrice,
         minArea: filterMinArea,
@@ -177,7 +186,7 @@ export const HomeScreen = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [debouncedSearch, filterDistrict, filterMinPrice, filterMaxPrice, filterMinArea, filterMaxArea]);
+  }, [debouncedSearch, filterWard, filterMinPrice, filterMaxPrice, filterMinArea, filterMaxArea]);
 
   useEffect(() => {
     fetchProjects(1);
@@ -280,12 +289,12 @@ export const HomeScreen = () => {
       </LinearGradient>
 
       <HomeFilterBar
-        filterDistrict={filterDistrict}
+        filterWard={filterWard}
         priceLabel={priceLabel}
         areaLabel={areaLabel}
         sortKey={sortKey}
         hasActiveFilters={hasActiveFilters}
-        onOpenDistrict={() => setActiveSheet('district')}
+        onOpenWard={() => setActiveSheet('district')}
         onOpenPrice={() => setActiveSheet('price')}
         onOpenArea={() => setActiveSheet('area')}
         onOpenSort={() => setActiveSheet('sort')}
@@ -378,22 +387,27 @@ export const HomeScreen = () => {
       {/* Sheets */}
       <FilterSheetModal
         visible={activeSheet === 'district'}
-        title={`Quận / Huyện — ${HCM_PROVINCE_SHORT}`}
+        title={`Phường / Xã — ${HCM_PROVINCE_SHORT}`}
         onClose={closeSheet}
       >
         <SheetItem
-          label="Tất cả quận/huyện"
-          active={!filterDistrict}
-          onPress={() => { setFilterDistrict(null); closeSheet(); }}
+          label="Tất cả phường/xã"
+          active={!filterWard}
+          onPress={() => { setFilterWard(null); closeSheet(); }}
         />
         <FlatList
-          data={HCM_DISTRICTS}
+          data={hcmWards}
           keyExtractor={(i) => i}
+          ListEmptyComponent={
+            <Text style={{ padding: 16, color: RHSColors.textMuted, textAlign: 'center' }}>
+              Đang tải danh sách phường/xã...
+            </Text>
+          }
           renderItem={({ item }) => (
             <SheetItem
               label={item}
-              active={filterDistrict === item}
-              onPress={() => { setFilterDistrict(item); closeSheet(); }}
+              active={filterWard === item}
+              onPress={() => { setFilterWard(item); closeSheet(); }}
             />
           )}
           style={{ maxHeight: 360 }}

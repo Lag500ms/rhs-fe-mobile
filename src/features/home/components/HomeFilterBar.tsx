@@ -14,12 +14,12 @@ export const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 ];
 
 type Props = {
-  filterDistrict: string | null;
+  filterWard: string | null;
   priceLabel: string | null;
   areaLabel: string | null;
   sortKey: SortKey;
   hasActiveFilters: boolean;
-  onOpenDistrict: () => void;
+  onOpenWard: () => void;
   onOpenPrice: () => void;
   onOpenArea: () => void;
   onOpenSort: () => void;
@@ -27,12 +27,12 @@ type Props = {
 };
 
 export const HomeFilterBar: React.FC<Props> = ({
-  filterDistrict,
+  filterWard,
   priceLabel,
   areaLabel,
   sortKey,
   hasActiveFilters,
-  onOpenDistrict,
+  onOpenWard,
   onOpenPrice,
   onOpenArea,
   onOpenSort,
@@ -50,9 +50,9 @@ export const HomeFilterBar: React.FC<Props> = ({
 
         <Chip
           icon="navigation"
-          label={filterDistrict || 'Quận/Huyện'}
-          active={!!filterDistrict}
-          onPress={onOpenDistrict}
+          label={filterWard || 'Phường/Xã'}
+          active={!!filterWard}
+          onPress={onOpenWard}
         />
         <Chip icon="tag" label={priceLabel || 'Giá'} active={!!priceLabel} onPress={onOpenPrice} />
         <Chip icon="maximize" label={areaLabel || 'Diện tích'} active={!!areaLabel} onPress={onOpenArea} />

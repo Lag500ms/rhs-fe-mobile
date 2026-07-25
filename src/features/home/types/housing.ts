@@ -33,6 +33,8 @@ export interface HousingProjectFilterParams {
   search?: string;
   province?: string;
   district?: string;
+  /** Phường/xã — API địa giới v2 */
+  ward?: string;
   minPrice?: number;
   maxPrice?: number;
   minArea?: number;
