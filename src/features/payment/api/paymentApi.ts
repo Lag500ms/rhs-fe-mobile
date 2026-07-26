@@ -22,7 +22,14 @@ export const paymentApi = {
   processVnpayCallback: async (queryString: string): Promise<any> => {
     // dùng fetch() thay vì apiClient để tránh axios URL encoding làm hỏng
     // query string của VNPay (phá chữ ký HMAC-SHA512)
-    const res = await fetch(`${apiClient.defaults.baseURL}/Payment/payment-callback?${queryString}`);
+    // format=json: BE trả JSON thay vì 302 về web FE
+    const qs = queryString
+      ? `${queryString}${queryString.includes('format=') ? '' : '&format=json'}`
+      : 'format=json';
+    const res = await fetch(
+      `${apiClient.defaults.baseURL}/Payment/payment-callback?${qs}`,
+      { headers: { Accept: 'application/json' } },
+    );
     if (!res.ok) {
       const body = await res.text();
       throw new Error(`Callback failed: ${res.status} ${body}`);

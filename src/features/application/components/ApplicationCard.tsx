@@ -1,10 +1,16 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { RHSColors, borderRadius, shadows, spacing, typography } from '../../../lib/theme';
 import { ApplicationSummary } from '../types/application';
 import { getStatusConfig, getActionForStatus } from '../utils/statusConfig';
 import { formatDate } from '../utils/format';
+import {
+  DEPOSIT_PAYMENT_HOURS,
+  formatDepositHhmmss,
+  getDepositRemainingMs,
+  isDepositDeadlineStatus,
+} from '../../../lib/depositDeadline';
 
 interface ApplicationCardProps {
   item: ApplicationSummary;
@@ -14,6 +20,30 @@ interface ApplicationCardProps {
 export const ApplicationCard: React.FC<ApplicationCardProps> = ({ item, onPress }) => {
   const config = getStatusConfig(item.applicationStatus);
   const action = getActionForStatus(item.applicationStatus);
+  const showDepositDeadline =
+    isDepositDeadlineStatus(item.applicationStatus) && !!item.finalDecisionDate;
+  const [depositLabel, setDepositLabel] = useState<string | null>(null);
+  const [depositOverdue, setDepositOverdue] = useState(false);
+
+  useEffect(() => {
+    if (!showDepositDeadline || !item.finalDecisionDate) {
+      setDepositLabel(null);
+      setDepositOverdue(false);
+      return;
+    }
+    const tick = () => {
+      const diff = getDepositRemainingMs(item.finalDecisionDate!);
+      setDepositOverdue(diff <= 0);
+      setDepositLabel(
+        diff <= 0
+          ? `Đã quá hạn (${DEPOSIT_PAYMENT_HOURS}h từ duyệt)`
+          : `Còn ${formatDepositHhmmss(diff)} (hạn ${DEPOSIT_PAYMENT_HOURS}h từ duyệt)`,
+      );
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [showDepositDeadline, item.finalDecisionDate]);
 
   return (
     <TouchableOpacity
@@ -30,10 +60,12 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({ item, onPress 
             {item.projectName}
           </Text>
         </View>
-        <View style={[styles.badge, { backgroundColor: config.bg }]}>
-          <View style={[styles.badgeDot, { backgroundColor: config.dotColor }]} />
-          <Text style={[styles.badgeText, { color: config.textColor }]}>{config.label}</Text>
-        </View>
+      </View>
+      <View style={[styles.badge, { backgroundColor: config.bg }]}>
+        <View style={[styles.badgeDot, { backgroundColor: config.dotColor }]} />
+        <Text style={[styles.badgeText, { color: config.textColor }]} numberOfLines={3}>
+          {config.label}
+        </Text>
       </View>
 
       <View style={styles.cardBody}>
@@ -45,6 +77,26 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({ item, onPress 
           <Feather name="file-text" size={14} color={RHSColors.textMuted} />
           <Text style={styles.cardRowText}>{item.documentCount} giấy tờ</Text>
         </View>
+        {depositLabel && (
+          <View style={styles.cardRow}>
+            <Feather
+              name={depositOverdue ? 'alert-triangle' : 'clock'}
+              size={14}
+              color={depositOverdue ? RHSColors.red600 : RHSColors.amber700}
+            />
+            <Text
+              style={[
+                styles.cardRowText,
+                {
+                  color: depositOverdue ? RHSColors.red600 : RHSColors.amber700,
+                  fontWeight: '600',
+                },
+              ]}
+            >
+              {depositLabel}
+            </Text>
+          </View>
+        )}
       </View>
 
       {action && (
@@ -72,10 +124,9 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   projectInfo: {
     flexDirection: 'row',
@@ -101,21 +152,27 @@ const styles = StyleSheet.create({
   },
   badge: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    alignSelf: 'stretch',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.sm,
-    gap: 5,
-    maxWidth: '46%',
+    gap: 6,
+    marginBottom: spacing.md,
   },
   badgeDot: {
     width: 7,
     height: 7,
     borderRadius: 4,
+    flexShrink: 0,
+    marginTop: 4,
   },
   badgeText: {
     ...typography.caption,
     fontWeight: '700',
+    flex: 1,
+    flexWrap: 'wrap',
+    lineHeight: 18,
   },
   cardBody: {
     gap: spacing.xs,

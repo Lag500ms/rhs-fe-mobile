@@ -105,7 +105,8 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
 };
 
 export function getStatusConfig(status: string): StatusConfig {
-  return STATUS_CONFIG[status] || {
+  const key = (status || '').trim().toUpperCase();
+  return STATUS_CONFIG[key] || {
     label: status || 'Không xác định',
     bg: '#F5F5F5',
     textColor: '#757575',

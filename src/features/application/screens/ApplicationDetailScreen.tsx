@@ -21,6 +21,12 @@ import { formatDate, formatDateTime } from '../utils/format';
 import { ApplicationTimeline } from '../components/ApplicationTimeline';
 import { paymentApi } from '../../payment/api/paymentApi';
 import { PaymentInfo } from '../../payment/types/payment';
+import {
+  DEPOSIT_PAYMENT_HOURS,
+  formatDepositHhmmss,
+  getDepositRemainingMs,
+  isDepositDeadlineStatus,
+} from '../../../lib/depositDeadline';
 
 type BottomAction = {
   label: string;
@@ -151,11 +157,10 @@ export const ApplicationDetailScreen = () => {
 
   const startCountdown = useCallback((finalDecisionDate: string) => {
     clearCountdown();
-    const expiry = new Date(finalDecisionDate).getTime() + 24 * 60 * 60 * 1000;
     const update = () => {
-      const diff = expiry - Date.now();
+      const diff = getDepositRemainingMs(finalDecisionDate);
       if (diff <= 0) {
-        setCountdown('00:00:00');
+        setCountdown(formatDepositHhmmss(0));
         setIsExpired(true);
         if (countdownIntervalRef.current) {
           clearInterval(countdownIntervalRef.current);
@@ -163,19 +168,18 @@ export const ApplicationDetailScreen = () => {
         }
         return;
       }
-      const h = Math.floor(diff / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setCountdown(
-        `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-      );
+      setIsExpired(false);
+      setCountdown(formatDepositHhmmss(diff));
     };
     update();
     countdownIntervalRef.current = setInterval(update, 1000);
   }, [clearCountdown]);
 
   useEffect(() => {
-    if (detail?.applicationStatus === 'APPROVED' && detail?.finalDecisionDate) {
+    if (
+      isDepositDeadlineStatus(detail?.applicationStatus) &&
+      detail?.finalDecisionDate
+    ) {
       startCountdown(detail.finalDecisionDate);
     } else {
       clearCountdown();
@@ -187,17 +191,7 @@ export const ApplicationDetailScreen = () => {
     if (!detail) return;
     setProcessingPayment(true);
     try {
-      if (existingPayment && existingPayment.status === 'Pending') {
-        navigation.navigate('PaymentProcessing', {
-          orderId: existingPayment.orderId,
-          applicationId: detail.applicationId,
-          projectName: '',
-          depositAmount: 0,
-        });
-        setProcessingPayment(false);
-        return;
-      }
-
+      // Pending: BE tái tạo URL VNPay cùng OrderId — tiếp tục thanh toán thay vì báo lỗi
       const result = await paymentApi.createPaymentUrl(detail.applicationId);
       if (result.success && result.data?.paymentUrl) {
         navigation.navigate('PaymentWebView', {
@@ -214,7 +208,7 @@ export const ApplicationDetailScreen = () => {
     } finally {
       setProcessingPayment(false);
     }
-  }, [detail, navigation, existingPayment]);
+  }, [detail, navigation]);
 
   const handleViewReceipt = useCallback(() => {
     const receiptUrl = detail?.receiptUrl;
@@ -367,7 +361,30 @@ export const ApplicationDetailScreen = () => {
       });
     };
 
+    // BE: đặt cọc chỉ khi CONTRACT_SIGNED (đã ký HĐ nguyên tắc). APPROVED ≠ được thanh toán.
     if (status === 'APPROVED' || status === 'APPROVED_BY_TIMEOUT') {
+      return [
+        {
+          label: 'Lịch / sảnh bốc thăm',
+          icon: 'radio',
+          onPress: goLottery,
+          variant: 'primary',
+        },
+      ];
+    }
+
+    if (status === 'CONTRACT_PENDING') {
+      return [
+        {
+          label: 'Xem & ký HĐ nguyên tắc',
+          icon: 'file-text',
+          onPress: handleViewContract,
+          variant: 'primary',
+        },
+      ];
+    }
+
+    if (status === 'CONTRACT_SIGNED') {
       if (existingPayment?.status === 'Success') {
         return [
           {
@@ -376,55 +393,27 @@ export const ApplicationDetailScreen = () => {
             onPress: handleViewContract,
             variant: 'primary',
           },
-          {
-            label: 'Lịch bốc thăm',
-            icon: 'calendar',
-            onPress: goLottery,
-            variant: 'secondary',
-          },
         ];
       }
       if (!isExpired) {
         const isPending = existingPayment?.status === 'Pending';
         return [
           {
-            label: isPending ? 'Kiểm tra giao dịch' : 'Đặt cọc ngay',
-            icon: isPending ? 'search' : 'credit-card',
+            label: isPending ? 'Tiếp tục thanh toán' : 'Đặt cọc VNPay',
+            icon: 'credit-card',
             onPress: handleStartPayment,
             variant: 'destructive',
             loading: processingPayment || checkingPayment,
             disabled: processingPayment || checkingPayment,
           },
           {
-            label: 'Lịch / sảnh bốc thăm',
-            icon: 'radio',
-            onPress: goLottery,
+            label: 'Xem hợp đồng nguyên tắc',
+            icon: 'file-text',
+            onPress: handleViewContract,
             variant: 'secondary',
           },
         ];
       }
-    }
-
-    if (status === 'CONTRACT_PENDING') {
-      const actions: BottomAction[] = [
-        {
-          label: 'Xem & ký hợp đồng',
-          icon: 'file-text',
-          onPress: handleViewContract,
-          variant: 'primary',
-        },
-      ];
-      if (!existingPayment || existingPayment.status !== 'Success') {
-        actions.push({
-          label: 'Đặt cọc VNPay',
-          icon: 'credit-card',
-          onPress: handleStartPayment,
-          variant: 'destructive',
-          loading: processingPayment || checkingPayment,
-          disabled: processingPayment || checkingPayment,
-        });
-      }
-      return actions;
     }
 
     if (status === 'DEPOSIT_PAID') {
@@ -616,7 +605,10 @@ export const ApplicationDetailScreen = () => {
               <View style={styles.statusRow}>
                 <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
                   <View style={[styles.badgeDot, { backgroundColor: statusConfig.dotColor }]} />
-                  <Text style={[styles.statusBadgeText, { color: statusConfig.textColor }]}>
+                  <Text
+                    style={[styles.statusBadgeText, { color: statusConfig.textColor }]}
+                    numberOfLines={3}
+                  >
                     {statusConfig.label}
                   </Text>
                 </View>
@@ -694,7 +686,7 @@ export const ApplicationDetailScreen = () => {
               </View>
             )}
 
-            {detail.applicationStatus === 'APPROVED' && (
+            {isDepositDeadlineStatus(detail.applicationStatus) && (
               <ApprovedPaymentContent
                 existingPayment={existingPayment}
                 paymentSlotCode={paymentSlotCode}
@@ -703,6 +695,7 @@ export const ApplicationDetailScreen = () => {
                 isExpired={isExpired}
                 slotCodeCopied={slotCodeCopied}
                 onCopySlotCode={handleCopySlotCode}
+                finalDecisionDate={detail.finalDecisionDate}
               />
             )}
 
@@ -812,6 +805,7 @@ const ApprovedPaymentContent = ({
   isExpired,
   slotCodeCopied,
   onCopySlotCode,
+  finalDecisionDate,
 }: {
   existingPayment: PaymentInfo | null;
   paymentSlotCode: string | null;
@@ -820,6 +814,7 @@ const ApprovedPaymentContent = ({
   isExpired: boolean;
   slotCodeCopied: boolean;
   onCopySlotCode: (code: string) => void;
+  finalDecisionDate: string | null;
 }) => {
   if (existingPayment?.status === 'Success') {
     return (
@@ -850,7 +845,9 @@ const ApprovedPaymentContent = ({
               color={isExpired ? RHSColors.red600 : RHSColors.govGoldDark}
             />
             <Text style={[styles.countdownTitle, isExpired && { color: RHSColors.red600 }]}>
-              {isExpired ? 'Đã hết hạn thanh toán' : 'Thời hạn thanh toán'}
+              {isExpired
+                ? 'Đã quá hạn theo mốc duyệt'
+                : `Thời hạn sau duyệt (${DEPOSIT_PAYMENT_HOURS}h)`}
             </Text>
           </View>
           <Text style={[styles.countdownValue, isExpired && { color: RHSColors.red600 }]}>
@@ -858,7 +855,9 @@ const ApprovedPaymentContent = ({
           </Text>
           {!isExpired && (
             <Text style={styles.countdownLabel}>
-              Bạn cần thanh toán trong thời gian này để đủ điều kiện tham gia bốc thăm
+              Tính từ thời điểm duyệt
+              {finalDecisionDate ? ` (${formatDateTime(finalDecisionDate)})` : ''}.
+              Tiếp tục bốc thăm / ký HĐ / đặt cọc trước khi hệ thống hết hạn hồ sơ.
             </Text>
           )}
         </View>
@@ -869,11 +868,12 @@ const ApprovedPaymentContent = ({
           <View style={[styles.waitingPaymentBadge, { justifyContent: 'center' }]}>
             <Feather name="x-circle" size={18} color={RHSColors.red600} />
             <Text style={[styles.waitingPaymentText, { color: RHSColors.red600 }]}>
-              Đã hết hạn thanh toán
+              Đã quá hạn theo mốc duyệt
             </Text>
           </View>
           <Text style={styles.depositInfoText}>
-            Thời hạn 24 giờ đã kết thúc. Hồ sơ của bạn sẽ bị hủy.
+            Đã hết {DEPOSIT_PAYMENT_HOURS} giờ kể từ lúc duyệt. Kéo xuống làm mới để xem trạng thái
+            mới nhất từ hệ thống.
           </Text>
         </View>
       ) : existingPayment?.status === 'Pending' ? (
@@ -883,7 +883,7 @@ const ApprovedPaymentContent = ({
             <Text style={styles.waitingPaymentText}>Đã có giao dịch đang chờ</Text>
           </View>
           <Text style={styles.depositInfoText}>
-            Bạn đã có một giao dịch đang chờ xử lý cho hồ sơ này. Vui lòng kiểm tra lại kết quả thanh toán.
+            Bạn đã có một giao dịch đang chờ. Nhấn «Tiếp tục thanh toán» để mở lại cổng VNPay.
           </Text>
         </View>
       ) : checkingPayment ? (
@@ -1029,15 +1029,21 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
+    alignItems: 'flex-start',
+    alignSelf: 'stretch',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
     borderRadius: borderRadius.sm,
     gap: 6,
   },
-  badgeDot: { width: 8, height: 8, borderRadius: 4 },
-  statusBadgeText: { ...typography.bodySmall, fontWeight: '700' },
+  badgeDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0, marginTop: 5 },
+  statusBadgeText: {
+    ...typography.bodySmall,
+    fontWeight: '700',
+    flex: 1,
+    flexWrap: 'wrap',
+    lineHeight: 20,
+  },
   projectTitle: { ...typography.h3, color: RHSColors.text },
 
   noteCard: {
