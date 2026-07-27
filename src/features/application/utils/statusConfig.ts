@@ -143,15 +143,15 @@ export function getActionForStatus(status: string): StatusAction | null {
       return { label: 'Xem chi tiết', icon: 'eye', color: RHSColors.blue700 };
     case 'APPROVED':
     case 'APPROVED_BY_TIMEOUT':
-      return { label: 'Thanh toán / bốc thăm', icon: 'credit-card', color: RHSColors.red600 };
+      return { label: 'Chờ chốt danh sách / bốc thăm', icon: 'radio', color: RHSColors.blue700 };
     case 'CONTRACT_PENDING':
-      return { label: 'Ký hợp đồng / đặt cọc', icon: 'file-text', color: RHSColors.blue700 };
+      return { label: 'Ký hợp đồng nguyên tắc', icon: 'file-text', color: RHSColors.blue700 };
     case 'DEPOSIT_PAID':
-      return { label: 'Xem hợp đồng / kết quả', icon: 'award', color: RHSColors.green600 };
+      return { label: 'Xem hợp đồng / lịch thanh toán', icon: 'award', color: RHSColors.green600 };
     case 'LOTTERY_LOST':
-      return { label: 'Xem chi tiết', icon: 'eye', color: RHSColors.red600 };
+      return { label: 'Xem kết quả bốc thăm', icon: 'eye', color: RHSColors.red600 };
     case 'CONTRACT_SIGNED':
-      return { label: 'Lịch thanh toán', icon: 'calendar', color: RHSColors.blue700 };
+      return { label: 'Đặt cọc VNPay', icon: 'credit-card', color: RHSColors.red600 };
     case 'FULLY_PAID':
       return { label: 'Xem lịch thanh toán', icon: 'check-circle', color: RHSColors.green600 };
     case 'REJECTED':

@@ -28,7 +28,7 @@ type RouteParams = {
 };
 
 function formatDateTime(iso?: string | null): string {
-  if (!iso) return 'Chưa công bố';
+  if (!iso) return 'Chưa có';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString('vi-VN', {
@@ -91,8 +91,11 @@ export const LotteryScheduleScreen = () => {
       Alert.alert('Đăng nhập', 'Vui lòng đăng nhập để vào sảnh bốc thăm.');
       return;
     }
-    if (!schedule?.isLotteryApproved && !schedule?.lotteryDate) {
-      Alert.alert('Chưa sẵn sàng', 'Lịch bốc thăm chưa được công bố.');
+    if (!schedule?.isLotteryApproved) {
+      Alert.alert(
+        'Chưa sẵn sàng',
+        'Lịch bốc thăm chưa được Sở Xây dựng phê duyệt. Vui lòng chờ lịch chính thức.',
+      );
       return;
     }
     navigation.navigate('LotteryLobby', {
@@ -132,41 +135,51 @@ export const LotteryScheduleScreen = () => {
           <>
             <Text style={styles.projectName}>{schedule.projectName || projectName || 'Dự án'}</Text>
 
-            <View style={styles.card}>
-              <Row icon="calendar" label="Thời gian" value={formatDateTime(schedule.lotteryDate)} />
-              <Row
-                icon="map-pin"
-                label="Địa điểm / kênh"
-                value={schedule.lotteryLocation || 'Chưa công bố'}
-                onPress={schedule.lotteryLocation ? openLocation : undefined}
-              />
-              <Row
-                icon="monitor"
-                label="Hình thức"
-                value={
-                  LOTTERY_TYPE_LABEL[schedule.lotteryType ?? ''] ??
-                  schedule.lotteryType ??
-                  '—'
-                }
-              />
-              <Row
-                icon="check-circle"
-                label="Phê duyệt lịch"
-                value={
-                  schedule.isLotteryApproved
-                    ? `Đã duyệt${schedule.lotteryApprovedAt ? ` · ${formatDateTime(schedule.lotteryApprovedAt)}` : ''}`
-                    : 'Chưa duyệt / chưa công bố'
-                }
-              />
-              <Row icon="home" label="Số căn phân bổ" value={String(schedule.availableUnits)} />
-              <Row
-                icon="users"
-                label="Hồ sơ đủ điều kiện"
-                value={String(schedule.totalEligibleParticipants)}
-              />
-            </View>
+            {schedule.isLotteryApproved ? (
+              <View style={styles.card}>
+                <Row icon="calendar" label="Thời gian" value={formatDateTime(schedule.lotteryDate)} />
+                <Row
+                  icon="map-pin"
+                  label="Địa điểm / kênh"
+                  value={schedule.lotteryLocation || 'Chưa cập nhật'}
+                  onPress={schedule.lotteryLocation ? openLocation : undefined}
+                />
+                <Row
+                  icon="monitor"
+                  label="Hình thức"
+                  value={
+                    LOTTERY_TYPE_LABEL[schedule.lotteryType ?? ''] ??
+                    schedule.lotteryType ??
+                    '—'
+                  }
+                />
+                <Row
+                  icon="check-circle"
+                  label="Phê duyệt lịch"
+                  value={`Đã duyệt bởi Sở Xây dựng${
+                    schedule.lotteryApprovedAt ? ` · ${formatDateTime(schedule.lotteryApprovedAt)}` : ''
+                  }`}
+                />
+                <Row icon="home" label="Số căn phân bổ" value={String(schedule.availableUnits)} />
+                <Row
+                  icon="users"
+                  label="Hồ sơ đủ điều kiện"
+                  value={String(schedule.totalEligibleParticipants)}
+                />
+              </View>
+            ) : (
+              <View style={styles.card}>
+                <Text style={styles.desc}>
+                  Chưa có lịch bốc thăm được phê duyệt. Chủ đầu tư đề xuất lịch; Sở Xây dựng phê duyệt
+                  rồi lịch mới được công bố chính thức.
+                </Text>
+                <View style={{ marginTop: 12 }}>
+                  <Row icon="check-circle" label="Phê duyệt lịch" value="Chờ Sở Xây dựng duyệt" />
+                </View>
+              </View>
+            )}
 
-            {!!schedule.lotteryDescription && (
+            {schedule.isLotteryApproved && !!schedule.lotteryDescription && (
               <View style={styles.card}>
                 <Text style={styles.sectionTitle}>Hướng dẫn tham dự</Text>
                 <Text style={styles.desc}>{schedule.lotteryDescription}</Text>
@@ -176,15 +189,18 @@ export const LotteryScheduleScreen = () => {
             <View style={styles.hint}>
               <Feather name="info" size={16} color={RHSColors.blue700} />
               <Text style={styles.hintText}>
-                Khi đến giờ, vào sảnh chờ để tham gia. Kết quả được ghi nhận công khai; Sở Xây dựng
-                giám sát phiên bốc thăm.
+                {schedule.isLotteryApproved
+                  ? 'Khi đến giờ, vào sảnh chờ để tham gia. Kết quả do Sở Xây dựng công bố sau khi phiên kết thúc.'
+                  : 'Lịch do chủ đầu tư đề xuất chỉ có hiệu lực sau khi Sở Xây dựng phê duyệt.'}
               </Text>
             </View>
 
-            <TouchableOpacity style={styles.primaryBtn} onPress={() => void goLobby()} activeOpacity={0.9}>
-              <Feather name="radio" size={18} color="#fff" />
-              <Text style={styles.primaryText}>Vào sảnh bốc thăm</Text>
-            </TouchableOpacity>
+            {schedule.isLotteryApproved && (
+              <TouchableOpacity style={styles.primaryBtn} onPress={() => void goLobby()} activeOpacity={0.9}>
+                <Feather name="radio" size={18} color="#fff" />
+                <Text style={styles.primaryText}>Vào sảnh bốc thăm</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity style={styles.secondaryBtn} onPress={goResult} activeOpacity={0.9}>
               <Feather name="award" size={18} color={RHSColors.blue700} />

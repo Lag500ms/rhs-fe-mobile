@@ -3,36 +3,67 @@ import { View, Text, StyleSheet } from 'react-native';
 import { RHSColors, borderRadius } from '../../../lib/theme';
 import { getStatusConfig } from '../utils/statusConfig';
 
+/** Pipeline người dân: nộp → Sở → duyệt → ký HĐ → đặt cọc */
 const PIPELINE = [
-  'DRAFT',
   'SUBMITTED',
-  'REVIEWING',
   'PENDING_SXD_REVIEW',
   'APPROVED',
+  'CONTRACT_PENDING',
+  'DEPOSIT_PAID',
 ] as const;
 
+const STEP_LABEL: Record<(typeof PIPELINE)[number], string> = {
+  SUBMITTED: 'Nộp hồ sơ',
+  PENDING_SXD_REVIEW: 'Chờ Sở',
+  APPROVED: 'Đã duyệt',
+  CONTRACT_PENDING: 'Ký HĐ',
+  DEPOSIT_PAID: 'Đặt cọc',
+};
+
 const TERMINAL_FAIL = new Set(['REJECTED', 'CANCELED', 'EXPIRED', 'LOTTERY_LOST']);
-const APPROVED_ALIASES = new Set([
-  'APPROVED',
-  'APPROVED_BY_TIMEOUT',
-  'DEPOSIT_PAID',
-  'CONTRACT_PENDING',
-  'CONTRACT_SIGNED',
-  'FULLY_PAID',
-]);
 
 function resolveIndex(status: string): number {
-  if (status === 'NEED_MORE_DOCUMENTS') return 1;
-  if (APPROVED_ALIASES.has(status)) return PIPELINE.indexOf('APPROVED');
-  const idx = PIPELINE.indexOf(status as (typeof PIPELINE)[number]);
-  return idx >= 0 ? idx : 0;
+  switch (status) {
+    case 'DRAFT':
+    case 'NEED_MORE_DOCUMENTS':
+      return 0;
+    case 'SUBMITTED':
+    case 'REVIEWING':
+      return 0;
+    case 'PENDING_SXD_REVIEW':
+      return 1;
+    case 'APPROVED':
+    case 'APPROVED_BY_TIMEOUT':
+      return 2;
+    case 'CONTRACT_PENDING':
+    case 'CONTRACT_SIGNED':
+      return 3;
+    case 'DEPOSIT_PAID':
+    case 'FULLY_PAID':
+      return 4;
+    default:
+      return 0;
+  }
+}
+
+function isStepDone(status: string, stepIdx: number, currentIdx: number): boolean {
+  if (TERMINAL_FAIL.has(status)) return false;
+  if (status === 'CONTRACT_SIGNED' && stepIdx === 3) return true;
+  if (status === 'FULLY_PAID') return true;
+  return stepIdx < currentIdx;
+}
+
+function isStepActive(status: string, stepIdx: number, currentIdx: number): boolean {
+  if (TERMINAL_FAIL.has(status)) return false;
+  if (status === 'CONTRACT_SIGNED' && stepIdx === 3) return false;
+  if (status === 'CONTRACT_SIGNED' && stepIdx === 4) return true;
+  return stepIdx === currentIdx;
 }
 
 export function ApplicationTimeline({ currentStatus }: { currentStatus: string }) {
   const currentIdx = resolveIndex(currentStatus);
   const isNeedMore = currentStatus === 'NEED_MORE_DOCUMENTS';
   const isFailed = TERMINAL_FAIL.has(currentStatus);
-  const isApproved = APPROVED_ALIASES.has(currentStatus);
 
   return (
     <View style={styles.wrap}>
@@ -50,12 +81,18 @@ export function ApplicationTimeline({ currentStatus }: { currentStatus: string }
           </Text>
         </View>
       )}
+      {currentStatus === 'CONTRACT_SIGNED' && (
+        <View style={[styles.banner, styles.bannerInfo]}>
+          <Text style={styles.bannerInfoText}>
+            Đã ký hợp đồng nguyên tắc — bước tiếp theo: đặt cọc VNPay.
+          </Text>
+        </View>
+      )}
 
       <View style={styles.row}>
         {PIPELINE.map((code, idx) => {
-          const done = !isFailed && (isApproved ? true : idx < currentIdx);
-          const active = !isFailed && !isApproved && idx === currentIdx;
-          const cfg = getStatusConfig(code);
+          const done = isStepDone(currentStatus, idx, currentIdx);
+          const active = isStepActive(currentStatus, idx, currentIdx);
           return (
             <View key={code} style={styles.step}>
               <View
@@ -75,7 +112,7 @@ export function ApplicationTimeline({ currentStatus }: { currentStatus: string }
                 ]}
                 numberOfLines={2}
               >
-                {cfg.label}
+                {STEP_LABEL[code]}
               </Text>
               {idx < PIPELINE.length - 1 && (
                 <View style={[styles.line, (done || active) && styles.lineActive]} />
@@ -95,6 +132,8 @@ const styles = StyleSheet.create({
   bannerWarnText: { color: '#E65100', fontSize: 13, fontWeight: '600' },
   bannerDanger: { backgroundColor: '#FFEBEE' },
   bannerDangerText: { color: '#C62828', fontSize: 13, fontWeight: '600' },
+  bannerInfo: { backgroundColor: '#E3F2FD' },
+  bannerInfoText: { color: '#1565C0', fontSize: 13, fontWeight: '600' },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   step: { flex: 1, alignItems: 'center', position: 'relative' },
   dot: {

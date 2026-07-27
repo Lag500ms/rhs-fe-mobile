@@ -1,29 +1,30 @@
 /**
- * Fallback khớp default policy BE `DEPOSIT_PAYMENT_HOURS` (Applicant không đọc được Policy API).
- * deadline = finalDecisionDate + hours — không dùng ngày nộp/đăng ký.
+ * Helper đồng bộ policy BE `DEPOSIT_PAYMENT_HOURS`.
+ * Mốc đúng: sau khi ký HĐ (`CONTRACT_SIGNED` / SignedAt) — không dùng trên `APPROVED`.
  */
 export const DEPOSIT_PAYMENT_HOURS = 24;
 
-const APPROVED_FOR_DEPOSIT_DEADLINE = new Set(['APPROVED', 'APPROVED_BY_TIMEOUT']);
+const DEPOSIT_DEADLINE_STATUSES = new Set(['CONTRACT_SIGNED']);
 
 export function isDepositDeadlineStatus(status: string | null | undefined): boolean {
-  return !!status && APPROVED_FOR_DEPOSIT_DEADLINE.has(status);
+  return !!status && DEPOSIT_DEADLINE_STATUSES.has(status);
 }
 
-export function getDepositDeadline(finalDecisionDate: string | Date): Date {
+/** @param signedAt Mốc ký HĐ — không dùng finalDecisionDate (ngày duyệt SXD). */
+export function getDepositDeadline(signedAt: string | Date): Date {
   const d =
-    typeof finalDecisionDate === 'string'
-      ? new Date(finalDecisionDate)
-      : new Date(finalDecisionDate.getTime());
+    typeof signedAt === 'string'
+      ? new Date(signedAt)
+      : new Date(signedAt.getTime());
   d.setTime(d.getTime() + DEPOSIT_PAYMENT_HOURS * 60 * 60 * 1000);
   return d;
 }
 
 export function getDepositRemainingMs(
-  finalDecisionDate: string,
+  signedAt: string,
   nowMs = Date.now(),
 ): number {
-  return getDepositDeadline(finalDecisionDate).getTime() - nowMs;
+  return getDepositDeadline(signedAt).getTime() - nowMs;
 }
 
 export function formatDepositHhmmss(remainingMs: number): string {

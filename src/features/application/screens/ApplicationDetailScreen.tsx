@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react';
+import React, { useState, useCallback, useEffect, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -21,12 +21,6 @@ import { formatDate, formatDateTime } from '../utils/format';
 import { ApplicationTimeline } from '../components/ApplicationTimeline';
 import { paymentApi } from '../../payment/api/paymentApi';
 import { PaymentInfo } from '../../payment/types/payment';
-import {
-  DEPOSIT_PAYMENT_HOURS,
-  formatDepositHhmmss,
-  getDepositRemainingMs,
-  isDepositDeadlineStatus,
-} from '../../../lib/depositDeadline';
 
 type BottomAction = {
   label: string;
@@ -66,9 +60,6 @@ export const ApplicationDetailScreen = () => {
   const [paymentPdfUrl, setPaymentPdfUrl] = useState<string | null>(null);
   const [loadingReceipt, setLoadingReceipt] = useState(false);
   const [slotCodeCopied, setSlotCodeCopied] = useState(false);
-  const [countdown, setCountdown] = useState<string | null>(null);
-  const [isExpired, setIsExpired] = useState(false);
-  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useLayoutEffect(() => {
     const parent = navigation.getParent();
@@ -131,9 +122,7 @@ export const ApplicationDetailScreen = () => {
 
   useEffect(() => {
     if (
-      detail?.applicationStatus === 'APPROVED'
-      || detail?.applicationStatus === 'APPROVED_BY_TIMEOUT'
-      || detail?.applicationStatus === 'DEPOSIT_PAID'
+      detail?.applicationStatus === 'DEPOSIT_PAID'
       || detail?.applicationStatus === 'CONTRACT_PENDING'
       || detail?.applicationStatus === 'CONTRACT_SIGNED'
       || detail?.applicationStatus === 'FULLY_PAID'
@@ -145,47 +134,6 @@ export const ApplicationDetailScreen = () => {
       setPaymentPdfUrl(null);
     }
   }, [detail?.applicationStatus, detail?.applicationId, checkExistingPayment]);
-
-  const clearCountdown = useCallback(() => {
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-      countdownIntervalRef.current = null;
-    }
-    setCountdown(null);
-    setIsExpired(false);
-  }, []);
-
-  const startCountdown = useCallback((finalDecisionDate: string) => {
-    clearCountdown();
-    const update = () => {
-      const diff = getDepositRemainingMs(finalDecisionDate);
-      if (diff <= 0) {
-        setCountdown(formatDepositHhmmss(0));
-        setIsExpired(true);
-        if (countdownIntervalRef.current) {
-          clearInterval(countdownIntervalRef.current);
-          countdownIntervalRef.current = null;
-        }
-        return;
-      }
-      setIsExpired(false);
-      setCountdown(formatDepositHhmmss(diff));
-    };
-    update();
-    countdownIntervalRef.current = setInterval(update, 1000);
-  }, [clearCountdown]);
-
-  useEffect(() => {
-    if (
-      isDepositDeadlineStatus(detail?.applicationStatus) &&
-      detail?.finalDecisionDate
-    ) {
-      startCountdown(detail.finalDecisionDate);
-    } else {
-      clearCountdown();
-    }
-    return () => clearCountdown();
-  }, [detail?.applicationStatus, detail?.finalDecisionDate, startCountdown, clearCountdown]);
 
   const handleStartPayment = useCallback(async () => {
     if (!detail) return;
@@ -230,13 +178,19 @@ export const ApplicationDetailScreen = () => {
     const appId = detail?.applicationId;
     const name = detail?.projectName;
     const status = detail?.applicationStatus;
-    const hasContract = !!paymentPdfUrl || !!paymentSlotCode || status === 'DEPOSIT_PAID'
-      || status === 'CONTRACT_SIGNED' || status === 'FULLY_PAID';
+    // HĐ nguyên tắc có từ CONTRACT_PENDING (ưu tiên / trúng bốc thăm).
+    const hasContract =
+      status === 'CONTRACT_PENDING' ||
+      status === 'CONTRACT_SIGNED' ||
+      status === 'DEPOSIT_PAID' ||
+      status === 'FULLY_PAID' ||
+      !!paymentPdfUrl ||
+      !!paymentSlotCode;
     if (appId && hasContract) {
       navigation.navigate('ContractViewer', {
         applicationId: appId,
         title: name ? `Hợp đồng - ${name}` : 'Hợp đồng nguyên tắc',
-        canSign: status === 'DEPOSIT_PAID' || status === 'FULLY_PAID' || status === 'CONTRACT_PENDING' || status === 'APPROVED',
+        canSign: status === 'CONTRACT_PENDING',
       });
     } else {
       Alert.alert('Không có hợp đồng', 'Hợp đồng chưa được tạo. Vui lòng thử lại sau.');
@@ -361,11 +315,13 @@ export const ApplicationDetailScreen = () => {
       });
     };
 
-    // BE: đặt cọc chỉ khi CONTRACT_SIGNED (đã ký HĐ nguyên tắc). APPROVED ≠ được thanh toán.
+    // Luồng chuẩn:
+    // APPROVED → (ưu tiên/đủ căn: CĐT → CONTRACT_PENDING) | (vượt căn: bốc thăm → trúng → CONTRACT_PENDING)
+    // → ký HĐ → CONTRACT_SIGNED → VNPay → DEPOSIT_PAID
     if (status === 'APPROVED' || status === 'APPROVED_BY_TIMEOUT') {
       return [
         {
-          label: 'Lịch / sảnh bốc thăm',
+          label: 'Xem lịch / sảnh bốc thăm',
           icon: 'radio',
           onPress: goLottery,
           variant: 'primary',
@@ -393,55 +349,6 @@ export const ApplicationDetailScreen = () => {
             onPress: handleViewContract,
             variant: 'primary',
           },
-        ];
-      }
-      if (!isExpired) {
-        const isPending = existingPayment?.status === 'Pending';
-        return [
-          {
-            label: isPending ? 'Tiếp tục thanh toán' : 'Đặt cọc VNPay',
-            icon: 'credit-card',
-            onPress: handleStartPayment,
-            variant: 'destructive',
-            loading: processingPayment || checkingPayment,
-            disabled: processingPayment || checkingPayment,
-          },
-          {
-            label: 'Xem hợp đồng nguyên tắc',
-            icon: 'file-text',
-            onPress: handleViewContract,
-            variant: 'secondary',
-          },
-        ];
-      }
-    }
-
-    if (status === 'DEPOSIT_PAID') {
-      const lr = detail.lotteryResult;
-      if (lr === 'LOST') {
-        return [
-          {
-            label: 'Xem kết quả bốc thăm',
-            icon: 'award',
-            onPress: () =>
-              navigation.navigate('LotteryResult', {
-                projectId: detail.projectId,
-                projectName: detail.projectName,
-                applicationId: detail.applicationId,
-              }),
-            variant: 'secondary',
-          },
-        ];
-      }
-      if (lr === 'WON' || lr === 'PRIORITY_WON') {
-        return [
-          {
-            label: 'Xem & ký hợp đồng',
-            icon: 'file-text',
-            onPress: handleViewContract,
-            variant: 'primary',
-            disabled: checkingPayment,
-          },
           {
             label: 'Lịch thanh toán',
             icon: 'calendar',
@@ -450,21 +357,56 @@ export const ApplicationDetailScreen = () => {
           },
         ];
       }
+      const isPending = existingPayment?.status === 'Pending';
       return [
         {
-          label: 'Vào sảnh bốc thăm',
-          icon: 'radio',
-          onPress: goLottery,
+          label: isPending ? 'Tiếp tục đặt cọc VNPay' : 'Đặt cọc VNPay',
+          icon: 'credit-card',
+          onPress: handleStartPayment,
+          variant: 'destructive',
+          loading: processingPayment || checkingPayment,
+          disabled: processingPayment || checkingPayment,
+        },
+        {
+          label: 'Xem hợp đồng nguyên tắc',
+          icon: 'file-text',
+          onPress: handleViewContract,
+          variant: 'secondary',
+        },
+      ];
+    }
+
+    if (status === 'DEPOSIT_PAID') {
+      const actions: BottomAction[] = [
+        {
+          label: 'Lịch thanh toán',
+          icon: 'calendar',
+          onPress: handlePaymentSchedule,
           variant: 'primary',
         },
         {
-          label: 'Xem hợp đồng tạm',
+          label: 'Xem hợp đồng',
           icon: 'file-text',
           onPress: handleViewContract,
           variant: 'secondary',
           disabled: checkingPayment,
         },
       ];
+      const lr = detail.lotteryResult;
+      if (lr === 'WON' || lr === 'PRIORITY_WON' || lr === 'LOST') {
+        actions.push({
+          label: 'Xem kết quả bốc thăm',
+          icon: 'award',
+          onPress: () =>
+            navigation.navigate('LotteryResult', {
+              projectId: detail.projectId,
+              projectName: detail.projectName,
+              applicationId: detail.applicationId,
+            }),
+          variant: 'secondary',
+        });
+      }
+      return actions;
     }
 
     if (status === 'LOTTERY_LOST') {
@@ -483,7 +425,7 @@ export const ApplicationDetailScreen = () => {
       ];
     }
 
-    if (status === 'CONTRACT_SIGNED' || status === 'FULLY_PAID') {
+    if (status === 'FULLY_PAID') {
       return [
         {
           label: 'Lịch thanh toán',
@@ -686,32 +628,17 @@ export const ApplicationDetailScreen = () => {
               </View>
             )}
 
-            {isDepositDeadlineStatus(detail.applicationStatus) && (
-              <ApprovedPaymentContent
-                existingPayment={existingPayment}
-                paymentSlotCode={paymentSlotCode}
-                checkingPayment={checkingPayment}
-                countdown={countdown}
-                isExpired={isExpired}
-                slotCodeCopied={slotCodeCopied}
-                onCopySlotCode={handleCopySlotCode}
-                finalDecisionDate={detail.finalDecisionDate}
-              />
-            )}
-
             {(detail.applicationStatus === 'APPROVED' ||
-              detail.applicationStatus === 'APPROVED_BY_TIMEOUT' ||
-              detail.applicationStatus === 'DEPOSIT_PAID' ||
-              detail.applicationStatus === 'CONTRACT_PENDING') && (
+              detail.applicationStatus === 'APPROVED_BY_TIMEOUT') && (
               <View style={styles.lotteryInfoCard}>
                 <View style={styles.lotteryInfoHead}>
-                  <Feather name="radio" size={18} color={RHSColors.blue700} />
-                  <Text style={styles.lotteryInfoTitle}>Bốc thăm công khai</Text>
+                  <Feather name="info" size={18} color={RHSColors.blue700} />
+                  <Text style={styles.lotteryInfoTitle}>Bước tiếp theo sau duyệt</Text>
                 </View>
                 <Text style={styles.lotteryInfoText}>
-                  {detail.lotteryResult
-                    ? `Kết quả của bạn: ${detail.lotteryResult}`
-                    : 'Xem lịch, địa điểm/kênh và vào sảnh chờ khi đến giờ. Sở Xây dựng giám sát phiên bốc thăm.'}
+                  Chủ đầu tư sẽ chốt danh sách: đối tượng ưu tiên / đủ căn → chuyển ký hợp đồng
+                  nguyên tắc (không bốc thăm). Nếu vượt số căn, bạn tham gia bốc thăm công khai —
+                  chỉ người trúng mới được ký HĐ rồi đặt cọc.
                 </Text>
                 <TouchableOpacity
                   style={styles.lotteryInfoBtn}
@@ -722,10 +649,32 @@ export const ApplicationDetailScreen = () => {
                       applicationId: detail.applicationId,
                     })
                   }
+                  activeOpacity={0.85}
                 >
-                  <Text style={styles.lotteryInfoBtnText}>Mở lịch & sảnh bốc thăm</Text>
+                  <Text style={styles.lotteryInfoBtnText}>Xem lịch / sảnh bốc thăm</Text>
                 </TouchableOpacity>
               </View>
+            )}
+
+            {detail.applicationStatus === 'CONTRACT_PENDING' && (
+              <View style={styles.lotteryInfoCard}>
+                <View style={styles.lotteryInfoHead}>
+                  <Feather name="file-text" size={18} color={RHSColors.blue700} />
+                  <Text style={styles.lotteryInfoTitle}>Chờ ký hợp đồng nguyên tắc</Text>
+                </View>
+                <Text style={styles.lotteryInfoText}>
+                  {detail.lotteryResult === 'WON' || detail.lotteryResult === 'PRIORITY_WON'
+                    ? 'Bạn đã được chốt suất (trúng bốc thăm / ưu tiên). Vui lòng xem và ký hợp đồng nguyên tắc, sau đó mới đặt cọc VNPay.'
+                    : 'Hồ sơ đã được chốt danh sách. Vui lòng xem và ký hợp đồng nguyên tắc, sau đó mới đặt cọc VNPay.'}
+                </Text>
+              </View>
+            )}
+
+            {detail.applicationStatus === 'CONTRACT_SIGNED' && (
+              <ContractSignedPaymentContent
+                existingPayment={existingPayment}
+                checkingPayment={checkingPayment}
+              />
             )}
 
             {detail.applicationStatus === 'DEPOSIT_PAID' && (
@@ -738,14 +687,41 @@ export const ApplicationDetailScreen = () => {
               />
             )}
 
+            {detail.applicationStatus === 'LOTTERY_LOST' && (
+              <View style={[styles.lotteryInfoCard, { borderColor: RHSColors.red50 }]}>
+                <View style={styles.lotteryInfoHead}>
+                  <Feather name="x-circle" size={18} color={RHSColors.red600} />
+                  <Text style={[styles.lotteryInfoTitle, { color: RHSColors.red600 }]}>
+                    Không trúng bốc thăm
+                  </Text>
+                </View>
+                <Text style={styles.lotteryInfoText}>
+                  Rất tiếc, hồ sơ của bạn không được chọn trong đợt bốc thăm này.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.lotteryInfoBtn, { backgroundColor: RHSColors.red600 }]}
+                  onPress={() =>
+                    navigation.navigate('LotteryResult', {
+                      projectId: detail.projectId,
+                      projectName: detail.projectName,
+                      applicationId: detail.applicationId,
+                    })
+                  }
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.lotteryInfoBtnText}>Xem kết quả bốc thăm</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             {detail.applicationStatus === 'EXPIRED' && (
               <View style={styles.expiredSection}>
                 <View style={styles.expiredBadge}>
                   <Feather name="alert-triangle" size={18} color={RHSColors.red600} />
-                  <Text style={styles.expiredTitle}>Hồ sơ đã bị hủy</Text>
+                  <Text style={styles.expiredTitle}>Hồ sơ đã hết hạn</Text>
                 </View>
                 <Text style={styles.expiredDescription}>
-                  Hồ sơ đã bị hủy do quá hạn thanh toán tiền đặt cọc. Vui lòng tạo hồ sơ mới để tiếp tục đăng ký.
+                  Hồ sơ đã hết hạn theo mốc sau duyệt. Vui lòng tạo hồ sơ mới nếu muốn tiếp tục đăng ký.
                 </Text>
               </View>
             )}
@@ -797,111 +773,50 @@ export const ApplicationDetailScreen = () => {
   );
 };
 
-const ApprovedPaymentContent = ({
+const ContractSignedPaymentContent = ({
   existingPayment,
-  paymentSlotCode,
   checkingPayment,
-  countdown,
-  isExpired,
-  slotCodeCopied,
-  onCopySlotCode,
-  finalDecisionDate,
 }: {
   existingPayment: PaymentInfo | null;
-  paymentSlotCode: string | null;
   checkingPayment: boolean;
-  countdown: string | null;
-  isExpired: boolean;
-  slotCodeCopied: boolean;
-  onCopySlotCode: (code: string) => void;
-  finalDecisionDate: string | null;
 }) => {
   if (existingPayment?.status === 'Success') {
     return (
       <View style={styles.depositPaidSection}>
         <View style={styles.depositPaidBadge}>
           <Feather name="check-circle" size={16} color={RHSColors.green600} />
-          <Text style={styles.depositPaidText}>Đã thanh toán thành công</Text>
+          <Text style={styles.depositPaidText}>Đã đặt cọc thành công</Text>
         </View>
-        {paymentSlotCode && (
-          <SlotCodeCard
-            code={paymentSlotCode}
-            copied={slotCodeCopied}
-            onCopy={onCopySlotCode}
-          />
-        )}
+      </View>
+    );
+  }
+
+  if (checkingPayment) {
+    return (
+      <View style={styles.paymentSection}>
+        <ActivityIndicator size="small" color={RHSColors.blue700} />
       </View>
     );
   }
 
   return (
-    <>
-      {countdown && (
-        <View style={[styles.countdownSection, isExpired && styles.countdownExpired]}>
-          <View style={styles.countdownHeader}>
-            <Feather
-              name={isExpired ? 'alert-triangle' : 'clock'}
-              size={18}
-              color={isExpired ? RHSColors.red600 : RHSColors.govGoldDark}
-            />
-            <Text style={[styles.countdownTitle, isExpired && { color: RHSColors.red600 }]}>
-              {isExpired
-                ? 'Đã quá hạn theo mốc duyệt'
-                : `Thời hạn sau duyệt (${DEPOSIT_PAYMENT_HOURS}h)`}
-            </Text>
-          </View>
-          <Text style={[styles.countdownValue, isExpired && { color: RHSColors.red600 }]}>
-            {countdown}
-          </Text>
-          {!isExpired && (
-            <Text style={styles.countdownLabel}>
-              Tính từ thời điểm duyệt
-              {finalDecisionDate ? ` (${formatDateTime(finalDecisionDate)})` : ''}.
-              Tiếp tục bốc thăm / ký HĐ / đặt cọc trước khi hệ thống hết hạn hồ sơ.
-            </Text>
-          )}
-        </View>
-      )}
-
-      {isExpired ? (
-        <View style={styles.paymentSection}>
-          <View style={[styles.waitingPaymentBadge, { justifyContent: 'center' }]}>
-            <Feather name="x-circle" size={18} color={RHSColors.red600} />
-            <Text style={[styles.waitingPaymentText, { color: RHSColors.red600 }]}>
-              Đã quá hạn theo mốc duyệt
-            </Text>
-          </View>
-          <Text style={styles.depositInfoText}>
-            Đã hết {DEPOSIT_PAYMENT_HOURS} giờ kể từ lúc duyệt. Kéo xuống làm mới để xem trạng thái
-            mới nhất từ hệ thống.
-          </Text>
-        </View>
-      ) : existingPayment?.status === 'Pending' ? (
-        <View style={styles.paymentSection}>
-          <View style={styles.waitingPaymentBadge}>
-            <Feather name="alert-circle" size={16} color={RHSColors.amber700} />
-            <Text style={styles.waitingPaymentText}>Đã có giao dịch đang chờ</Text>
-          </View>
-          <Text style={styles.depositInfoText}>
-            Bạn đã có một giao dịch đang chờ. Nhấn «Tiếp tục thanh toán» để mở lại cổng VNPay.
-          </Text>
-        </View>
-      ) : checkingPayment ? (
-        <View style={styles.paymentSection}>
-          <ActivityIndicator size="small" color={RHSColors.blue700} />
-        </View>
-      ) : (
-        <View style={styles.paymentSection}>
-          <View style={styles.waitingPaymentBadge}>
-            <Feather name="clock" size={16} color={RHSColors.govGoldDark} />
-            <Text style={styles.waitingPaymentText}>Đang chờ thanh toán</Text>
-          </View>
-          <Text style={styles.depositInfoText}>
-            Hồ sơ của bạn đã được duyệt. Vui lòng đặt cọc để đủ điều kiện tham gia bốc thăm.
-          </Text>
-        </View>
-      )}
-    </>
+    <View style={styles.paymentSection}>
+      <View style={styles.waitingPaymentBadge}>
+        <Feather
+          name={existingPayment?.status === 'Pending' ? 'alert-circle' : 'credit-card'}
+          size={16}
+          color={existingPayment?.status === 'Pending' ? RHSColors.amber700 : RHSColors.govGoldDark}
+        />
+        <Text style={styles.waitingPaymentText}>
+          {existingPayment?.status === 'Pending' ? 'Đã có giao dịch đang chờ' : 'Cần đặt cọc VNPay'}
+        </Text>
+      </View>
+      <Text style={styles.depositInfoText}>
+        {existingPayment?.status === 'Pending'
+          ? 'Bạn đã có giao dịch đang chờ. Nhấn «Tiếp tục đặt cọc VNPay» để mở lại cổng thanh toán.'
+          : 'Bạn đã ký hợp đồng nguyên tắc. Vui lòng đặt cọc qua VNPay để hoàn tất bước này.'}
+      </Text>
+    </View>
   );
 };
 
@@ -934,10 +849,8 @@ const DepositPaidContent = ({
 
     <Text style={styles.readyForLotteryText}>
       {detail.lotteryResult === 'WON' || detail.lotteryResult === 'PRIORITY_WON'
-        ? 'Chúc mừng! Bạn đã trúng suất nhà ở xã hội.'
-        : detail.lotteryResult === 'LOST'
-          ? 'Rất tiếc, bạn chưa trúng trong đợt bốc thăm này.'
-          : 'Bạn đã hoàn tất đặt cọc. Hãy chờ ngày bốc thăm để nhận kết quả.'}
+        ? 'Bạn đã hoàn tất đặt cọc sau khi được chốt suất. Tiếp tục theo dõi lịch thanh toán các đợt tiếp theo.'
+        : 'Bạn đã hoàn tất đặt cọc. Tiếp tục theo dõi lịch thanh toán các đợt tiếp theo.'}
     </Text>
 
     {(detail.lotteryResult === 'WON' ||
@@ -945,7 +858,7 @@ const DepositPaidContent = ({
       detail.lotteryResult === 'LOST') && (
       <View style={styles.lotteryResultCard}>
         <Text style={styles.lotteryResultText}>
-          Kết quả:{' '}
+          Kết quả bốc thăm:{' '}
           {detail.lotteryResult === 'PRIORITY_WON'
             ? 'Trúng (ưu tiên)'
             : detail.lotteryResult === 'WON'
@@ -983,7 +896,7 @@ const SlotCodeCard = ({
   <View style={styles.slotCodeCard}>
     <View style={styles.slotCodeCardHeader}>
       <Feather name="award" size={18} color={RHSColors.govGold} />
-      <Text style={styles.slotCodeCardTitle}>Mã số bốc thăm</Text>
+      <Text style={styles.slotCodeCardTitle}>Mã suất nhà</Text>
     </View>
     <View style={styles.slotCodeContainer}>
       <Text style={styles.slotCodeText}>{code}</Text>
@@ -1168,28 +1081,6 @@ const styles = StyleSheet.create({
   eligibilityBlock: { marginTop: spacing.xs },
   eligibilityTitle: { fontWeight: '600', marginBottom: 4, color: RHSColors.text },
   eligibilityReason: { ...typography.caption, color: RHSColors.textMuted, marginBottom: 2 },
-
-  countdownSection: {
-    marginBottom: spacing.lg,
-    padding: spacing.lg,
-    backgroundColor: RHSColors.amber50,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: RHSColors.govGold,
-    alignItems: 'center',
-    gap: 6,
-  },
-  countdownExpired: { backgroundColor: RHSColors.red50, borderColor: RHSColors.red400 },
-  countdownHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  countdownTitle: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.govGoldDark },
-  countdownValue: {
-    fontSize: 36,
-    fontWeight: '900',
-    color: RHSColors.govGoldDark,
-    fontVariant: ['tabular-nums'],
-    letterSpacing: 2,
-  },
-  countdownLabel: { ...typography.caption, color: RHSColors.textMuted },
 
   slotCodeCard: {
     backgroundColor: RHSColors.white,

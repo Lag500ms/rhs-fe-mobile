@@ -1,16 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { RHSColors, borderRadius, shadows, spacing, typography } from '../../../lib/theme';
 import { ApplicationSummary } from '../types/application';
 import { getStatusConfig, getActionForStatus } from '../utils/statusConfig';
 import { formatDate } from '../utils/format';
-import {
-  DEPOSIT_PAYMENT_HOURS,
-  formatDepositHhmmss,
-  getDepositRemainingMs,
-  isDepositDeadlineStatus,
-} from '../../../lib/depositDeadline';
 
 interface ApplicationCardProps {
   item: ApplicationSummary;
@@ -20,30 +14,6 @@ interface ApplicationCardProps {
 export const ApplicationCard: React.FC<ApplicationCardProps> = ({ item, onPress }) => {
   const config = getStatusConfig(item.applicationStatus);
   const action = getActionForStatus(item.applicationStatus);
-  const showDepositDeadline =
-    isDepositDeadlineStatus(item.applicationStatus) && !!item.finalDecisionDate;
-  const [depositLabel, setDepositLabel] = useState<string | null>(null);
-  const [depositOverdue, setDepositOverdue] = useState(false);
-
-  useEffect(() => {
-    if (!showDepositDeadline || !item.finalDecisionDate) {
-      setDepositLabel(null);
-      setDepositOverdue(false);
-      return;
-    }
-    const tick = () => {
-      const diff = getDepositRemainingMs(item.finalDecisionDate!);
-      setDepositOverdue(diff <= 0);
-      setDepositLabel(
-        diff <= 0
-          ? `Đã quá hạn (${DEPOSIT_PAYMENT_HOURS}h từ duyệt)`
-          : `Còn ${formatDepositHhmmss(diff)} (hạn ${DEPOSIT_PAYMENT_HOURS}h từ duyệt)`,
-      );
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [showDepositDeadline, item.finalDecisionDate]);
 
   return (
     <TouchableOpacity
@@ -77,35 +47,15 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({ item, onPress 
           <Feather name="file-text" size={14} color={RHSColors.textMuted} />
           <Text style={styles.cardRowText}>{item.documentCount} giấy tờ</Text>
         </View>
-        {depositLabel && (
-          <View style={styles.cardRow}>
-            <Feather
-              name={depositOverdue ? 'alert-triangle' : 'clock'}
-              size={14}
-              color={depositOverdue ? RHSColors.red600 : RHSColors.amber700}
-            />
-            <Text
-              style={[
-                styles.cardRowText,
-                {
-                  color: depositOverdue ? RHSColors.red600 : RHSColors.amber700,
-                  fontWeight: '600',
-                },
-              ]}
-            >
-              {depositLabel}
-            </Text>
-          </View>
-        )}
       </View>
 
       {action && (
         <View style={styles.cardFooter}>
-          <View style={styles.actionBtn}>
-            <Feather name={action.icon as any} size={15} color={action.color} />
-            <Text style={[styles.actionBtnText, { color: action.color }]}>{action.label}</Text>
+          <View style={[styles.actionChip, { backgroundColor: action.color + '14' }]}>
+            <Feather name={action.icon as any} size={13} color={action.color} />
+            <Text style={[styles.actionChipText, { color: action.color }]}>{action.label}</Text>
           </View>
-          <Feather name="chevron-right" size={18} color={RHSColors.textMuted} />
+          <Feather name="chevron-right" size={18} color={RHSColors.grey400} />
         </View>
       )}
     </TouchableOpacity>
@@ -114,9 +64,9 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({ item, onPress 
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: RHSColors.surfaceCard,
+    backgroundColor: '#fff',
     borderRadius: borderRadius.lg,
-    padding: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: RHSColors.border,
@@ -186,7 +136,8 @@ const styles = StyleSheet.create({
   },
   cardRowText: {
     ...typography.caption,
-    color: RHSColors.textSecondary,
+    color: RHSColors.textMuted,
+    flex: 1,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -194,15 +145,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderTopWidth: 1,
     borderTopColor: RHSColors.grey100,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
   },
-  actionBtn: {
+  actionChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: borderRadius.sm,
+    flexShrink: 1,
   },
-  actionBtnText: {
-    ...typography.bodySmall,
-    fontWeight: '600',
+  actionChipText: {
+    ...typography.caption,
+    fontWeight: '700',
+    flexShrink: 1,
   },
 });

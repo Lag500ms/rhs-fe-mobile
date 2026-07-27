@@ -28,6 +28,8 @@ import { wishlistApi } from '../../saved/api/wishlistApi';
 import { ensureEkycForApplication } from '../../user/utils/ekycGate';
 import { housingApplicationApi } from '../../application/api/housingApplicationApi';
 import { WishlistHeart } from '../../../components/WishlistHeart';
+import { lotteryApi } from '../../lottery/api/lotteryApi';
+import type { LotteryScheduleDetail } from '../../lottery/types/lottery';
 
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -46,17 +48,33 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [suggestedProjects, setSuggestedProjects] = useState<HousingProjectResponse[]>([]);
   const [loadingSuggested, setLoadingSuggested] = useState(false);
+  const [lotterySchedule, setLotterySchedule] = useState<LotteryScheduleDetail | null>(null);
+  const [loadingLottery, setLoadingLottery] = useState(true);
 
   const fullAddress = [project.street, project.ward, project.district, project.province].filter(Boolean).join(', ');
   const sortedImages = project.images?.length
     ? [...project.images].sort((a, b) => a.displayOrder - b.displayOrder)
     : [];
+  const lotteryApproved = lotterySchedule?.isLotteryApproved === true;
 
   useEffect(() => {
     geocodeAddress(fullAddress);
     checkWishlist();
     fetchSuggestedProjects();
+    fetchLotterySchedule();
   }, []);
+
+  const fetchLotterySchedule = async () => {
+    setLoadingLottery(true);
+    try {
+      const data = await lotteryApi.getSchedule(project.id);
+      setLotterySchedule(data);
+    } catch {
+      setLotterySchedule(null);
+    } finally {
+      setLoadingLottery(false);
+    }
+  };
 
   const fetchSuggestedProjects = async () => {
     if (!project.ward) return;
@@ -304,20 +322,22 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           )}
         </View>
 
-        {/* Lịch bốc thăm công khai */}
+        {/* Lịch bốc thăm — chỉ hiện khi Sở đã phê duyệt lịch */}
         <View style={styles.card}>
           <View style={styles.sectionHead}>
             <Feather name="calendar" size={16} color={RHSColors.blue700}/>
             <Text style={styles.sectionTitle}>Bốc thăm / phân suất</Text>
           </View>
-          {project.lotteryDate ? (
+          {loadingLottery ? (
+            <ActivityIndicator size="small" color={RHSColors.blue700} />
+          ) : lotteryApproved && lotterySchedule?.lotteryDate ? (
             <>
               <Text style={styles.desc}>
-                Thời gian: {new Date(project.lotteryDate).toLocaleString('vi-VN')}
+                Thời gian: {new Date(lotterySchedule.lotteryDate).toLocaleString('vi-VN')}
               </Text>
-              {!!project.lotteryLocation && (
+              {!!lotterySchedule.lotteryLocation && (
                 <Text style={[styles.desc, { marginTop: 6 }]}>
-                  Địa điểm / kênh: {project.lotteryLocation}
+                  Địa điểm / kênh: {lotterySchedule.lotteryLocation}
                 </Text>
               )}
               <TouchableOpacity
@@ -336,7 +356,8 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
             </>
           ) : (
             <Text style={styles.desc}>
-              Chưa công bố lịch bốc thăm. Khi số hồ sơ vượt số căn, chủ đầu tư sẽ lên lịch và thông báo.
+              Chưa có lịch bốc thăm được phê duyệt. Khi số hồ sơ vượt số căn, chủ đầu tư đề xuất lịch;
+              Sở Xây dựng phê duyệt rồi lịch mới được công bố chính thức.
             </Text>
           )}
         </View>
