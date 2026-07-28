@@ -313,24 +313,21 @@ export const ApplicationDetailScreen = () => {
       }];
     }
 
-    const goLottery = () => {
-      navigation.navigate('LotterySchedule', {
-        projectId: detail.projectId,
-        projectName: detail.projectName,
-        applicationId: detail.applicationId,
-      });
-    };
-
-    // APPROVED: chờ CĐT chốt — chỉ xem lịch nếu Sở đã công bố (màn lịch tự gate)
+    // APPROVED: chờ CĐT chốt — không đẩy CTA bốc thăm (chỉ khi vượt căn mới có lịch)
     if (status === 'APPROVED' || status === 'APPROVED_BY_TIMEOUT') {
-      return [
-        {
-          label: 'Theo dõi lịch bốc thăm',
-          icon: 'calendar',
-          onPress: goLottery,
-          variant: 'secondary',
-        },
-      ];
+      if (detail.receiptUrl) {
+        return [
+          {
+            label: loadingReceipt ? 'Đang tải...' : 'Xem biên nhận',
+            icon: 'file-text',
+            onPress: handleViewReceipt,
+            variant: 'secondary',
+            loading: loadingReceipt,
+            disabled: loadingReceipt,
+          },
+        ];
+      }
+      return [];
     }
 
     if (status === 'CONTRACT_PENDING') {
@@ -506,15 +503,27 @@ export const ApplicationDetailScreen = () => {
     return [];
   };
 
-  const WITHDRAWABLE_STATUSES = ['SUBMITTED', 'REVIEWING', 'PENDING_SXD_REVIEW', 'NEED_MORE_DOCUMENTS'];
+  // Khớp BE ClosedStatuses: còn lại thì applicant được hủy (release căn nếu đang giữ suất).
+  const CLOSED_FOR_CANCEL = [
+    'DEPOSIT_PAID',
+    'FULLY_PAID',
+    'CONTRACT_SIGNED',
+    'REJECTED',
+    'CANCELED',
+    'EXPIRED',
+  ];
 
   const getBottomActions = (): BottomAction[] => {
     const actions = getStatusActions();
-    if (detail && WITHDRAWABLE_STATUSES.includes(detail.applicationStatus)) {
+    if (
+      detail &&
+      !CLOSED_FOR_CANCEL.includes(detail.applicationStatus) &&
+      detail.applicationStatus !== 'DRAFT'
+    ) {
       return [
         ...actions,
         {
-          label: 'Rút hồ sơ',
+          label: 'Hủy hồ sơ',
           icon: 'x-octagon',
           onPress: handleWithdraw,
           variant: 'secondary',
@@ -649,12 +658,12 @@ export const ApplicationDetailScreen = () => {
                   <Text style={styles.lotteryInfoTitle}>Đã duyệt — chờ Chủ đầu tư chốt</Text>
                 </View>
                 <Text style={styles.lotteryInfoText}>
-                  Sở đã phê duyệt hồ sơ. Bước tiếp theo do Chủ đầu tư: đủ căn / ưu tiên → chuyển ký
-                  hợp đồng mua bán NOXH; vượt số căn → đề xuất lịch bốc thăm ONLINE, Sở duyệt rồi mới
-                  có giờ chính thức. Chưa đến bước thanh toán Đợt 1.
+                  Sở đã phê duyệt hồ sơ. Bạn đang chờ Chủ đầu tư chốt danh sách: đủ căn → cấp căn và
+                  ký hợp đồng; chỉ khi số hồ sơ vượt số căn thì phần còn lại mới tham gia bốc thăm
+                  (lịch do CĐT đề xuất, Sở duyệt rồi mới công bố). Chưa đến bước thanh toán Đợt 1.
                 </Text>
                 <TouchableOpacity
-                  style={[styles.lotteryInfoBtn, { backgroundColor: RHSColors.blue700 }]}
+                  style={[styles.lotteryInfoBtn, { backgroundColor: RHSColors.grey100 }]}
                   onPress={() =>
                     navigation.navigate('LotterySchedule', {
                       projectId: detail.projectId,
@@ -664,7 +673,9 @@ export const ApplicationDetailScreen = () => {
                   }
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.lotteryInfoBtnText}>Theo dõi lịch (nếu đã công bố)</Text>
+                  <Text style={[styles.lotteryInfoBtnText, { color: RHSColors.blue700 }]}>
+                    Xem lịch bốc thăm (nếu dự án đã mở)
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}

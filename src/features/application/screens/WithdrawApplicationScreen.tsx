@@ -50,12 +50,12 @@ export const WithdrawApplicationScreen = () => {
     try {
       await housingApplicationApi.cancelApplication(applicationId, finalReason);
       Alert.alert(
-        'Đã rút hồ sơ',
-        'Hồ sơ của bạn đã được rút thành công.',
+        'Đã hủy hồ sơ',
+        'Hồ sơ của bạn đã được hủy thành công.',
         [{ text: 'OK', onPress: () => navigation.goBack() }],
       );
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Không thể rút hồ sơ. Vui lòng thử lại.';
+      const msg = e?.response?.data?.message || e?.message || 'Không thể hủy hồ sơ. Vui lòng thử lại.';
       Alert.alert('Lỗi', msg);
     } finally {
       setSubmitting(false);
@@ -65,18 +65,18 @@ export const WithdrawApplicationScreen = () => {
   const handleConfirm = () => {
     if (!canSubmit) return;
     Alert.alert(
-      'Xác nhận rút hồ sơ',
-      'Sau khi rút, hồ sơ sẽ chuyển sang trạng thái "Đã hủy" và không thể tiếp tục. Bạn có chắc chắn?',
+      'Xác nhận hủy hồ sơ',
+      'Sau khi hủy, hồ sơ sẽ chuyển sang trạng thái "Đã hủy" và không thể tiếp tục. Nếu đang giữ suất/căn, hệ thống sẽ hoàn lại. Bạn có chắc chắn?',
       [
         { text: 'Không', style: 'cancel' },
-        { text: 'Rút hồ sơ', style: 'destructive', onPress: doWithdraw },
+        { text: 'Hủy hồ sơ', style: 'destructive', onPress: doWithdraw },
       ],
     );
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScreenHeader title="Rút hồ sơ" isWhite />
+      <ScreenHeader title="Hủy hồ sơ" isWhite />
 
       <ScrollView
         style={styles.scroll}
@@ -87,12 +87,12 @@ export const WithdrawApplicationScreen = () => {
         <View style={styles.warnCard}>
           <Feather name="alert-triangle" size={18} color={RHSColors.red600} />
           <Text style={styles.warnText}>
-            Bạn đang yêu cầu rút hồ sơ
+            Bạn đang yêu cầu hủy hồ sơ
             {projectName ? ` cho dự án "${projectName}"` : ''}. Thao tác này không thể hoàn tác.
           </Text>
         </View>
 
-        <Text style={styles.sectionTitle}>Lý do rút hồ sơ</Text>
+        <Text style={styles.sectionTitle}>Lý do hủy hồ sơ</Text>
 
         {REASONS.map((reason, index) => {
           const active = selected === index;
@@ -136,7 +136,7 @@ export const WithdrawApplicationScreen = () => {
           ) : (
             <Feather name="x-octagon" size={18} color="#fff" />
           )}
-          <Text style={styles.submitBtnText}>Xác nhận rút hồ sơ</Text>
+          <Text style={styles.submitBtnText}>Xác nhận hủy hồ sơ</Text>
         </TouchableOpacity>
       </SafeAreaView>
     </SafeAreaView>
