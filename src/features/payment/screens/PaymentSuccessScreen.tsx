@@ -90,7 +90,7 @@ export const PaymentSuccessScreen = () => {
           </View>
           <Text style={styles.heroTitle}>Thanh toán thành công!</Text>
           <Text style={styles.heroSubtitle}>
-            Bạn đã hoàn tất đặt cọc cho dự án {projectName}
+            Bạn đã hoàn tất thanh toán Đợt 1 cho dự án {projectName}
           </Text>
         </View>
 
@@ -183,7 +183,7 @@ export const PaymentSuccessScreen = () => {
             <View style={styles.contractBtnContent}>
               <Text style={styles.contractBtnTitle}>Xem hợp đồng nguyên tắc</Text>
               <Text style={styles.contractBtnDesc}>
-                Tải xuống hoặc xem PDF hợp đồng đặt cọc
+                Tải xuống hoặc xem PDF hợp đồng mua bán
               </Text>
             </View>
             <Feather name="chevron-right" size={20} color={RHSColors.grey400} />

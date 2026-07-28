@@ -136,6 +136,11 @@ export interface ApplicationDetail {
   receiptUrl: string | null;
   slotCode?: string | null;
   lotteryResult?: string | null;
+  apartmentId?: string | null;
+  apartmentUnitName?: string | null;
+  apartmentArea?: number | null;
+  apartmentPrice?: number | null;
+  apartmentStatus?: string | null;
   monthlyIncome?: number | null;
   spouseMonthlyIncome?: number | null;
   averageHousingAreaPerPerson?: number | null;

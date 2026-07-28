@@ -209,7 +209,7 @@ export const PaymentProcessingScreen = () => {
 
           <Text style={styles.successTitle}>Xác nhận thành công!</Text>
           <Text style={styles.description}>
-            Giao dịch đặt cọc của bạn đã được xác nhận.{'\n'}
+            Giao dịch Đợt 1 của bạn đã được xác nhận.{'\n'}
             Nhấn "Xem kết quả" để xem mã bốc thăm.
           </Text>
 

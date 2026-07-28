@@ -192,10 +192,11 @@ export const ApplicationDetailScreen = () => {
       !!paymentPdfUrl ||
       !!paymentSlotCode;
     if (appId && hasContract) {
+      const hasApartment = !!(detail.apartmentId || detail.apartmentUnitName);
       navigation.navigate('ContractViewer', {
         applicationId: appId,
         title: name ? `Hợp đồng - ${name}` : 'Hợp đồng mua bán NOXH',
-        canSign: status === 'CONTRACT_PENDING',
+        canSign: status === 'CONTRACT_PENDING' && hasApartment,
       });
     } else {
       Alert.alert('Không có hợp đồng', 'Hợp đồng chưa được tạo. Vui lòng thử lại sau.');
@@ -333,12 +334,21 @@ export const ApplicationDetailScreen = () => {
     }
 
     if (status === 'CONTRACT_PENDING') {
+      const hasApartment = !!(detail?.apartmentId || detail?.apartmentUnitName);
       return [
         {
-          label: 'Xem & ký HĐ mua bán NOXH',
+          label: hasApartment
+            ? 'Xem & ký HĐ mua bán NOXH'
+            : 'Chờ cấp căn trước khi ký HĐ',
           icon: 'file-text',
-          onPress: handleViewContract,
-          variant: 'primary',
+          onPress: hasApartment
+            ? handleViewContract
+            : () =>
+                Alert.alert(
+                  'Chưa được cấp căn',
+                  'Chủ đầu tư chưa gán căn cụ thể cho hồ sơ của bạn. Vui lòng chờ cấp căn rồi mới ký hợp đồng.',
+                ),
+          variant: hasApartment ? 'primary' : 'secondary',
         },
       ];
     }
@@ -363,7 +373,7 @@ export const ApplicationDetailScreen = () => {
       const isPending = existingPayment?.status === 'Pending';
       return [
         {
-          label: isPending ? 'Tiếp tục đặt cọc VNPay' : 'Đặt cọc VNPay',
+          label: isPending ? 'Tiếp tục thanh toán Đợt 1 VNPay' : 'Thanh toán Đợt 1 VNPay',
           icon: 'credit-card',
           onPress: handleStartPayment,
           variant: 'destructive',
@@ -641,7 +651,7 @@ export const ApplicationDetailScreen = () => {
                 <Text style={styles.lotteryInfoText}>
                   Sở đã phê duyệt hồ sơ. Bước tiếp theo do Chủ đầu tư: đủ căn / ưu tiên → chuyển ký
                   hợp đồng mua bán NOXH; vượt số căn → đề xuất lịch bốc thăm ONLINE, Sở duyệt rồi mới
-                  có giờ chính thức. Chưa đến bước đặt cọc.
+                  có giờ chính thức. Chưa đến bước thanh toán Đợt 1.
                 </Text>
                 <TouchableOpacity
                   style={[styles.lotteryInfoBtn, { backgroundColor: RHSColors.blue700 }]}
@@ -666,9 +676,13 @@ export const ApplicationDetailScreen = () => {
                   <Text style={styles.lotteryInfoTitle}>Chờ ký hợp đồng mua bán NOXH</Text>
                 </View>
                 <Text style={styles.lotteryInfoText}>
-                  {detail.lotteryResult === 'WON' || detail.lotteryResult === 'PRIORITY_WON'
-                    ? 'Bạn đã được chốt suất (trúng bốc thăm / ưu tiên). Vui lòng xem và ký hợp đồng mua bán nhà ở xã hội, sau đó mới đặt cọc VNPay.'
-                    : 'Hồ sơ đã được chốt danh sách. Vui lòng xem và ký hợp đồng mua bán nhà ở xã hội, sau đó mới đặt cọc VNPay.'}
+                  {detail.apartmentUnitName
+                    ? `Bạn đã được cấp căn ${detail.apartmentUnitName}${
+                        detail.apartmentArea ? ` (${detail.apartmentArea}m²)` : ''
+                      }. Vui lòng xem và ký hợp đồng mua bán nhà ở xã hội, sau đó mới Thanh toán Đợt 1 VNPay.`
+                    : detail.lotteryResult === 'WON' || detail.lotteryResult === 'PRIORITY_WON'
+                      ? 'Bạn đã được chốt suất (trúng bốc thăm / ưu tiên). Vui lòng chờ Chủ đầu tư cấp căn cụ thể trước khi ký hợp đồng.'
+                      : 'Hồ sơ đã được chốt danh sách. Vui lòng chờ Chủ đầu tư cấp căn cụ thể trước khi ký hợp đồng.'}
                 </Text>
               </View>
             )}
@@ -725,7 +739,7 @@ export const ApplicationDetailScreen = () => {
                   <Text style={styles.expiredTitle}>Hồ sơ đã hết hạn</Text>
                 </View>
                 <Text style={styles.expiredDescription}>
-                  Hồ sơ đã hết hạn (quá hạn ký hợp đồng hoặc quá hạn đặt cọc sau khi ký). Vui lòng tạo hồ sơ mới nếu muốn tiếp tục đăng ký.
+                  Hồ sơ đã hết hạn (quá hạn ký hợp đồng hoặc quá hạn thanh toán Đợt 1 sau khi ký). Vui lòng tạo hồ sơ mới nếu muốn tiếp tục đăng ký.
                 </Text>
               </View>
             )}
@@ -796,10 +810,10 @@ const ContractSignedPaymentContent = ({
     const tick = () => {
       const ms = getDepositRemainingMs(signedAtHint);
       if (ms <= 0) {
-        setRemainingLabel('Đã hết hạn đặt cọc');
+        setRemainingLabel('Đã hết hạn thanh toán Đợt 1');
         return;
       }
-      setRemainingLabel(`Còn ${formatDepositHhmmss(ms)} để đặt cọc`);
+      setRemainingLabel(`Còn ${formatDepositHhmmss(ms)} để thanh toán Đợt 1`);
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -811,7 +825,7 @@ const ContractSignedPaymentContent = ({
       <View style={styles.depositPaidSection}>
         <View style={styles.depositPaidBadge}>
           <Feather name="check-circle" size={16} color={RHSColors.green600} />
-          <Text style={styles.depositPaidText}>Đã đặt cọc thành công</Text>
+          <Text style={styles.depositPaidText}>Đã thanh toán Đợt 1 thành công</Text>
         </View>
       </View>
     );
@@ -834,7 +848,7 @@ const ContractSignedPaymentContent = ({
           color={existingPayment?.status === 'Pending' ? RHSColors.amber700 : RHSColors.govGoldDark}
         />
         <Text style={styles.waitingPaymentText}>
-          {existingPayment?.status === 'Pending' ? 'Đã có giao dịch đang chờ' : 'Cần đặt cọc VNPay'}
+          {existingPayment?.status === 'Pending' ? 'Đã có giao dịch đang chờ' : 'Cần Thanh toán Đợt 1 VNPay'}
         </Text>
       </View>
       {!!remainingLabel && (
@@ -844,8 +858,8 @@ const ContractSignedPaymentContent = ({
       )}
       <Text style={styles.depositInfoText}>
         {existingPayment?.status === 'Pending'
-          ? 'Bạn đã có giao dịch đang chờ. Nhấn «Tiếp tục đặt cọc VNPay» để mở lại cổng thanh toán.'
-          : 'Bạn đã ký hợp đồng mua bán nhà ở xã hội. Vui lòng đặt cọc qua VNPay để hoàn tất bước này.'}
+          ? 'Bạn đã có giao dịch đang chờ. Nhấn «Tiếp tục thanh toán Đợt 1 VNPay» để mở lại cổng thanh toán.'
+          : 'Bạn đã ký hợp đồng mua bán nhà ở xã hội. Vui lòng thanh toán Đợt 1 qua VNPay để hoàn tất bước này.'}
       </Text>
     </View>
   );
@@ -867,7 +881,7 @@ const DepositPaidContent = ({
   <View style={styles.depositPaidSection}>
     <View style={styles.depositPaidBadge}>
       <Feather name="check-circle" size={16} color={RHSColors.green600} />
-      <Text style={styles.depositPaidText}>Đã đặt cọc thành công</Text>
+      <Text style={styles.depositPaidText}>Đã thanh toán Đợt 1 thành công</Text>
     </View>
 
     {paymentSlotCode ? (
@@ -880,8 +894,8 @@ const DepositPaidContent = ({
 
     <Text style={styles.readyForLotteryText}>
       {detail.lotteryResult === 'WON' || detail.lotteryResult === 'PRIORITY_WON'
-        ? 'Bạn đã hoàn tất đặt cọc sau khi được chốt suất. Tiếp tục theo dõi lịch thanh toán các đợt tiếp theo.'
-        : 'Bạn đã hoàn tất đặt cọc. Tiếp tục theo dõi lịch thanh toán các đợt tiếp theo.'}
+        ? 'Bạn đã hoàn tất Đợt 1 sau khi được chốt suất. Tiếp tục theo dõi lịch thanh toán các đợt tiếp theo.'
+        : 'Bạn đã hoàn tất thanh toán Đợt 1. Tiếp tục theo dõi lịch thanh toán các đợt tiếp theo.'}
     </Text>
 
     {(detail.lotteryResult === 'WON' ||

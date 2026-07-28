@@ -128,7 +128,7 @@ export const ContractViewerScreen = () => {
     if (!applicationId || !agreed) return;
     Alert.alert(
       'Xác nhận ký hợp đồng',
-      'Bạn đồng ý với toàn bộ điều khoản hợp đồng nguyên tắc? Hệ thống sẽ ghi nhận chữ ký điện tử (không dùng OTP).',
+      'Bạn đồng ý với toàn bộ điều khoản hợp đồng mua bán nhà ở xã hội? Hệ thống sẽ ghi nhận chữ ký điện tử (không dùng OTP).',
       [
         { text: 'Hủy', style: 'cancel' },
         {
@@ -140,7 +140,7 @@ export const ContractViewerScreen = () => {
               if (result.success) {
                 setIsSigned(true);
                 setSignedAt(result.data?.signedAt || new Date().toISOString());
-                Alert.alert('Thành công', result.message || 'Đã ký hợp đồng nguyên tắc.');
+                Alert.alert('Thành công', result.message || 'Đã ký hợp đồng mua bán nhà ở xã hội.');
               } else {
                 Alert.alert('Không ký được', result.message || 'Vui lòng thử lại.');
               }

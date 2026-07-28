@@ -28,11 +28,11 @@ const FAQS = [
   },
   {
     q: 'Bốc thăm được tổ chức khi nào?',
-    a: 'Sau khi Sở duyệt hồ sơ và chủ đầu tư chốt danh sách: nếu vượt số căn thì phần còn lại tham gia bốc thăm. Chủ đầu tư đề xuất lịch; Sở Xây dựng phê duyệt lịch rồi hệ thống mới gửi thông báo / công khai kênh. Người trúng (hoặc ưu tiên được chọn thẳng) mới ký hợp đồng mua bán nhà ở xã hội rồi đặt cọc VNPay.',
+    a: 'Sau khi Sở duyệt hồ sơ và chủ đầu tư chốt danh sách: nếu vượt số căn thì phần còn lại tham gia bốc thăm. Chủ đầu tư đề xuất lịch; Sở Xây dựng phê duyệt lịch rồi hệ thống mới gửi thông báo / công khai kênh. Người trúng (hoặc ưu tiên được chọn thẳng) được cấp căn, ký hợp đồng mua bán nhà ở xã hội rồi thanh toán theo đợt (Đợt 1 qua VNPay).',
   },
   {
     q: 'Thanh toán diễn ra theo thứ tự nào?',
-    a: 'Theo hệ thống hiện tại: (1) Sở duyệt hồ sơ → (2) CĐT chốt danh sách / bốc thăm nếu vượt căn → (3) ký hợp đồng mua bán nhà ở xã hội → (4) đặt cọc VNPay → (5) thanh toán các đợt tiếp theo theo lịch.',
+    a: 'Theo hệ thống hiện tại: (1) Sở duyệt hồ sơ → (2) CĐT chốt danh sách / bốc thăm nếu vượt căn → (3) cấp căn + ký hợp đồng mua bán nhà ở xã hội → (4) thanh toán Đợt 1 VNPay → (5) các đợt tiếp theo theo lịch trên ứng dụng.',
   },
 ];
 

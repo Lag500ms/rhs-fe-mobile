@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { RHSColors, borderRadius } from '../../../lib/theme';
 import { getStatusConfig } from '../utils/statusConfig';
 
-/** Pipeline người dân: nộp → Sở → duyệt → ký HĐ → đặt cọc */
+/** Pipeline người dân: nộp → Sở → duyệt → ký HĐ → Đợt 1 */
 const PIPELINE = [
   'SUBMITTED',
   'PENDING_SXD_REVIEW',
@@ -17,7 +17,7 @@ const STEP_LABEL: Record<(typeof PIPELINE)[number], string> = {
   PENDING_SXD_REVIEW: 'Chờ Sở',
   APPROVED: 'Đã duyệt',
   CONTRACT_PENDING: 'Ký HĐ',
-  DEPOSIT_PAID: 'Đặt cọc',
+  DEPOSIT_PAID: 'Đợt 1',
 };
 
 const TERMINAL_FAIL = new Set(['REJECTED', 'CANCELED', 'EXPIRED', 'LOTTERY_LOST']);
@@ -84,7 +84,7 @@ export function ApplicationTimeline({ currentStatus }: { currentStatus: string }
       {currentStatus === 'CONTRACT_SIGNED' && (
         <View style={[styles.banner, styles.bannerInfo]}>
           <Text style={styles.bannerInfoText}>
-            Đã ký hợp đồng mua bán NOXH — bước tiếp theo: đặt cọc VNPay.
+            Đã ký hợp đồng mua bán NOXH — bước tiếp theo: thanh toán Đợt 1 VNPay.
           </Text>
         </View>
       )}

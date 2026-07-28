@@ -312,11 +312,12 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           </View>
           <View style={styles.detailRow}><Feather name="map-pin" size={15} color={RHSColors.blue700}/><Text style={styles.detailText}>{fullAddress}</Text></View>
           <View style={styles.detailRow}><Feather name="users" size={15} color={RHSColors.textMuted}/><Text style={styles.detailText}>Còn lại: <Text style={{color:RHSColors.blue700, fontWeight:'700'}}>{project.availableUnits}</Text> căn hộ</Text></View>
+          {/* Đợt 1 cố định sau ký HĐ — không hiển thị như «đặt cọc» trên chi tiết dự án */}
           {project.depositAmount > 0 && (
             <View style={styles.detailRow}>
               <Feather name="credit-card" size={15} color={RHSColors.textMuted}/>
               <Text style={styles.detailText}>
-                Tiền đặt cọc:{' '}
+                Đợt 1 (sau ký HĐ):{' '}
                 <Text style={{ color: RHSColors.blue700, fontWeight: '700' }}>
                   {project.depositAmount.toLocaleString('vi-VN')} VNĐ
                 </Text>
@@ -350,7 +351,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
                     },
                   ]}
                 >
-                  {String(apt.status).toUpperCase() === 'ASSIGNED' ? 'Đã bàn giao' : 'Còn trống'}
+                  {String(apt.status).toUpperCase() === 'ASSIGNED' ? 'Đã cấp' : 'Còn trống'}
                 </Text>
               </View>
             ))}

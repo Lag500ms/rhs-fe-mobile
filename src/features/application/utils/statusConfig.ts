@@ -73,7 +73,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: '#EF5350',
   },
   DEPOSIT_PAID: {
-    label: 'Đã đặt cọc',
+    label: 'Đã thanh toán Đợt 1',
     bg: '#E8F5E9',
     textColor: '#1B5E20',
     dotColor: '#2E7D32',
@@ -151,7 +151,7 @@ export function getActionForStatus(status: string): StatusAction | null {
     case 'LOTTERY_LOST':
       return { label: 'Xem kết quả bốc thăm', icon: 'eye', color: RHSColors.red600 };
     case 'CONTRACT_SIGNED':
-      return { label: 'Đặt cọc VNPay', icon: 'credit-card', color: RHSColors.red600 };
+      return { label: 'Thanh toán Đợt 1 VNPay', icon: 'credit-card', color: RHSColors.red600 };
     case 'FULLY_PAID':
       return { label: 'Xem lịch thanh toán', icon: 'check-circle', color: RHSColors.green600 };
     case 'REJECTED':
