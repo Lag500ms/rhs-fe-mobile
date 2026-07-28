@@ -43,13 +43,13 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: '#FF9800',
   },
   APPROVED: {
-    label: 'Đã duyệt (SXD)',
+    label: 'Đã duyệt — chờ chốt',
     bg: '#E8F5E9',
     textColor: '#2E7D32',
     dotColor: '#4CAF50',
   },
   APPROVED_BY_TIMEOUT: {
-    label: 'Duyệt tự động (quá hạn Sở)',
+    label: 'Duyệt tự động — chờ chốt',
     bg: '#E8F5E9',
     textColor: '#2E7D32',
     dotColor: '#4CAF50',

@@ -21,6 +21,11 @@ import { formatDate, formatDateTime } from '../utils/format';
 import { ApplicationTimeline } from '../components/ApplicationTimeline';
 import { paymentApi } from '../../payment/api/paymentApi';
 import { PaymentInfo } from '../../payment/types/payment';
+import {
+  DEPOSIT_PAYMENT_DAYS,
+  formatDepositHhmmss,
+  getDepositRemainingMs,
+} from '../../../lib/depositDeadline';
 
 type BottomAction = {
   label: string;
@@ -315,16 +320,14 @@ export const ApplicationDetailScreen = () => {
       });
     };
 
-    // Luồng chuẩn:
-    // APPROVED → (ưu tiên/đủ căn: CĐT → CONTRACT_PENDING) | (vượt căn: bốc thăm → trúng → CONTRACT_PENDING)
-    // → ký HĐ → CONTRACT_SIGNED → VNPay → DEPOSIT_PAID
+    // APPROVED: chờ CĐT chốt — chỉ xem lịch nếu Sở đã công bố (màn lịch tự gate)
     if (status === 'APPROVED' || status === 'APPROVED_BY_TIMEOUT') {
       return [
         {
-          label: 'Xem lịch / sảnh bốc thăm',
-          icon: 'radio',
+          label: 'Theo dõi lịch bốc thăm',
+          icon: 'calendar',
           onPress: goLottery,
-          variant: 'primary',
+          variant: 'secondary',
         },
       ];
     }
@@ -633,15 +636,15 @@ export const ApplicationDetailScreen = () => {
               <View style={styles.lotteryInfoCard}>
                 <View style={styles.lotteryInfoHead}>
                   <Feather name="info" size={18} color={RHSColors.blue700} />
-                  <Text style={styles.lotteryInfoTitle}>Bước tiếp theo sau duyệt</Text>
+                  <Text style={styles.lotteryInfoTitle}>Đã duyệt — chờ Chủ đầu tư chốt</Text>
                 </View>
                 <Text style={styles.lotteryInfoText}>
-                  Chủ đầu tư sẽ chốt danh sách: đối tượng ưu tiên / đủ căn → chuyển ký hợp đồng
-                  nguyên tắc (không bốc thăm). Nếu vượt số căn, bạn tham gia bốc thăm công khai —
-                  chỉ người trúng mới được ký HĐ rồi đặt cọc.
+                  Sở đã phê duyệt hồ sơ. Bước tiếp theo do Chủ đầu tư: đủ căn / ưu tiên → chuyển ký
+                  hợp đồng nguyên tắc; vượt số căn → đề xuất lịch bốc thăm ONLINE, Sở duyệt rồi mới
+                  có giờ chính thức. Chưa đến bước đặt cọc.
                 </Text>
                 <TouchableOpacity
-                  style={styles.lotteryInfoBtn}
+                  style={[styles.lotteryInfoBtn, { backgroundColor: RHSColors.blue700 }]}
                   onPress={() =>
                     navigation.navigate('LotterySchedule', {
                       projectId: detail.projectId,
@@ -651,7 +654,7 @@ export const ApplicationDetailScreen = () => {
                   }
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.lotteryInfoBtnText}>Xem lịch / sảnh bốc thăm</Text>
+                  <Text style={styles.lotteryInfoBtnText}>Theo dõi lịch (nếu đã công bố)</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -674,6 +677,7 @@ export const ApplicationDetailScreen = () => {
               <ContractSignedPaymentContent
                 existingPayment={existingPayment}
                 checkingPayment={checkingPayment}
+                signedAtHint={detail.updatedAt}
               />
             )}
 
@@ -721,7 +725,7 @@ export const ApplicationDetailScreen = () => {
                   <Text style={styles.expiredTitle}>Hồ sơ đã hết hạn</Text>
                 </View>
                 <Text style={styles.expiredDescription}>
-                  Hồ sơ đã hết hạn theo mốc sau duyệt. Vui lòng tạo hồ sơ mới nếu muốn tiếp tục đăng ký.
+                  Hồ sơ đã hết hạn (quá hạn ký hợp đồng hoặc quá hạn đặt cọc sau khi ký). Vui lòng tạo hồ sơ mới nếu muốn tiếp tục đăng ký.
                 </Text>
               </View>
             )}
@@ -776,10 +780,32 @@ export const ApplicationDetailScreen = () => {
 const ContractSignedPaymentContent = ({
   existingPayment,
   checkingPayment,
+  signedAtHint,
 }: {
   existingPayment: PaymentInfo | null;
   checkingPayment: boolean;
+  signedAtHint?: string | null;
 }) => {
+  const [remainingLabel, setRemainingLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!signedAtHint || existingPayment?.status === 'Success') {
+      setRemainingLabel(null);
+      return;
+    }
+    const tick = () => {
+      const ms = getDepositRemainingMs(signedAtHint);
+      if (ms <= 0) {
+        setRemainingLabel('Đã hết hạn đặt cọc');
+        return;
+      }
+      setRemainingLabel(`Còn ${formatDepositHhmmss(ms)} để đặt cọc`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [signedAtHint, existingPayment?.status]);
+
   if (existingPayment?.status === 'Success') {
     return (
       <View style={styles.depositPaidSection}>
@@ -811,6 +837,11 @@ const ContractSignedPaymentContent = ({
           {existingPayment?.status === 'Pending' ? 'Đã có giao dịch đang chờ' : 'Cần đặt cọc VNPay'}
         </Text>
       </View>
+      {!!remainingLabel && (
+        <Text style={[styles.depositInfoText, { fontWeight: '700', color: RHSColors.red600, marginBottom: 6 }]}>
+          {remainingLabel} (tối đa {DEPOSIT_PAYMENT_DAYS} ngày sau khi ký)
+        </Text>
+      )}
       <Text style={styles.depositInfoText}>
         {existingPayment?.status === 'Pending'
           ? 'Bạn đã có giao dịch đang chờ. Nhấn «Tiếp tục đặt cọc VNPay» để mở lại cổng thanh toán.'

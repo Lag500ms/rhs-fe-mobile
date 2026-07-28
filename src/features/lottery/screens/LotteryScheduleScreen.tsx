@@ -16,7 +16,6 @@ import { ScreenHeader } from '../../../components/ScreenHeader';
 import { RHSColors, spacing, borderRadius, typography } from '../../../lib/theme';
 import { lotteryApi } from '../api/lotteryApi';
 import {
-  LOTTERY_TYPE_LABEL,
   type LotteryScheduleDetail,
 } from '../types/lottery';
 import { getToken } from '../../../lib/tokenStorage';
@@ -136,42 +135,46 @@ export const LotteryScheduleScreen = () => {
             <Text style={styles.projectName}>{schedule.projectName || projectName || 'Dự án'}</Text>
 
             {schedule.isLotteryApproved ? (
-              <View style={styles.card}>
-                <Row icon="calendar" label="Thời gian" value={formatDateTime(schedule.lotteryDate)} />
-                <Row
-                  icon="map-pin"
-                  label="Địa điểm / kênh"
-                  value={schedule.lotteryLocation || 'Chưa cập nhật'}
-                  onPress={schedule.lotteryLocation ? openLocation : undefined}
-                />
-                <Row
-                  icon="monitor"
-                  label="Hình thức"
-                  value={
-                    LOTTERY_TYPE_LABEL[schedule.lotteryType ?? ''] ??
-                    schedule.lotteryType ??
-                    '—'
-                  }
-                />
-                <Row
-                  icon="check-circle"
-                  label="Phê duyệt lịch"
-                  value={`Đã duyệt bởi Sở Xây dựng${
-                    schedule.lotteryApprovedAt ? ` · ${formatDateTime(schedule.lotteryApprovedAt)}` : ''
-                  }`}
-                />
-                <Row icon="home" label="Số căn phân bổ" value={String(schedule.availableUnits)} />
-                <Row
-                  icon="users"
-                  label="Hồ sơ đủ điều kiện"
-                  value={String(schedule.totalEligibleParticipants)}
-                />
-              </View>
+              <>
+                <View style={styles.heroTime}>
+                  <Feather name="calendar" size={22} color={RHSColors.blue700} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.heroTimeLabel}>Thời gian bốc thăm chính thức</Text>
+                    <Text style={styles.heroTimeValue}>{formatDateTime(schedule.lotteryDate)}</Text>
+                  </View>
+                </View>
+                <View style={styles.card}>
+                  <Row
+                    icon="map-pin"
+                    label="Địa điểm / kênh"
+                    value={schedule.lotteryLocation || 'Chưa cập nhật'}
+                    onPress={schedule.lotteryLocation ? openLocation : undefined}
+                  />
+                  <Row
+                    icon="monitor"
+                    label="Hình thức"
+                    value="Trực tuyến (ONLINE)"
+                  />
+                  <Row
+                    icon="check-circle"
+                    label="Phê duyệt lịch"
+                    value={`Đã duyệt bởi Sở Xây dựng${
+                      schedule.lotteryApprovedAt ? ` · ${formatDateTime(schedule.lotteryApprovedAt)}` : ''
+                    }`}
+                  />
+                  <Row icon="home" label="Số căn phân bổ" value={String(schedule.availableUnits)} />
+                  <Row
+                    icon="users"
+                    label="Hồ sơ đủ điều kiện"
+                    value={String(schedule.totalEligibleParticipants)}
+                  />
+                </View>
+              </>
             ) : (
               <View style={styles.card}>
                 <Text style={styles.desc}>
-                  Chưa có lịch bốc thăm được phê duyệt. Chủ đầu tư đề xuất lịch; Sở Xây dựng phê duyệt
-                  rồi lịch mới được công bố chính thức.
+                  Chưa có lịch bốc thăm được phê duyệt. Chủ đầu tư đề xuất lịch (ngày giờ cụ thể); Sở
+                  Xây dựng phê duyệt rồi lịch mới được công bố chính thức.
                 </Text>
                 <View style={{ marginTop: 12 }}>
                   <Row icon="check-circle" label="Phê duyệt lịch" value="Chờ Sở Xây dựng duyệt" />
@@ -267,6 +270,29 @@ const styles = StyleSheet.create({
     ...typography.h2,
     color: RHSColors.text,
     marginBottom: spacing.md,
+  },
+  heroTime: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: RHSColors.blue50,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: RHSColors.blue200,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  heroTimeLabel: {
+    ...typography.caption,
+    color: RHSColors.blue700,
+    fontWeight: '700',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  heroTimeValue: {
+    ...typography.h3,
+    color: RHSColors.text,
+    lineHeight: 26,
   },
   card: {
     backgroundColor: '#fff',

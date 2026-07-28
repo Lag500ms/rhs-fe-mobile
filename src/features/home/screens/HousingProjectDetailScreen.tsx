@@ -332,14 +332,24 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
             <ActivityIndicator size="small" color={RHSColors.blue700} />
           ) : lotteryApproved && lotterySchedule?.lotteryDate ? (
             <>
-              <Text style={styles.desc}>
-                Thời gian: {new Date(lotterySchedule.lotteryDate).toLocaleString('vi-VN')}
+              <Text style={[styles.desc, { fontWeight: '700', color: RHSColors.text, fontSize: 16 }]}>
+                {new Date(lotterySchedule.lotteryDate).toLocaleString('vi-VN', {
+                  weekday: 'long',
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
               </Text>
               {!!lotterySchedule.lotteryLocation && (
                 <Text style={[styles.desc, { marginTop: 6 }]}>
                   Địa điểm / kênh: {lotterySchedule.lotteryLocation}
                 </Text>
               )}
+              <Text style={[styles.desc, { marginTop: 4 }]}>
+                Hình thức: Trực tuyến (ONLINE)
+              </Text>
               <TouchableOpacity
                 style={styles.lotteryBtn}
                 onPress={() =>
