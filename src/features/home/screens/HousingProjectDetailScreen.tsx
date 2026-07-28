@@ -312,18 +312,22 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           </View>
           <View style={styles.detailRow}><Feather name="map-pin" size={15} color={RHSColors.blue700}/><Text style={styles.detailText}>{fullAddress}</Text></View>
           <View style={styles.detailRow}><Feather name="users" size={15} color={RHSColors.textMuted}/><Text style={styles.detailText}>Còn lại: <Text style={{color:RHSColors.blue700, fontWeight:'700'}}>{project.availableUnits}</Text> căn hộ</Text></View>
-          {/* Đợt 1 cố định sau ký HĐ — không hiển thị như «đặt cọc» trên chi tiết dự án */}
-          {project.depositAmount > 0 && (
-            <View style={styles.detailRow}>
-              <Feather name="credit-card" size={15} color={RHSColors.textMuted}/>
-              <Text style={styles.detailText}>
-                Đợt 1 (sau ký HĐ):{' '}
-                <Text style={{ color: RHSColors.blue700, fontWeight: '700' }}>
-                  {project.depositAmount.toLocaleString('vi-VN')} VNĐ
-                </Text>
-              </Text>
-            </View>
-          )}
+          <View style={styles.detailRow}>
+            <Feather name="credit-card" size={15} color={RHSColors.textMuted}/>
+            <Text style={styles.detailText}>
+              {project.phase1Percentage != null && project.phase1Percentage > 0 ? (
+                <>
+                  Trả trước (Đợt 1):{' '}
+                  <Text style={{ color: RHSColors.blue700, fontWeight: '700' }}>
+                    {Number(project.phase1Percentage)}%
+                  </Text>
+                  {' '}giá căn · Đợt 2 = phần còn lại
+                </>
+              ) : (
+                'Trả trước (Đợt 1): chưa công bố'
+              )}
+            </Text>
+          </View>
         </View>
 
         {(project.apartments?.length ?? 0) > 0 && (

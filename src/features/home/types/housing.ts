@@ -30,7 +30,8 @@ export interface HousingProjectResponse {
   thumbnailUrl?: string;
   lotteryDate?: string;
   lotteryLocation?: string;
-  depositAmount: number;
+  /** Tỉ lệ Đợt 1 (%), tối đa 30. Đợt 2 = phần còn lại. */
+  phase1Percentage?: number;
   createdAt: string;
   updatedAt?: string;
   status?: string;
