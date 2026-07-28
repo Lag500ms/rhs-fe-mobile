@@ -181,7 +181,7 @@ export const PaymentSuccessScreen = () => {
               <Feather name="file-text" size={20} color={RHSColors.blue700} />
             </View>
             <View style={styles.contractBtnContent}>
-              <Text style={styles.contractBtnTitle}>Xem hợp đồng nguyên tắc</Text>
+              <Text style={styles.contractBtnTitle}>Xem hợp đồng mua bán nhà ở xã hội</Text>
               <Text style={styles.contractBtnDesc}>
                 Tải xuống hoặc xem PDF hợp đồng mua bán
               </Text>

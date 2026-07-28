@@ -92,7 +92,7 @@ export const paymentApi = {
   },
 
   /**
-   * Tải PDF hợp đồng nguyên tắc (cần JWT).
+   * Tải PDF hợp đồng mua bán nhà ở xã hội (cần JWT).
    * GET /api/Payment/download-contract/{applicationId}
    */
   downloadContract: async (applicationId: string): Promise<ArrayBuffer> => {

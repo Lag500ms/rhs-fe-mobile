@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -21,12 +21,63 @@ import { contractSignApi } from '../api/contractSignApi';
 
 type ContractViewerRouteProp = RouteProp<ApplicationStackParamList, 'ContractViewer'>;
 
+/** Android WebView không render file:// PDF — dùng PDF.js + base64. */
+function buildPdfHtml(base64: string): string {
+  const safe = base64.replace(/[^A-Za-z0-9+/=]/g, '');
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=4" />
+  <style>
+    html, body { margin: 0; padding: 0; background: #525659; }
+    #c { padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    canvas { max-width: 100%; height: auto; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+    .err { color: #fff; padding: 24px; font-family: sans-serif; text-align: center; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+  <div id="c"><p class="err">Đang render PDF…</p></div>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    (async function () {
+      var box = document.getElementById('c');
+      try {
+        var raw = atob('${safe}');
+        var data = new Uint8Array(raw.length);
+        for (var i = 0; i < raw.length; i++) data[i] = raw.charCodeAt(i);
+        var pdf = await pdfjsLib.getDocument({ data: data }).promise;
+        box.innerHTML = '';
+        for (var p = 1; p <= pdf.numPages; p++) {
+          var page = await pdf.getPage(p);
+          var scale = Math.min(2, (window.innerWidth - 16) / page.getViewport({ scale: 1 }).width);
+          var viewport = page.getViewport({ scale: scale || 1.2 });
+          var canvas = document.createElement('canvas');
+          var ctx = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          box.appendChild(canvas);
+          await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        }
+      } catch (e) {
+        box.innerHTML = '<p class="err">Không hiển thị được PDF. Hãy dùng nút Tải xuống.<br/>' +
+          (e && e.message ? e.message : '') + '</p>';
+      }
+    })();
+  </script>
+</body>
+</html>`;
+}
+
 export const ContractViewerScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<ContractViewerRouteProp>();
   const { applicationId, pdfUrl, title, canSign } = route.params;
 
   const [localUri, setLocalUri] = useState<string | null>(null);
+  const [viewerHtml, setViewerHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloadProgress, setDownloadProgress] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +85,8 @@ export const ContractViewerScreen = () => {
   const [signedAt, setSignedAt] = useState<string | null>(null);
   const [signing, setSigning] = useState(false);
   const [agreed, setAgreed] = useState(false);
+
+  const defaultTitle = 'Hợp đồng mua bán nhà ở xã hội';
 
   const handleClose = () => {
     navigation.goBack();
@@ -52,15 +105,29 @@ export const ContractViewerScreen = () => {
     }
   }, [applicationId, canSign]);
 
+  const prepareViewer = useCallback(async (fileUri: string) => {
+    setLocalUri(fileUri);
+    // Android WebView blank với file:// PDF → luôn render qua PDF.js
+    if (Platform.OS === 'android' || Platform.OS === 'ios') {
+      const base64 = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      setViewerHtml(buildPdfHtml(base64));
+    } else {
+      setViewerHtml(null);
+    }
+  }, []);
+
   const loadPdf = useCallback(async () => {
     setLoading(true);
     setError(null);
     setLocalUri(null);
+    setViewerHtml(null);
 
     try {
       if (applicationId) {
         const uri = await paymentApi.downloadContractToFile(applicationId);
-        setLocalUri(uri);
+        await prepareViewer(uri);
         return;
       }
 
@@ -68,7 +135,7 @@ export const ContractViewerScreen = () => {
         const fileName = `doc_${Date.now()}.pdf`;
         const fileUri = `${FileSystem.documentDirectory}${fileName}`;
         const result = await FileSystem.downloadAsync(pdfUrl, fileUri);
-        setLocalUri(result.uri);
+        await prepareViewer(result.uri);
         return;
       }
 
@@ -82,7 +149,7 @@ export const ContractViewerScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [applicationId, pdfUrl]);
+  }, [applicationId, pdfUrl, prepareViewer]);
 
   useEffect(() => {
     loadPdf();
@@ -112,17 +179,19 @@ export const ContractViewerScreen = () => {
     }
   }, [localUri]);
 
-  const handleOpenInBrowser = useCallback(() => {
-    if (pdfUrl && /^https?:\/\//i.test(pdfUrl)) {
-      Linking.openURL(pdfUrl);
-      return;
+  const handleOpenExternal = useCallback(async () => {
+    if (!localUri) return;
+    try {
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(localUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Mở bằng ứng dụng PDF',
+        });
+      }
+    } catch (e: any) {
+      Alert.alert('Thông báo', e?.message || 'Không mở được file. Hãy dùng nút Tải xuống.');
     }
-    if (localUri) {
-      Linking.openURL(localUri).catch(() => {
-        Alert.alert('Thông báo', 'Không mở được file bằng trình duyệt. Hãy dùng nút Tải xuống.');
-      });
-    }
-  }, [pdfUrl, localUri]);
+  }, [localUri]);
 
   const handleSign = () => {
     if (!applicationId || !agreed) return;
@@ -140,7 +209,12 @@ export const ContractViewerScreen = () => {
               if (result.success) {
                 setIsSigned(true);
                 setSignedAt(result.data?.signedAt || new Date().toISOString());
-                Alert.alert('Thành công', result.message || 'Đã ký hợp đồng mua bán nhà ở xã hội.');
+                Alert.alert(
+                  'Thành công',
+                  result.message?.includes('nguyên tắc')
+                    ? 'Đã ký hợp đồng mua bán nhà ở xã hội.'
+                    : result.message || 'Đã ký hợp đồng mua bán nhà ở xã hội.',
+                );
               } else {
                 Alert.alert('Không ký được', result.message || 'Vui lòng thử lại.');
               }
@@ -168,7 +242,7 @@ export const ContractViewerScreen = () => {
             <Feather name="x" size={24} color={RHSColors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>
-            {title || 'Hợp đồng'}
+            {title || defaultTitle}
           </Text>
           <View style={styles.headerBtn} />
         </View>
@@ -192,10 +266,10 @@ export const ContractViewerScreen = () => {
           <Feather name="x" size={24} color={RHSColors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {title || 'Hợp đồng nguyên tắc'}
+          {title || defaultTitle}
         </Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleOpenInBrowser} style={styles.headerBtn}>
+          <TouchableOpacity onPress={handleOpenExternal} style={styles.headerBtn} disabled={!localUri}>
             <Feather name="external-link" size={20} color={RHSColors.blue700} />
           </TouchableOpacity>
         </View>
@@ -218,6 +292,24 @@ export const ContractViewerScreen = () => {
             <Text style={styles.retryBtnText}>Thử lại</Text>
           </TouchableOpacity>
         </View>
+      ) : viewerHtml ? (
+        <WebView
+          source={{ html: viewerHtml, baseUrl: 'https://cdnjs.cloudflare.com/' }}
+          style={styles.webView}
+          onLoad={() => setLoading(false)}
+          onError={(syntheticEvent) => {
+            const { description } = syntheticEvent.nativeEvent;
+            setError(description || 'Không thể hiển thị file PDF');
+            setLoading(false);
+          }}
+          javaScriptEnabled
+          domStorageEnabled
+          originWhitelist={['*']}
+          mixedContentMode="always"
+          setSupportMultipleWindows={false}
+          startInLoadingState
+          renderLoading={() => <View />}
+        />
       ) : localUri ? (
         <WebView
           source={{ uri: localUri }}
@@ -228,13 +320,9 @@ export const ContractViewerScreen = () => {
             setError(description || 'Không thể hiển thị file PDF');
             setLoading(false);
           }}
-          javaScriptEnabled
-          domStorageEnabled
           allowFileAccess
           allowUniversalAccessFromFileURLs
           originWhitelist={['*']}
-          startInLoadingState
-          renderLoading={() => <View />}
         />
       ) : null}
 
