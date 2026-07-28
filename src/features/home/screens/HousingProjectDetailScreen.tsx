@@ -20,7 +20,7 @@ import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme';
 import { HousingProjectResponse } from '../types/housing';
 import { housingApi } from '../api/housingApi';
-import { formatPrice, formatArea, getThumb } from '../utils/format';
+import { formatPrice, getThumb } from '../utils/format';
 import { geocode, LatLng, VIETNAM_FALLBACK, MAPBOX_TOKEN } from '../services/geocodeService';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { getToken } from '../../../lib/tokenStorage';
@@ -38,7 +38,8 @@ interface Props { route: { params: { project: HousingProjectResponse } }; naviga
 
 export const HousingProjectDetailScreen = ({ route }: Props) => {
   const navigation = useNavigation<any>();
-  const { project } = route.params;
+  const { project: routeProject } = route.params;
+  const [project, setProject] = useState<HousingProjectResponse>(routeProject);
   const carouselRef = useRef<FlatList>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [coords, setCoords] = useState<LatLng | null>(null);
@@ -58,6 +59,14 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
   const lotteryApproved = lotterySchedule?.isLotteryApproved === true;
 
   useEffect(() => {
+    void (async () => {
+      try {
+        const detail = await housingApi.getHousingProjectById(routeProject.id);
+        setProject(detail);
+      } catch {
+        // giữ dữ liệu từ list nếu GET by id lỗi
+      }
+    })();
     geocodeAddress(fullAddress);
     checkWishlist();
     fetchSuggestedProjects();
@@ -300,12 +309,6 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
               <Feather name="tag" size={13} color={RHSColors.blue700} />
               <Text style={[styles.chipText, {color: RHSColors.blue700}]}>{formatPrice(project.minPrice, project.maxPrice)}</Text>
             </View>
-            {formatArea(project.minArea, project.maxArea) ? (
-              <View style={[styles.chip, {backgroundColor: '#E3F2FD'}]}>
-                <Feather name="maximize" size={13} color={RHSColors.blue700} />
-                <Text style={[styles.chipText, {color: RHSColors.blue700}]}>{formatArea(project.minArea, project.maxArea)}</Text>
-              </View>
-            ) : null}
           </View>
           <View style={styles.detailRow}><Feather name="map-pin" size={15} color={RHSColors.blue700}/><Text style={styles.detailText}>{fullAddress}</Text></View>
           <View style={styles.detailRow}><Feather name="users" size={15} color={RHSColors.textMuted}/><Text style={styles.detailText}>Còn lại: <Text style={{color:RHSColors.blue700, fontWeight:'700'}}>{project.availableUnits}</Text> căn hộ</Text></View>
@@ -321,6 +324,38 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
             </View>
           )}
         </View>
+
+        {(project.apartments?.length ?? 0) > 0 && (
+          <View style={styles.card}>
+            <View style={styles.sectionHead}>
+              <Feather name="home" size={16} color={RHSColors.blue700}/>
+              <Text style={styles.sectionTitle}>Danh sách căn</Text>
+            </View>
+            {project.apartments!.map((apt) => (
+              <View key={apt.id} style={styles.aptRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.aptName}>{apt.unitName}</Text>
+                  <Text style={styles.aptMeta}>
+                    {apt.area} m² · {Number(apt.price).toLocaleString('vi-VN')} VNĐ
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.aptStatus,
+                    {
+                      color:
+                        String(apt.status).toUpperCase() === 'ASSIGNED'
+                          ? RHSColors.red600
+                          : RHSColors.green600,
+                    },
+                  ]}
+                >
+                  {String(apt.status).toUpperCase() === 'ASSIGNED' ? 'Đã bàn giao' : 'Còn trống'}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Lịch bốc thăm — chỉ hiện khi Sở đã phê duyệt lịch */}
         <View style={styles.card}>
@@ -503,6 +538,16 @@ const styles = StyleSheet.create({
   card: { marginHorizontal: 14, marginBottom: 14, padding: 18, backgroundColor: '#fff', borderRadius: borderRadius.md, borderWidth: 1, borderColor: RHSColors.border },
   sectionHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   sectionTitle: { ...typography.h3, color: RHSColors.text, marginLeft: 8 },
+  aptRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: RHSColors.grey200,
+  },
+  aptName: { ...typography.body, fontWeight: '700', color: RHSColors.text },
+  aptMeta: { ...typography.caption, color: RHSColors.textMuted, marginTop: 2 },
+  aptStatus: { ...typography.caption, fontWeight: '700', marginLeft: 8 },
   desc: { ...typography.bodySmall, color: RHSColors.textSecondary, lineHeight: 22 },
 
   // Map

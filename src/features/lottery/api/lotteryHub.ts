@@ -8,6 +8,7 @@ type HubConnection = {
   invoke: (method: string, ...args: unknown[]) => Promise<unknown>;
   on: (method: string, cb: (...args: any[]) => void) => void;
   off: (method: string, cb?: (...args: any[]) => void) => void;
+  onreconnected?: (cb: (connectionId?: string) => void) => void;
 };
 
 function hubBaseUrl(): string {
@@ -18,15 +19,17 @@ function hubBaseUrl(): string {
 
 /**
  * Kết nối SignalR sảnh bốc thăm.
- * Nếu chưa cài @microsoft/signalr → trả null (màn hình vẫn dùng REST draw-unit).
+ * Applicant bắt buộc truyền joinCode (OTP). Nếu chưa cài @microsoft/signalr → trả null.
  */
 export async function connectLotteryLobby(
   projectId: string,
   handlers: {
     onLobbyCount?: (count: number) => void;
     onDrawResult?: (result: LiveDrawResult) => void;
+    onStatus?: (status: string) => void;
     onError?: (message: string) => void;
   },
+  joinCode?: string | null,
 ): Promise<HubConnection | null> {
   let signalR: typeof import('@microsoft/signalr');
   try {
@@ -68,10 +71,31 @@ export async function connectLotteryLobby(
       });
     });
   }
+  if (handlers.onStatus) {
+    connection.on('ReceiveLotteryStatus', (status: string) => {
+      handlers.onStatus?.(String(status ?? ''));
+    });
+  }
+
+  const join = async () => {
+    await connection.invoke('JoinProjectLobby', projectId, joinCode ?? null);
+  };
+
+  // SignalR JS: onreconnected is a method on HubConnection
+  const raw = connection as HubConnection & {
+    onreconnected: (cb: (connectionId?: string) => void) => void;
+  };
+  if (typeof raw.onreconnected === 'function') {
+    raw.onreconnected(() => {
+      void join().catch((err) =>
+        handlers.onError?.(err?.message ?? 'Không rejoin được sảnh'),
+      );
+    });
+  }
 
   try {
     await connection.start();
-    await connection.invoke('JoinProjectLobby', projectId);
+    await join();
     return connection;
   } catch (err: any) {
     handlers.onError?.(err?.message ?? 'Không kết nối được sảnh bốc thăm');

@@ -145,7 +145,7 @@ export function getActionForStatus(status: string): StatusAction | null {
     case 'APPROVED_BY_TIMEOUT':
       return { label: 'Chờ chốt danh sách / bốc thăm', icon: 'radio', color: RHSColors.blue700 };
     case 'CONTRACT_PENDING':
-      return { label: 'Ký hợp đồng nguyên tắc', icon: 'file-text', color: RHSColors.blue700 };
+      return { label: 'Ký hợp đồng mua bán NOXH', icon: 'file-text', color: RHSColors.blue700 };
     case 'DEPOSIT_PAID':
       return { label: 'Xem hợp đồng / lịch thanh toán', icon: 'award', color: RHSColors.green600 };
     case 'LOTTERY_LOST':

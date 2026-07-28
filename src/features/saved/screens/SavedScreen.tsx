@@ -161,12 +161,6 @@ export const SavedScreen = () => {
             <Feather name="tag" size={11} color={RHSColors.red600} />
             <Text style={styles.metaText}>{priceRange(item.minPrice, item.maxPrice)}</Text>
           </View>
-          <View style={[styles.metaChip, { backgroundColor: RHSColors.blue50 }]}>
-            <Feather name="maximize" size={11} color={RHSColors.blue700} />
-            <Text style={[styles.metaText, { color: RHSColors.blue700 }]}>
-              {item.minArea > 0 ? `${item.minArea}–${item.maxArea} m²` : `${item.maxArea} m²`}
-            </Text>
-          </View>
           <View style={[styles.metaChip, { backgroundColor: RHSColors.green50 }]}>
             <Feather name="home" size={11} color={RHSColors.green600} />
             <Text style={[styles.metaText, { color: RHSColors.green600 }]}>

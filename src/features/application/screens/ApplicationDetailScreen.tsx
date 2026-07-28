@@ -183,7 +183,7 @@ export const ApplicationDetailScreen = () => {
     const appId = detail?.applicationId;
     const name = detail?.projectName;
     const status = detail?.applicationStatus;
-    // HĐ nguyên tắc có từ CONTRACT_PENDING (ưu tiên / trúng bốc thăm).
+    // HĐ mua bán NOXH có từ CONTRACT_PENDING (ưu tiên / trúng bốc thăm).
     const hasContract =
       status === 'CONTRACT_PENDING' ||
       status === 'CONTRACT_SIGNED' ||
@@ -194,7 +194,7 @@ export const ApplicationDetailScreen = () => {
     if (appId && hasContract) {
       navigation.navigate('ContractViewer', {
         applicationId: appId,
-        title: name ? `Hợp đồng - ${name}` : 'Hợp đồng nguyên tắc',
+        title: name ? `Hợp đồng - ${name}` : 'Hợp đồng mua bán NOXH',
         canSign: status === 'CONTRACT_PENDING',
       });
     } else {
@@ -335,7 +335,7 @@ export const ApplicationDetailScreen = () => {
     if (status === 'CONTRACT_PENDING') {
       return [
         {
-          label: 'Xem & ký HĐ nguyên tắc',
+          label: 'Xem & ký HĐ mua bán NOXH',
           icon: 'file-text',
           onPress: handleViewContract,
           variant: 'primary',
@@ -347,7 +347,7 @@ export const ApplicationDetailScreen = () => {
       if (existingPayment?.status === 'Success') {
         return [
           {
-            label: 'Xem hợp đồng nguyên tắc',
+            label: 'Xem hợp đồng mua bán NOXH',
             icon: 'file-text',
             onPress: handleViewContract,
             variant: 'primary',
@@ -371,7 +371,7 @@ export const ApplicationDetailScreen = () => {
           disabled: processingPayment || checkingPayment,
         },
         {
-          label: 'Xem hợp đồng nguyên tắc',
+          label: 'Xem hợp đồng mua bán NOXH',
           icon: 'file-text',
           onPress: handleViewContract,
           variant: 'secondary',
@@ -640,7 +640,7 @@ export const ApplicationDetailScreen = () => {
                 </View>
                 <Text style={styles.lotteryInfoText}>
                   Sở đã phê duyệt hồ sơ. Bước tiếp theo do Chủ đầu tư: đủ căn / ưu tiên → chuyển ký
-                  hợp đồng nguyên tắc; vượt số căn → đề xuất lịch bốc thăm ONLINE, Sở duyệt rồi mới
+                  hợp đồng mua bán NOXH; vượt số căn → đề xuất lịch bốc thăm ONLINE, Sở duyệt rồi mới
                   có giờ chính thức. Chưa đến bước đặt cọc.
                 </Text>
                 <TouchableOpacity
@@ -663,12 +663,12 @@ export const ApplicationDetailScreen = () => {
               <View style={styles.lotteryInfoCard}>
                 <View style={styles.lotteryInfoHead}>
                   <Feather name="file-text" size={18} color={RHSColors.blue700} />
-                  <Text style={styles.lotteryInfoTitle}>Chờ ký hợp đồng nguyên tắc</Text>
+                  <Text style={styles.lotteryInfoTitle}>Chờ ký hợp đồng mua bán NOXH</Text>
                 </View>
                 <Text style={styles.lotteryInfoText}>
                   {detail.lotteryResult === 'WON' || detail.lotteryResult === 'PRIORITY_WON'
-                    ? 'Bạn đã được chốt suất (trúng bốc thăm / ưu tiên). Vui lòng xem và ký hợp đồng nguyên tắc, sau đó mới đặt cọc VNPay.'
-                    : 'Hồ sơ đã được chốt danh sách. Vui lòng xem và ký hợp đồng nguyên tắc, sau đó mới đặt cọc VNPay.'}
+                    ? 'Bạn đã được chốt suất (trúng bốc thăm / ưu tiên). Vui lòng xem và ký hợp đồng mua bán nhà ở xã hội, sau đó mới đặt cọc VNPay.'
+                    : 'Hồ sơ đã được chốt danh sách. Vui lòng xem và ký hợp đồng mua bán nhà ở xã hội, sau đó mới đặt cọc VNPay.'}
                 </Text>
               </View>
             )}
@@ -845,7 +845,7 @@ const ContractSignedPaymentContent = ({
       <Text style={styles.depositInfoText}>
         {existingPayment?.status === 'Pending'
           ? 'Bạn đã có giao dịch đang chờ. Nhấn «Tiếp tục đặt cọc VNPay» để mở lại cổng thanh toán.'
-          : 'Bạn đã ký hợp đồng nguyên tắc. Vui lòng đặt cọc qua VNPay để hoàn tất bước này.'}
+          : 'Bạn đã ký hợp đồng mua bán nhà ở xã hội. Vui lòng đặt cọc qua VNPay để hoàn tất bước này.'}
       </Text>
     </View>
   );

@@ -3,6 +3,7 @@ import type {
   LiveDrawResult,
   LotteryDrawResult,
   LotteryScheduleDetail,
+  VerifyJoinCodeResult,
 } from '../types/lottery';
 
 function pick<T>(raw: unknown): T {
@@ -35,6 +36,8 @@ function mapSchedule(raw: unknown): LotteryScheduleDetail {
     totalEligibleParticipants: Number(
       o.totalEligibleParticipants ?? o.TotalEligibleParticipants ?? list.length,
     ),
+    joinCode: (o.joinCode ?? o.JoinCode) as string | null | undefined,
+    sessionStatus: (o.sessionStatus ?? o.SessionStatus) as string | null | undefined,
     eligibleParticipants: list.map((it) => {
       const p = (it ?? {}) as Record<string, unknown>;
       return {
@@ -70,6 +73,18 @@ export const lotteryApi = {
   async getSchedule(projectId: string): Promise<LotteryScheduleDetail> {
     const res = await apiClient.get(`/projects/${projectId}/lottery/schedule`);
     return mapSchedule(res.data);
+  },
+
+  async verifyOtp(projectId: string, joinCode: string): Promise<VerifyJoinCodeResult> {
+    const res = await apiClient.post(`/projects/${projectId}/lottery/session/verify-otp`, {
+      joinCode,
+    });
+    const o = pick<Record<string, unknown>>(res.data);
+    return {
+      success: (o.success ?? o.Success) !== false,
+      message: String(o.message ?? o.Message ?? ''),
+      sessionStatus: (o.sessionStatus ?? o.SessionStatus) as string | null | undefined,
+    };
   },
 
   async drawUnit(projectId: string): Promise<LiveDrawResult> {

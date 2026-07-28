@@ -22,6 +22,15 @@ export interface LotteryScheduleDetail {
   availableUnits: number;
   totalEligibleParticipants: number;
   eligibleParticipants: LotteryParticipant[];
+  /** OTP vào sảnh (sau khi Sở duyệt lịch). */
+  joinCode?: string | null;
+  sessionStatus?: string | null;
+}
+
+export interface VerifyJoinCodeResult {
+  success: boolean;
+  message: string;
+  sessionStatus?: string | null;
 }
 
 export interface LiveDrawResult {

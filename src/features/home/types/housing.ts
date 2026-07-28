@@ -4,6 +4,16 @@ export interface ProjectImageResponse {
   displayOrder: number;
 }
 
+export interface ApartmentResponse {
+  id: string;
+  unitName: string;
+  area: number;
+  price: number;
+  /** AVAILABLE | ASSIGNED */
+  status: string;
+  description?: string | null;
+}
+
 export interface HousingProjectResponse {
   id: string;
   projectName: string;
@@ -25,6 +35,7 @@ export interface HousingProjectResponse {
   updatedAt?: string;
   status?: string;
   images: ProjectImageResponse[];
+  apartments?: ApartmentResponse[];
 }
 
 export interface HousingProjectFilterParams {

@@ -93,16 +93,6 @@ export const ProjectCard: React.FC<Props> = ({ project, onPress, showWishlist = 
         </View>
 
         <View style={styles.metaRow}>
-          {project.minArea > 0 && (
-            <View style={[styles.chip, { backgroundColor: RHSColors.blue50 }]}>
-              <Feather name="maximize" size={11} color={RHSColors.blue700} />
-              <Text style={[styles.chipText, { color: RHSColors.blue700 }]} numberOfLines={1}>
-                {project.minArea === project.maxArea
-                  ? `${project.minArea}m²`
-                  : `${project.minArea}-${project.maxArea}m²`}
-              </Text>
-            </View>
-          )}
           <View
             style={[
               styles.chip,
@@ -120,7 +110,7 @@ export const ProjectCard: React.FC<Props> = ({ project, onPress, showWishlist = 
                 { color: project.availableUnits > 0 ? RHSColors.green600 : RHSColors.red600 },
               ]}
             >
-              {project.availableUnits > 0 ? `Còn ${project.availableUnits}` : 'Hết'}
+              {project.availableUnits > 0 ? `Còn ${project.availableUnits} căn` : 'Hết'}
             </Text>
           </View>
         </View>

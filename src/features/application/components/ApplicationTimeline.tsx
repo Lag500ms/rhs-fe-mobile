@@ -84,7 +84,7 @@ export function ApplicationTimeline({ currentStatus }: { currentStatus: string }
       {currentStatus === 'CONTRACT_SIGNED' && (
         <View style={[styles.banner, styles.bannerInfo]}>
           <Text style={styles.bannerInfoText}>
-            Đã ký hợp đồng nguyên tắc — bước tiếp theo: đặt cọc VNPay.
+            Đã ký hợp đồng mua bán NOXH — bước tiếp theo: đặt cọc VNPay.
           </Text>
         </View>
       )}
