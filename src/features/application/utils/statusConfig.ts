@@ -73,7 +73,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: '#EF5350',
   },
   DEPOSIT_PAID: {
-    label: 'Đã thanh toán Đợt 1',
+    label: 'Đã thanh toán',
     bg: '#E8F5E9',
     textColor: '#1B5E20',
     dotColor: '#2E7D32',

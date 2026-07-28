@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { RHSColors, borderRadius } from '../../../lib/theme';
 import { getStatusConfig } from '../utils/statusConfig';
 
-/** Pipeline người dân: nộp → Sở → duyệt → ký HĐ → Đợt 1 */
+/** Pipeline người dân — khớp BE, kết thúc ở Thanh toán Đợt 1 */
 const PIPELINE = [
   'SUBMITTED',
   'PENDING_SXD_REVIEW',
@@ -17,16 +17,22 @@ const STEP_LABEL: Record<(typeof PIPELINE)[number], string> = {
   PENDING_SXD_REVIEW: 'Chờ Sở',
   APPROVED: 'Đã duyệt',
   CONTRACT_PENDING: 'Ký HĐ',
-  DEPOSIT_PAID: 'Đợt 1',
+  DEPOSIT_PAID: 'Thanh toán',
 };
 
 const TERMINAL_FAIL = new Set(['REJECTED', 'CANCELED', 'EXPIRED', 'LOTTERY_LOST']);
+/** BE: đã xong pipeline tiến độ hồ sơ */
+const TERMINAL_SUCCESS = new Set(['DEPOSIT_PAID', 'FULLY_PAID']);
 
+/**
+ * Map applicationStatus từ BE → chỉ số bước (0..4).
+ * CONTRACT_SIGNED = đang ở bước Đợt 1 (chưa trả).
+ * DEPOSIT_PAID / FULLY_PAID = đã xong bước Đợt 1.
+ */
 function resolveIndex(status: string): number {
   switch (status) {
     case 'DRAFT':
     case 'NEED_MORE_DOCUMENTS':
-      return 0;
     case 'SUBMITTED':
     case 'REVIEWING':
       return 0;
@@ -36,8 +42,9 @@ function resolveIndex(status: string): number {
     case 'APPROVED_BY_TIMEOUT':
       return 2;
     case 'CONTRACT_PENDING':
-    case 'CONTRACT_SIGNED':
       return 3;
+    case 'CONTRACT_SIGNED':
+      return 4; // đang chờ thanh toán Đợt 1
     case 'DEPOSIT_PAID':
     case 'FULLY_PAID':
       return 4;
@@ -46,24 +53,12 @@ function resolveIndex(status: string): number {
   }
 }
 
-function isStepDone(status: string, stepIdx: number, currentIdx: number): boolean {
-  if (TERMINAL_FAIL.has(status)) return false;
-  if (status === 'CONTRACT_SIGNED' && stepIdx === 3) return true;
-  if (status === 'FULLY_PAID') return true;
-  return stepIdx < currentIdx;
-}
-
-function isStepActive(status: string, stepIdx: number, currentIdx: number): boolean {
-  if (TERMINAL_FAIL.has(status)) return false;
-  if (status === 'CONTRACT_SIGNED' && stepIdx === 3) return false;
-  if (status === 'CONTRACT_SIGNED' && stepIdx === 4) return true;
-  return stepIdx === currentIdx;
-}
-
 export function ApplicationTimeline({ currentStatus }: { currentStatus: string }) {
-  const currentIdx = resolveIndex(currentStatus);
-  const isNeedMore = currentStatus === 'NEED_MORE_DOCUMENTS';
-  const isFailed = TERMINAL_FAIL.has(currentStatus);
+  const status = (currentStatus || '').toUpperCase();
+  const currentIdx = resolveIndex(status);
+  const isNeedMore = status === 'NEED_MORE_DOCUMENTS';
+  const isFailed = TERMINAL_FAIL.has(status);
+  const isComplete = TERMINAL_SUCCESS.has(status);
 
   return (
     <View style={styles.wrap}>
@@ -77,22 +72,24 @@ export function ApplicationTimeline({ currentStatus }: { currentStatus: string }
       {isFailed && (
         <View style={[styles.banner, styles.bannerDanger]}>
           <Text style={styles.bannerDangerText}>
-            Hồ sơ kết thúc: {getStatusConfig(currentStatus).label}
+            Hồ sơ kết thúc: {getStatusConfig(status).label}
           </Text>
         </View>
       )}
-      {currentStatus === 'CONTRACT_SIGNED' && (
+      {status === 'CONTRACT_SIGNED' && (
         <View style={[styles.banner, styles.bannerInfo]}>
           <Text style={styles.bannerInfoText}>
-            Đã ký hợp đồng mua bán NOXH — bước tiếp theo: thanh toán Đợt 1 VNPay.
+            Đã ký hợp đồng — bước tiếp theo: thanh toán.
           </Text>
         </View>
       )}
 
       <View style={styles.row}>
         {PIPELINE.map((code, idx) => {
-          const done = isStepDone(currentStatus, idx, currentIdx);
-          const active = isStepActive(currentStatus, idx, currentIdx);
+          // DEPOSIT_PAID / FULLY_PAID → tất cả bước ✓ (kể cả Đợt 1)
+          const done = !isFailed && (isComplete ? idx <= currentIdx : idx < currentIdx);
+          const active = !isFailed && !isComplete && idx === currentIdx;
+
           return (
             <View key={code} style={styles.step}>
               <View

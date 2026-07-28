@@ -90,6 +90,9 @@ export const PaymentScheduleScreen = () => {
           paymentUrl: result.data.paymentUrl,
           orderId: result.data.orderId,
           applicationId,
+          projectName: projectName || '',
+          amount: phase.amount,
+          phaseLabel: `Đợt ${phase.phaseOrder}${phase.phaseName ? `: ${phase.phaseName}` : ''}`,
         });
       } else {
         Alert.alert('Lỗi', result.message || 'Không tạo được URL thanh toán.');

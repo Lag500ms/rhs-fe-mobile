@@ -19,7 +19,7 @@ type PaymentWebViewRouteProp = RouteProp<PaymentStackParamList, 'PaymentWebView'
 export const PaymentWebViewScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<PaymentWebViewRouteProp>();
-  const { paymentUrl, orderId, applicationId } = route.params;
+  const { paymentUrl, orderId, applicationId, projectName, amount, phaseLabel } = route.params;
 
   const webViewRef = useRef<WebView>(null);
   const [loading, setLoading] = useState(true);
@@ -52,8 +52,9 @@ export const PaymentWebViewScreen = () => {
     navigation.replace('PaymentProcessing', {
       orderId,
       applicationId,
-      projectName: '',
-      depositAmount: 0,
+      projectName: projectName || '',
+      depositAmount: amount || 0,
+      phaseLabel: phaseLabel || 'Thanh toán',
     });
   };
 

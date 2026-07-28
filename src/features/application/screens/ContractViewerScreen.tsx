@@ -21,18 +21,23 @@ import { contractSignApi } from '../api/contractSignApi';
 
 type ContractViewerRouteProp = RouteProp<ApplicationStackParamList, 'ContractViewer'>;
 
-/** Android WebView không render file:// PDF — dùng PDF.js + base64. */
+/** Android WebView không render file:// PDF — dùng PDF.js + base64 (render HiDPI để không bị mờ). */
 function buildPdfHtml(base64: string): string {
   const safe = base64.replace(/[^A-Za-z0-9+/=]/g, '');
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=4" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
   <style>
     html, body { margin: 0; padding: 0; background: #525659; }
     #c { padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-    canvas { max-width: 100%; height: auto; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+    canvas {
+      display: block;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.35);
+      /* Không dùng max-width:100% — scale CSS làm mờ canvas */
+    }
     .err { color: #fff; padding: 24px; font-family: sans-serif; text-align: center; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -50,16 +55,27 @@ function buildPdfHtml(base64: string): string {
         for (var i = 0; i < raw.length; i++) data[i] = raw.charCodeAt(i);
         var pdf = await pdfjsLib.getDocument({ data: data }).promise;
         box.innerHTML = '';
+        var dpr = Math.min(window.devicePixelRatio || 1, 3);
+        var cssWidth = Math.max(280, window.innerWidth - 16);
         for (var p = 1; p <= pdf.numPages; p++) {
           var page = await pdf.getPage(p);
-          var scale = Math.min(2, (window.innerWidth - 16) / page.getViewport({ scale: 1 }).width);
-          var viewport = page.getViewport({ scale: scale || 1.2 });
+          var base = page.getViewport({ scale: 1 });
+          var fitScale = cssWidth / base.width;
+          // Render ở độ phân giải màn hình (fitScale * dpr) rồi hiển thị bằng CSS width
+          var renderScale = Math.max(1.5, fitScale * dpr);
+          var viewport = page.getViewport({ scale: renderScale });
           var canvas = document.createElement('canvas');
-          var ctx = canvas.getContext('2d');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
+          var ctx = canvas.getContext('2d', { alpha: false });
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+          canvas.style.width = Math.floor(viewport.width / dpr) + 'px';
+          canvas.style.height = Math.floor(viewport.height / dpr) + 'px';
           box.appendChild(canvas);
-          await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+          await page.render({
+            canvasContext: ctx,
+            viewport: viewport,
+            intent: 'display'
+          }).promise;
         }
       } catch (e) {
         box.innerHTML = '<p class="err">Không hiển thị được PDF. Hãy dùng nút Tải xuống.<br/>' +

@@ -1,76 +1,38 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { RHSColors, borderRadius } from '../../../lib/theme';
 import { PaymentStackParamList } from '../navigation/PaymentNavigator';
-import * as Clipboard from 'expo-clipboard';
 
 type PaymentSuccessRouteProp = RouteProp<PaymentStackParamList, 'PaymentSuccess'>;
 
+/** Chỉ thông báo thành công + thông tin giao dịch. */
 export const PaymentSuccessScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<PaymentSuccessRouteProp>();
-  const { orderId, applicationId, slotCode, pdfUrl, projectName, applicantName, amount, paidAt } = route.params;
-
-  const [copied, setCopied] = useState(false);
-
-  const handleCopySlotCode = useCallback(async () => {
-    try {
-      await Clipboard.setStringAsync(slotCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch {
-      // fallback
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    }
-  }, [slotCode]);
-
-  const handleViewContract = useCallback(() => {
-    if (applicationId || pdfUrl) {
-      navigation.navigate('ContractViewer', {
-        applicationId,
-        pdfUrl: applicationId ? undefined : pdfUrl,
-        title: `Hợp đồng - ${projectName}`,
-      });
-    }
-  }, [applicationId, pdfUrl, projectName, navigation]);
-
-  const handleShareSlotCode = useCallback(async () => {
-    try {
-      await Share.share({
-        message: `Mã bốc thăm nhà ở xã hội của tôi: ${slotCode}\nDự án: ${projectName}`,
-        title: 'Mã bốc thăm nhà ở xã hội',
-      });
-    } catch {
-      // user cancelled
-    }
-  }, [slotCode, projectName]);
+  const { orderId, projectName, applicantName, amount, paidAt, phaseLabel } = route.params;
+  const phaseText = phaseLabel || 'Thanh toán';
 
   const handleBackToApplications = () => {
-    // Navigate back to root of the application stack
     navigation.navigate('MyApplications');
   };
 
-  const formatCurrency = (value: number) => {
-    return `${value.toLocaleString('vi-VN')} đ`;
-  };
+  const formatCurrency = (value: number) => `${value.toLocaleString('vi-VN')} đ`;
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '—';
     try {
       const d = new Date(dateStr);
       return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} ${d.getHours()}:${String(
-        d.getMinutes()
+        d.getMinutes(),
       ).padStart(2, '0')}`;
     } catch {
       return dateStr;
@@ -79,83 +41,37 @@ export const PaymentSuccessScreen = () => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── Hero Section ── */}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.heroSection}>
           <View style={styles.successBadge}>
             <Feather name="check" size={36} color="#fff" />
           </View>
           <Text style={styles.heroTitle}>Thanh toán thành công!</Text>
           <Text style={styles.heroSubtitle}>
-            Bạn đã hoàn tất thanh toán Đợt 1 cho dự án {projectName}
+            Bạn đã hoàn tất thanh toán {phaseText}
+            {projectName ? ` cho dự án ${projectName}` : ''}.
           </Text>
         </View>
 
-        {/* ── Slot Code Card ── */}
-        <View style={styles.slotCodeCard}>
-          <View style={styles.slotCodeHeader}>
-            <Feather name="award" size={20} color={RHSColors.govGold} />
-            <Text style={styles.slotCodeLabel}>Mã số bốc thăm của bạn</Text>
-          </View>
-
-          <View style={styles.slotCodeContainer}>
-            <Text style={styles.slotCodeText}>{slotCode || 'Đang cập nhật...'}</Text>
-          </View>
-
-          <Text style={styles.slotCodeHint}>
-            Giữ mã này để tham gia bốc thăm chọn suất nhà ở xã hội.
-          </Text>
-
-          {/* Action buttons */}
-          <View style={styles.slotActions}>
-            <TouchableOpacity
-              style={[styles.slotActionBtn, copied && styles.slotActionBtnCopied]}
-              onPress={handleCopySlotCode}
-              activeOpacity={0.8}
-            >
-              <Feather
-                name={copied ? 'check' : 'copy'}
-                size={16}
-                color={copied ? RHSColors.green600 : RHSColors.blue700}
-              />
-              <Text
-                style={[
-                  styles.slotActionText,
-                  copied && { color: RHSColors.green600 },
-                ]}
-              >
-                {copied ? 'Đã sao chép' : 'Sao chép mã'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.slotActionBtn}
-              onPress={handleShareSlotCode}
-              activeOpacity={0.8}
-            >
-              <Feather name="share-2" size={16} color={RHSColors.blue700} />
-              <Text style={styles.slotActionText}>Chia sẻ</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* ── Transaction Info ── */}
         <View style={styles.infoCard}>
           <Text style={styles.infoCardTitle}>Thông tin giao dịch</Text>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Dự án</Text>
-            <Text style={styles.infoValue}>{projectName}</Text>
-          </View>
+          {projectName ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Dự án</Text>
+              <Text style={styles.infoValue}>{projectName}</Text>
+            </View>
+          ) : null}
           {applicantName ? (
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Người đăng ký</Text>
               <Text style={styles.infoValue}>{applicantName}</Text>
             </View>
           ) : null}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Đợt thanh toán</Text>
+            <Text style={styles.infoValue}>{phaseText}</Text>
+          </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Số tiền</Text>
             <Text style={styles.infoValueHighlight}>{formatCurrency(amount)}</Text>
@@ -170,27 +86,6 @@ export const PaymentSuccessScreen = () => {
           </View>
         </View>
 
-        {/* ── View Contract Button ── */}
-        {applicationId || pdfUrl ? (
-          <TouchableOpacity
-            style={styles.contractBtn}
-            onPress={handleViewContract}
-            activeOpacity={0.9}
-          >
-            <View style={styles.contractBtnIcon}>
-              <Feather name="file-text" size={20} color={RHSColors.blue700} />
-            </View>
-            <View style={styles.contractBtnContent}>
-              <Text style={styles.contractBtnTitle}>Xem hợp đồng mua bán nhà ở xã hội</Text>
-              <Text style={styles.contractBtnDesc}>
-                Tải xuống hoặc xem PDF hợp đồng mua bán
-              </Text>
-            </View>
-            <Feather name="chevron-right" size={20} color={RHSColors.grey400} />
-          </TouchableOpacity>
-        ) : null}
-
-        {/* ── Back Button ── */}
         <TouchableOpacity
           style={styles.backBtn}
           onPress={handleBackToApplications}
@@ -212,8 +107,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
-
-  // ── Hero ──
   heroSection: {
     backgroundColor: RHSColors.green600,
     paddingTop: 32,
@@ -231,10 +124,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   heroTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: '#fff',
     marginBottom: 6,
+    textAlign: 'center',
   },
   heroSubtitle: {
     fontSize: 14,
@@ -242,14 +136,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-
-  // ── Slot Code Card ──
-  slotCodeCard: {
+  infoCard: {
     backgroundColor: '#fff',
     marginHorizontal: 16,
     marginTop: -16,
-    borderRadius: borderRadius.lg,
-    padding: 20,
+    borderRadius: borderRadius.md,
+    padding: 16,
     borderWidth: 1,
     borderColor: RHSColors.grey200,
     shadowColor: RHSColors.shadow,
@@ -257,76 +149,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 12,
     elevation: 8,
-  },
-  slotCodeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  slotCodeLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: RHSColors.textSecondary,
-  },
-  slotCodeContainer: {
-    backgroundColor: RHSColors.amber50,
-    borderRadius: borderRadius.md,
-    borderWidth: 2,
-    borderColor: RHSColors.govGold,
-    borderStyle: 'dashed',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  slotCodeText: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: RHSColors.red700,
-    letterSpacing: 4,
-    textTransform: 'uppercase',
-  },
-  slotCodeHint: {
-    fontSize: 12,
-    color: RHSColors.textMuted,
-    textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 16,
-  },
-  slotActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  slotActionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: RHSColors.blue700,
-    gap: 6,
-  },
-  slotActionBtnCopied: {
-    borderColor: RHSColors.green600,
-  },
-  slotActionText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: RHSColors.blue700,
-  },
-
-  // ── Info Card ──
-  infoCard: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: borderRadius.md,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: RHSColors.grey200,
   },
   infoCardTitle: {
     fontSize: 15,
@@ -362,43 +184,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
-
-  // ── Contract Button ──
-  contractBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: borderRadius.md,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: RHSColors.grey200,
-    gap: 12,
-  },
-  contractBtnIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: RHSColors.blue50,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  contractBtnContent: {
-    flex: 1,
-  },
-  contractBtnTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: RHSColors.text,
-  },
-  contractBtnDesc: {
-    fontSize: 12,
-    color: RHSColors.textMuted,
-    marginTop: 2,
-  },
-
-  // ── Back Button ──
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',

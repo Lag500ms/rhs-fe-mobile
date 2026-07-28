@@ -151,6 +151,9 @@ export const ApplicationDetailScreen = () => {
           paymentUrl: result.data.paymentUrl,
           orderId: result.data.orderId,
           applicationId: detail.applicationId,
+          projectName: detail.projectName || '',
+          amount: result.data.amount,
+          phaseLabel: 'Đợt 1',
         });
       } else {
         Alert.alert('Lỗi', result.message || 'Không thể tạo URL thanh toán');
@@ -836,7 +839,7 @@ const ContractSignedPaymentContent = ({
       <View style={styles.depositPaidSection}>
         <View style={styles.depositPaidBadge}>
           <Feather name="check-circle" size={16} color={RHSColors.green600} />
-          <Text style={styles.depositPaidText}>Đã thanh toán Đợt 1 thành công</Text>
+          <Text style={styles.depositPaidText}>Đã thanh toán thành công</Text>
         </View>
       </View>
     );
@@ -892,7 +895,7 @@ const DepositPaidContent = ({
   <View style={styles.depositPaidSection}>
     <View style={styles.depositPaidBadge}>
       <Feather name="check-circle" size={16} color={RHSColors.green600} />
-      <Text style={styles.depositPaidText}>Đã thanh toán Đợt 1 thành công</Text>
+      <Text style={styles.depositPaidText}>Đã thanh toán thành công</Text>
     </View>
 
     {paymentSlotCode ? (
@@ -905,8 +908,8 @@ const DepositPaidContent = ({
 
     <Text style={styles.readyForLotteryText}>
       {detail.lotteryResult === 'WON' || detail.lotteryResult === 'PRIORITY_WON'
-        ? 'Bạn đã hoàn tất Đợt 1 sau khi được chốt suất. Tiếp tục theo dõi lịch thanh toán các đợt tiếp theo.'
-        : 'Bạn đã hoàn tất thanh toán Đợt 1. Tiếp tục theo dõi lịch thanh toán các đợt tiếp theo.'}
+        ? 'Bạn đã hoàn tất thanh toán sau khi được chốt suất. Tiếp tục theo dõi lịch thanh toán các đợt tiếp theo.'
+        : 'Bạn đã hoàn tất thanh toán. Tiếp tục theo dõi lịch thanh toán các đợt tiếp theo.'}
     </Text>
 
     {(detail.lotteryResult === 'WON' ||

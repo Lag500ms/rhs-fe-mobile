@@ -22,7 +22,8 @@ const MAX_POLL_ATTEMPTS = 45; // max ~2.25 minutes before giving up
 export const PaymentProcessingScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<PaymentProcessingRouteProp>();
-  const { orderId, applicationId, projectName, depositAmount } = route.params;
+  const { orderId, applicationId, projectName, depositAmount, phaseLabel } = route.params;
+  const phaseText = phaseLabel || 'Thanh toán';
 
   const [status, setStatus] = useState<'polling' | 'success' | 'failed' | 'timeout'>('polling');
   const [result, setResult] = useState<DepositPaymentResult | null>(null);
@@ -37,51 +38,28 @@ export const PaymentProcessingScreen = () => {
       try {
         setAttempts((prev) => prev + 1);
 
-        const response = await paymentApi.getDepositResult(orderId);
-
-        if (response.success && response.data) {
-          clearInterval(pollingRef.current!);
-          pollingRef.current = null;
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          setResult(response.data);
-          setStatus('success');
-          return;
-        }
-      } catch (e: any) {
-        const statusCode = e?.response?.status;
-
-        if (statusCode === 404) {
-          return;
-        }
-
+        // Ưu tiên tra cứu payment info (đợt 1 và đợt sau đều dùng được)
         try {
           const infoResponse = await paymentApi.getPaymentInfo(orderId);
-          if (
-            infoResponse.success &&
-            infoResponse.data &&
-            infoResponse.data.status === 'Success'
-          ) {
-            if (infoResponse.data.slotCode) {
-              clearInterval(pollingRef.current!);
-              pollingRef.current = null;
-              if (timeoutRef.current) clearTimeout(timeoutRef.current);
-              navigation.replace('PaymentSuccess', {
-                orderId,
-                applicationId,
-                slotCode: infoResponse.data.slotCode,
-                pdfUrl: infoResponse.data.pdfUrl || '',
-                projectName: projectName || 'Dự án',
-                applicantName: '',
-                amount: infoResponse.data.amount || depositAmount || 0,
-                paidAt: infoResponse.data.paidAt || new Date().toISOString(),
-              });
-              return;
-            }
-            // slotCode chưa có, tiếp tục poll để chờ getDepositResult trả về
+          const st = (infoResponse.data?.status || '').toLowerCase();
+          if (infoResponse.success && infoResponse.data && (st === 'success' || st === 'paid')) {
+            clearInterval(pollingRef.current!);
+            pollingRef.current = null;
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            navigation.replace('PaymentSuccess', {
+              orderId,
+              applicationId,
+              slotCode: infoResponse.data.slotCode || '',
+              pdfUrl: infoResponse.data.pdfUrl || '',
+              projectName: projectName || 'Dự án',
+              applicantName: '',
+              amount: infoResponse.data.amount || depositAmount || 0,
+              paidAt: infoResponse.data.paidAt || new Date().toISOString(),
+              phaseLabel: phaseText,
+            });
             return;
           }
-
-          if (infoResponse.data?.status === 'Failed') {
+          if (st === 'failed' || st === 'cancelled') {
             clearInterval(pollingRef.current!);
             pollingRef.current = null;
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -90,8 +68,19 @@ export const PaymentProcessingScreen = () => {
             return;
           }
         } catch {
-          // continue polling
+          // thử deposit-result bên dưới
         }
+
+        const response = await paymentApi.getDepositResult(orderId);
+        if (response.success && response.data) {
+          clearInterval(pollingRef.current!);
+          pollingRef.current = null;
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          setResult(response.data);
+          setStatus('success');
+        }
+      } catch {
+        // continue polling
       }
     }, POLL_INTERVAL_MS);
   };
@@ -133,6 +122,7 @@ export const PaymentProcessingScreen = () => {
         applicantName: result.applicantName,
         amount: result.amount,
         paidAt: result.paidAt,
+        phaseLabel: phaseText,
       });
     } else {
       // fallback to MyApplications
@@ -209,8 +199,8 @@ export const PaymentProcessingScreen = () => {
 
           <Text style={styles.successTitle}>Xác nhận thành công!</Text>
           <Text style={styles.description}>
-            Giao dịch Đợt 1 của bạn đã được xác nhận.{'\n'}
-            Nhấn "Xem kết quả" để xem mã bốc thăm.
+            Giao dịch {phaseText} của bạn đã được xác nhận.{'\n'}
+            Nhấn "Xem kết quả" để xem thông tin thanh toán.
           </Text>
 
           <TouchableOpacity
