@@ -19,12 +19,14 @@ import { ApplicationDetail, ApplicationDocument } from '../types/application';
 import { getStatusConfig } from '../utils/statusConfig';
 import { formatDate, formatDateTime } from '../utils/format';
 import { ApplicationTimeline } from '../components/ApplicationTimeline';
+import { getCitizenNextStep } from '../utils/citizenNextStep';
 import { paymentApi } from '../../payment/api/paymentApi';
 import { PaymentInfo } from '../../payment/types/payment';
 import {
   DEPOSIT_PAYMENT_DAYS,
   formatDepositHhmmss,
   getDepositRemainingMs,
+  isPaymentSuccessStatus,
 } from '../../../lib/depositDeadline';
 
 type BottomAction = {
@@ -102,9 +104,13 @@ export const ApplicationDetailScreen = () => {
     try {
       const result = await paymentApi.getMyPayments();
       if (result.success && result.data) {
-        const payment = result.data.find((p: PaymentInfo) => p.applicationId === appId);
-        setExistingPayment(payment || null);
-        if (payment?.status === 'Success') {
+        // Ưu tiên Paid/Success; fallback Pending gần nhất (BE ghi "Paid")
+        const forApp = result.data.filter((p: PaymentInfo) => p.applicationId === appId);
+        const paid = forApp.find((p) => isPaymentSuccessStatus(p.status));
+        const pending = forApp.find((p) => String(p.status).toLowerCase() === 'pending');
+        const payment = paid || pending || forApp[0] || null;
+        setExistingPayment(payment);
+        if (payment && isPaymentSuccessStatus(payment.status)) {
           setPaymentSlotCode(payment.slotCode || null);
           setPaymentPdfUrl(payment.pdfUrl || null);
         } else {
@@ -127,9 +133,11 @@ export const ApplicationDetailScreen = () => {
 
   useEffect(() => {
     if (
-      detail?.applicationStatus === 'DEPOSIT_PAID'
+      detail?.applicationStatus === 'DEPOSIT_PENDING'
+      || detail?.applicationStatus === 'DEPOSIT_PAID'
       || detail?.applicationStatus === 'CONTRACT_PENDING'
       || detail?.applicationStatus === 'CONTRACT_SIGNED'
+      || detail?.applicationStatus === 'INSTALLMENT_IN_PROGRESS'
       || detail?.applicationStatus === 'FULLY_PAID'
     ) {
       checkExistingPayment(detail.applicationId);
@@ -153,7 +161,7 @@ export const ApplicationDetailScreen = () => {
           applicationId: detail.applicationId,
           projectName: detail.projectName || '',
           amount: result.data.amount,
-          phaseLabel: 'Đợt 1',
+          phaseLabel: 'Tiền cọc',
         });
       } else {
         Alert.alert('Lỗi', result.message || 'Không thể tạo URL thanh toán');
@@ -186,10 +194,11 @@ export const ApplicationDetailScreen = () => {
     const appId = detail?.applicationId;
     const name = detail?.projectName;
     const status = detail?.applicationStatus;
-    // HĐ mua bán NOXH có từ CONTRACT_PENDING (ưu tiên / trúng bốc thăm).
+    // HĐ mua bán NOXH sau khi đã cọc (BE: CONTRACT_PENDING trở đi).
     const hasContract =
       status === 'CONTRACT_PENDING' ||
       status === 'CONTRACT_SIGNED' ||
+      status === 'INSTALLMENT_IN_PROGRESS' ||
       status === 'DEPOSIT_PAID' ||
       status === 'FULLY_PAID' ||
       !!paymentPdfUrl ||
@@ -316,10 +325,22 @@ export const ApplicationDetailScreen = () => {
       }];
     }
 
-    // APPROVED: chờ CĐT chốt — không đẩy CTA bốc thăm (chỉ khi vượt căn mới có lịch)
+    // APPROVED: CTA bốc thăm nổi (lịch/sảnh chỉ mở khi CĐT+Sở đã công bố)
     if (status === 'APPROVED' || status === 'APPROVED_BY_TIMEOUT') {
+      const lotteryCta: BottomAction = {
+        label: 'Vào lịch / sảnh bốc thăm',
+        icon: 'shuffle',
+        onPress: () =>
+          navigation.navigate('LotterySchedule', {
+            projectId: detail.projectId,
+            projectName: detail.projectName,
+            applicationId: detail.applicationId,
+          }),
+        variant: 'primary',
+      };
       if (detail.receiptUrl) {
         return [
+          lotteryCta,
           {
             label: loadingReceipt ? 'Đang tải...' : 'Xem biên nhận',
             icon: 'file-text',
@@ -330,50 +351,15 @@ export const ApplicationDetailScreen = () => {
           },
         ];
       }
-      return [];
+      return [lotteryCta];
     }
 
-    if (status === 'CONTRACT_PENDING') {
-      const hasApartment = !!(detail?.apartmentId || detail?.apartmentUnitName);
+    // Trúng/cấp suất → đóng cọc trước khi ký
+    if (status === 'DEPOSIT_PENDING') {
+      const isPending = String(existingPayment?.status || '').toLowerCase() === 'pending';
       return [
         {
-          label: hasApartment
-            ? 'Xem & ký HĐ mua bán NOXH'
-            : 'Chờ cấp căn trước khi ký HĐ',
-          icon: 'file-text',
-          onPress: hasApartment
-            ? handleViewContract
-            : () =>
-                Alert.alert(
-                  'Chưa được cấp căn',
-                  'Chủ đầu tư chưa gán căn cụ thể cho hồ sơ của bạn. Vui lòng chờ cấp căn rồi mới ký hợp đồng.',
-                ),
-          variant: hasApartment ? 'primary' : 'secondary',
-        },
-      ];
-    }
-
-    if (status === 'CONTRACT_SIGNED') {
-      if (existingPayment?.status === 'Success') {
-        return [
-          {
-            label: 'Xem hợp đồng mua bán NOXH',
-            icon: 'file-text',
-            onPress: handleViewContract,
-            variant: 'primary',
-          },
-          {
-            label: 'Lịch thanh toán',
-            icon: 'calendar',
-            onPress: handlePaymentSchedule,
-            variant: 'secondary',
-          },
-        ];
-      }
-      const isPending = existingPayment?.status === 'Pending';
-      return [
-        {
-          label: isPending ? 'Tiếp tục thanh toán Đợt 1 VNPay' : 'Thanh toán Đợt 1 VNPay',
+          label: isPending ? 'Tiếp tục đóng cọc' : 'Đóng tiền cọc',
           icon: 'credit-card',
           onPress: handleStartPayment,
           variant: 'destructive',
@@ -381,7 +367,50 @@ export const ApplicationDetailScreen = () => {
           disabled: processingPayment || checkingPayment,
         },
         {
-          label: 'Xem hợp đồng mua bán NOXH',
+          label: 'Xem lịch thanh toán',
+          icon: 'calendar',
+          onPress: handlePaymentSchedule,
+          variant: 'secondary',
+        },
+      ];
+    }
+
+    // Sau cọc → ký HĐ
+    if (status === 'CONTRACT_PENDING') {
+      const hasApartment = !!(detail?.apartmentId || detail?.apartmentUnitName);
+      return [
+        {
+          label: hasApartment ? 'Ký hợp đồng' : 'Chờ cấp căn để ký',
+          icon: 'file-text',
+          onPress: hasApartment
+            ? handleViewContract
+            : () =>
+                Alert.alert(
+                  'Chưa được cấp căn',
+                  'Chủ đầu tư chưa gán căn cụ thể. Bạn có thể thử lại sau khi đã được cấp căn.',
+                ),
+          variant: hasApartment ? 'primary' : 'secondary',
+        },
+        {
+          label: 'Xem lịch thanh toán',
+          icon: 'calendar',
+          onPress: handlePaymentSchedule,
+          variant: 'secondary',
+        },
+      ];
+    }
+
+    // Đã ký → các khoản còn lại trên lịch
+    if (status === 'CONTRACT_SIGNED' || status === 'INSTALLMENT_IN_PROGRESS') {
+      return [
+        {
+          label: 'Xem lịch thanh toán',
+          icon: 'calendar',
+          onPress: handlePaymentSchedule,
+          variant: 'primary',
+        },
+        {
+          label: 'Xem hợp đồng',
           icon: 'file-text',
           onPress: handleViewContract,
           variant: 'secondary',
@@ -506,11 +535,12 @@ export const ApplicationDetailScreen = () => {
     return [];
   };
 
-  // Khớp BE ClosedStatuses: còn lại thì applicant được hủy (release căn nếu đang giữ suất).
+  // Khớp BE ClosedStatuses (+ đang trả góp không cho hủy).
   const CLOSED_FOR_CANCEL = [
     'DEPOSIT_PAID',
     'FULLY_PAID',
     'CONTRACT_SIGNED',
+    'INSTALLMENT_IN_PROGRESS',
     'REJECTED',
     'CANCELED',
     'EXPIRED',
@@ -540,14 +570,29 @@ export const ApplicationDetailScreen = () => {
   const statusConfig = detail ? getStatusConfig(detail.applicationStatus) : null;
 
   const requestNote = detail?.reviewHistories
-    .filter(h => h.action === 'REQUEST_MORE_DOCUMENTS' && h.note)
+    ?.filter((h) => h.action === 'REQUEST_MORE_DOCUMENTS' && h.note)
     .slice(0, 1)
-    .map(h => h.note)[0];
+    .map((h) => h.note)[0];
 
   const rejectNote = detail?.reviewHistories
-    .filter(h => h.action === 'REJECT' && h.note)
+    ?.filter((h) => h.action === 'REJECT' && h.note)
     .slice(0, 1)
-    .map(h => h.note)[0];
+    .map((h) => h.note)[0];
+
+  const nextStep = detail
+    ? getCitizenNextStep(detail.applicationStatus, { needMoreNote: requestNote })
+    : null;
+
+  const nextToneStyle =
+    nextStep?.tone === 'warn'
+      ? styles.nextWarn
+      : nextStep?.tone === 'action'
+        ? styles.nextAction
+        : nextStep?.tone === 'success'
+          ? styles.nextSuccess
+          : nextStep?.tone === 'danger'
+            ? styles.nextDanger
+            : styles.nextInfo;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -583,21 +628,38 @@ export const ApplicationDetailScreen = () => {
               </View>
             )}
 
-            <View style={styles.timelineCard}>
-              <Text style={styles.timelineTitle}>Tiến độ hồ sơ</Text>
-              <ApplicationTimeline currentStatus={detail.applicationStatus} />
-            </View>
-
-            {requestNote && (
-              <View style={styles.noteCard}>
-                <Feather name="message-square" size={16} color={RHSColors.amber700} />
-                <Text style={styles.noteText}>{requestNote}</Text>
+            {nextStep && (
+              <View style={[styles.nextCard, nextToneStyle]}>
+                <Text style={styles.nextEyebrow}>Việc của bạn</Text>
+                <Text style={styles.nextTitle}>{nextStep.title}</Text>
+                <Text style={styles.nextBody}>{nextStep.body}</Text>
               </View>
             )}
+
+            <View style={styles.timelineCard}>
+              <Text style={styles.timelineTitle}>Tiến độ hồ sơ</Text>
+              <ApplicationTimeline
+                currentStatus={detail.applicationStatus}
+                needMoreNote={requestNote}
+              />
+            </View>
+
+            {requestNote && detail.applicationStatus === 'NEED_MORE_DOCUMENTS' ? null : requestNote ? (
+              <View style={styles.noteCard}>
+                <Feather name="message-square" size={16} color={RHSColors.amber700} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.noteLabel}>Ghi chú từ chủ đầu tư</Text>
+                  <Text style={styles.noteText}>{requestNote}</Text>
+                </View>
+              </View>
+            ) : null}
             {rejectNote && (
               <View style={[styles.noteCard, styles.rejectionCard]}>
                 <Feather name="alert-triangle" size={16} color={RHSColors.red600} />
-                <Text style={styles.rejectionText}>{rejectNote}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rejectionLabel}>Lý do từ chối</Text>
+                  <Text style={styles.rejectionText}>{rejectNote}</Text>
+                </View>
               </View>
             )}
 
@@ -658,15 +720,14 @@ export const ApplicationDetailScreen = () => {
               <View style={styles.lotteryInfoCard}>
                 <View style={styles.lotteryInfoHead}>
                   <Feather name="info" size={18} color={RHSColors.blue700} />
-                  <Text style={styles.lotteryInfoTitle}>Đã duyệt — chờ Chủ đầu tư chốt</Text>
+                  <Text style={styles.lotteryInfoTitle}>Chờ chủ đầu tư chốt suất</Text>
                 </View>
                 <Text style={styles.lotteryInfoText}>
-                  Sở đã phê duyệt hồ sơ. Bạn đang chờ Chủ đầu tư chốt danh sách: đủ căn → cấp căn và
-                  ký hợp đồng; chỉ khi số hồ sơ vượt số căn thì phần còn lại mới tham gia bốc thăm
-                  (lịch do CĐT đề xuất, Sở duyệt rồi mới công bố). Chưa đến bước thanh toán Đợt 1.
+                  Hồ sơ đã được duyệt. Chủ đầu tư sẽ cấp nhà trực tiếp nếu đủ căn, hoặc tổ chức bốc
+                  thăm rồi cấp suất. Khi đã có suất, bạn đóng tiền cọc rồi ký hợp đồng.
                 </Text>
                 <TouchableOpacity
-                  style={[styles.lotteryInfoBtn, { backgroundColor: RHSColors.grey100 }]}
+                  style={styles.lotteryInfoBtn}
                   onPress={() =>
                     navigation.navigate('LotterySchedule', {
                       projectId: detail.projectId,
@@ -676,37 +737,50 @@ export const ApplicationDetailScreen = () => {
                   }
                   activeOpacity={0.85}
                 >
-                  <Text style={[styles.lotteryInfoBtnText, { color: RHSColors.blue700 }]}>
-                    Xem lịch bốc thăm (nếu dự án đã mở)
+                  <Feather name="radio" size={16} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.lotteryInfoBtnText}>
+                    Xem lịch / sảnh bốc thăm
                   </Text>
                 </TouchableOpacity>
               </View>
+            )}
+
+            {detail.applicationStatus === 'DEPOSIT_PENDING' && (
+              <DepositPendingPaymentContent
+                existingPayment={existingPayment}
+                checkingPayment={checkingPayment}
+                startedAtHint={detail.updatedAt}
+              />
             )}
 
             {detail.applicationStatus === 'CONTRACT_PENDING' && (
               <View style={styles.lotteryInfoCard}>
                 <View style={styles.lotteryInfoHead}>
                   <Feather name="file-text" size={18} color={RHSColors.blue700} />
-                  <Text style={styles.lotteryInfoTitle}>Chờ ký hợp đồng mua bán NOXH</Text>
+                  <Text style={styles.lotteryInfoTitle}>Sẵn sàng ký hợp đồng</Text>
                 </View>
                 <Text style={styles.lotteryInfoText}>
                   {detail.apartmentUnitName
-                    ? `Bạn đã được cấp căn ${detail.apartmentUnitName}${
+                    ? `Bạn được cấp căn ${detail.apartmentUnitName}${
                         detail.apartmentArea ? ` (${detail.apartmentArea}m²)` : ''
-                      }. Vui lòng xem và ký hợp đồng mua bán nhà ở xã hội, sau đó mới Thanh toán Đợt 1 VNPay.`
-                    : detail.lotteryResult === 'WON' || detail.lotteryResult === 'PRIORITY_WON'
-                      ? 'Bạn đã được chốt suất (trúng bốc thăm / ưu tiên). Vui lòng chờ Chủ đầu tư cấp căn cụ thể trước khi ký hợp đồng.'
-                      : 'Hồ sơ đã được chốt danh sách. Vui lòng chờ Chủ đầu tư cấp căn cụ thể trước khi ký hợp đồng.'}
+                      }. Hãy đọc và ký hợp đồng mua bán. Sau khi ký, các khoản còn lại sẽ mở trên lịch thanh toán.`
+                    : 'Hãy đọc và ký hợp đồng mua bán. Nếu chưa thấy căn cụ thể, liên hệ chủ đầu tư hoặc thử lại sau.'}
                 </Text>
               </View>
             )}
 
-            {detail.applicationStatus === 'CONTRACT_SIGNED' && (
-              <ContractSignedPaymentContent
-                existingPayment={existingPayment}
-                checkingPayment={checkingPayment}
-                signedAtHint={detail.updatedAt}
-              />
+            {(detail.applicationStatus === 'CONTRACT_SIGNED' ||
+              detail.applicationStatus === 'INSTALLMENT_IN_PROGRESS') && (
+              <View style={styles.lotteryInfoCard}>
+                <View style={styles.lotteryInfoHead}>
+                  <Feather name="calendar" size={18} color={RHSColors.blue700} />
+                  <Text style={styles.lotteryInfoTitle}>Các khoản còn lại</Text>
+                </View>
+                <Text style={styles.lotteryInfoText}>
+                  Hợp đồng đã ký. Các khoản tiếp theo mở dần theo tiến độ dự án — xem chi tiết trong
+                  lịch thanh toán.
+                </Text>
+              </View>
             )}
 
             {detail.applicationStatus === 'DEPOSIT_PAID' && (
@@ -753,7 +827,7 @@ export const ApplicationDetailScreen = () => {
                   <Text style={styles.expiredTitle}>Hồ sơ đã hết hạn</Text>
                 </View>
                 <Text style={styles.expiredDescription}>
-                  Hồ sơ đã hết hạn (quá hạn ký hợp đồng hoặc quá hạn thanh toán Đợt 1 sau khi ký). Vui lòng tạo hồ sơ mới nếu muốn tiếp tục đăng ký.
+                  Hồ sơ đã hết hạn (quá hạn đóng cọc hoặc ký hợp đồng). Bạn có thể tạo hồ sơ mới nếu muốn tiếp tục đăng ký.
                 </Text>
               </View>
             )}
@@ -805,41 +879,42 @@ export const ApplicationDetailScreen = () => {
   );
 };
 
-const ContractSignedPaymentContent = ({
+const DepositPendingPaymentContent = ({
   existingPayment,
   checkingPayment,
-  signedAtHint,
+  startedAtHint,
 }: {
   existingPayment: PaymentInfo | null;
   checkingPayment: boolean;
-  signedAtHint?: string | null;
+  startedAtHint?: string | null;
 }) => {
   const [remainingLabel, setRemainingLabel] = useState<string | null>(null);
+  const paid = isPaymentSuccessStatus(existingPayment?.status);
 
   useEffect(() => {
-    if (!signedAtHint || existingPayment?.status === 'Success') {
+    if (!startedAtHint || paid) {
       setRemainingLabel(null);
       return;
     }
     const tick = () => {
-      const ms = getDepositRemainingMs(signedAtHint);
+      const ms = getDepositRemainingMs(startedAtHint);
       if (ms <= 0) {
-        setRemainingLabel('Đã hết hạn thanh toán Đợt 1');
+        setRemainingLabel('Đã hết hạn đóng cọc');
         return;
       }
-      setRemainingLabel(`Còn ${formatDepositHhmmss(ms)} để thanh toán Đợt 1`);
+      setRemainingLabel(`Còn ${formatDepositHhmmss(ms)} để đóng cọc`);
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [signedAtHint, existingPayment?.status]);
+  }, [startedAtHint, paid]);
 
-  if (existingPayment?.status === 'Success') {
+  if (paid) {
     return (
       <View style={styles.depositPaidSection}>
         <View style={styles.depositPaidBadge}>
           <Feather name="check-circle" size={16} color={RHSColors.green600} />
-          <Text style={styles.depositPaidText}>Đã thanh toán thành công</Text>
+          <Text style={styles.depositPaidText}>Đã đóng cọc thành công</Text>
         </View>
       </View>
     );
@@ -853,27 +928,29 @@ const ContractSignedPaymentContent = ({
     );
   }
 
+  const isPending = String(existingPayment?.status || '').toLowerCase() === 'pending';
+
   return (
     <View style={styles.paymentSection}>
       <View style={styles.waitingPaymentBadge}>
         <Feather
-          name={existingPayment?.status === 'Pending' ? 'alert-circle' : 'credit-card'}
+          name={isPending ? 'alert-circle' : 'credit-card'}
           size={16}
-          color={existingPayment?.status === 'Pending' ? RHSColors.amber700 : RHSColors.govGoldDark}
+          color={isPending ? RHSColors.amber700 : RHSColors.govGoldDark}
         />
         <Text style={styles.waitingPaymentText}>
-          {existingPayment?.status === 'Pending' ? 'Đã có giao dịch đang chờ' : 'Cần Thanh toán Đợt 1 VNPay'}
+          {isPending ? 'Đang có giao dịch chờ hoàn tất' : 'Cần đóng tiền cọc'}
         </Text>
       </View>
       {!!remainingLabel && (
         <Text style={[styles.depositInfoText, { fontWeight: '700', color: RHSColors.red600, marginBottom: 6 }]}>
-          {remainingLabel} (tối đa {DEPOSIT_PAYMENT_DAYS} ngày sau khi ký)
+          {remainingLabel} (tối đa {DEPOSIT_PAYMENT_DAYS} ngày sau khi được cấp suất)
         </Text>
       )}
       <Text style={styles.depositInfoText}>
-        {existingPayment?.status === 'Pending'
-          ? 'Bạn đã có giao dịch đang chờ. Nhấn «Tiếp tục thanh toán Đợt 1 VNPay» để mở lại cổng thanh toán.'
-          : 'Bạn đã ký hợp đồng mua bán nhà ở xã hội. Vui lòng thanh toán Đợt 1 qua VNPay để hoàn tất bước này.'}
+        {isPending
+          ? 'Bạn đã mở giao dịch. Nhấn «Tiếp tục đóng cọc» để quay lại cổng thanh toán.'
+          : 'Bạn đã được cấp suất. Đóng cọc trước, sau đó mới ký hợp đồng.'}
       </Text>
     </View>
   );
@@ -999,6 +1076,36 @@ const styles = StyleSheet.create({
     color: RHSColors.text,
     marginBottom: 10,
   },
+  nextCard: {
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+  },
+  nextInfo: { backgroundColor: '#F5F9FC', borderColor: '#D6E4F0' },
+  nextAction: { backgroundColor: '#FFF8F0', borderColor: '#FFCC80' },
+  nextWarn: { backgroundColor: '#FFF3E0', borderColor: '#FFB74D' },
+  nextSuccess: { backgroundColor: '#F1F8F4', borderColor: '#A5D6A7' },
+  nextDanger: { backgroundColor: '#FFEBEE', borderColor: '#EF9A9A' },
+  nextEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: RHSColors.textMuted,
+    marginBottom: 4,
+  },
+  nextTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: RHSColors.text,
+    marginBottom: 6,
+  },
+  nextBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: RHSColors.textMuted,
+  },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1027,9 +1134,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     gap: spacing.sm,
   },
-  noteText: { ...typography.bodySmall, color: RHSColors.amber700, flex: 1, lineHeight: 18 },
+  noteLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: RHSColors.amber700,
+    marginBottom: 2,
+  },
+  noteText: { ...typography.bodySmall, color: RHSColors.amber700, lineHeight: 18 },
   rejectionCard: { backgroundColor: RHSColors.red50 },
-  rejectionText: { ...typography.bodySmall, color: RHSColors.red700, flex: 1, lineHeight: 18 },
+  rejectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: RHSColors.red700,
+    marginBottom: 2,
+  },
+  rejectionText: { ...typography.bodySmall, color: RHSColors.red700, lineHeight: 18 },
 
   detailSection: { marginBottom: spacing.lg },
   detailSectionTitle: {
@@ -1098,6 +1217,8 @@ const styles = StyleSheet.create({
   lotteryInfoText: { ...typography.caption, color: RHSColors.textMuted, lineHeight: 18, marginBottom: 10 },
   lotteryInfoBtn: {
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: RHSColors.blue700,
     paddingHorizontal: 12,
     paddingVertical: 8,

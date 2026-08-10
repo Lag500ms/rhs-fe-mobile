@@ -7,6 +7,7 @@ import { formatPrice, getThumb } from '../utils/format';
 import { WishlistHeart } from '../../../components/WishlistHeart';
 import { wishlistApi } from '../../saved/api/wishlistApi';
 import { getToken } from '../../../lib/tokenStorage';
+import { labelProjectStatus, statusBadgeColor } from '../utils/projectStatus';
 
 type Props = {
   project: HousingProjectResponse;
@@ -65,8 +66,8 @@ export const ProjectCard: React.FC<Props> = ({ project, onPress, showWishlist = 
             <Feather name="home" size={32} color={RHSColors.grey400} />
           </View>
         )}
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>Đang mở đăng ký</Text>
+        <View style={[styles.statusBadge, { backgroundColor: statusBadgeColor(project.status) }]}>
+          <Text style={styles.statusText}>{labelProjectStatus(project.status)}</Text>
         </View>
         {showWishlist && (
           <WishlistHeart

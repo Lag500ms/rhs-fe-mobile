@@ -25,7 +25,22 @@ export interface LotteryScheduleDetail {
   /** OTP vào sảnh (sau khi Sở duyệt lịch). */
   joinCode?: string | null;
   sessionStatus?: string | null;
+  /** Số SXD đang giám sát trong hub (BE bắt ≥1 mới cho Live/draw). */
+  sxdOnlineCount?: number;
 }
+
+export const LOTTERY_SESSION_LABEL: Record<string, string> = {
+  NOT_SCHEDULED: 'Chưa lên lịch',
+  Scheduled: 'Đã lên lịch',
+  WaitingLobby: 'Sảnh chờ',
+  Live: 'Đang Live',
+  Finished: 'Đã kết thúc — chờ công bố',
+  Published: 'Đã công bố',
+  SCHEDULED: 'Đã lên lịch',
+  APPROVED: 'Đã duyệt — chờ mở sảnh',
+  RUNNING: 'Đang Live',
+  FINISHED: 'Đã kết thúc',
+};
 
 export interface VerifyJoinCodeResult {
   success: boolean;

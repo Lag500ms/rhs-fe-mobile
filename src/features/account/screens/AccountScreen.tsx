@@ -190,7 +190,28 @@ export const AccountScreen = () => {
                 icon="user" 
                 label="Thông tin công dân" 
                 onPress={() => navigation.navigate('UserProfile')} 
-                last 
+              />
+              <MenuItem
+                icon="shuffle"
+                label="Bốc thăm của tôi"
+                onPress={() =>
+                  navigation.navigate('Applications', { screen: 'MyLottery' })
+                }
+              />
+              <MenuItem
+                icon="file-text"
+                label="Hợp đồng"
+                onPress={() =>
+                  navigation.navigate('Applications', { screen: 'MyContracts' })
+                }
+              />
+              <MenuItem
+                icon="credit-card"
+                label="Thanh toán"
+                onPress={() =>
+                  navigation.navigate('Applications', { screen: 'MyPayments' })
+                }
+                last
               />
             </View>
 
@@ -233,10 +254,20 @@ export const AccountScreen = () => {
         {/* Section 3: TRỢ GIÚP & PHÁP LÝ (Luôn hiện) */}
         <View style={styles.menuCard}>
           <Text style={styles.menuTitle}>TRỢ GIÚP & PHÁP LÝ</Text>
+          <MenuItem
+            icon="search"
+            label="Tra cứu hồ sơ"
+            onPress={() => navigation.navigate('Lookup')}
+          />
           <MenuItem 
             icon="file-text" 
             label="Tra cứu thủ tục hành chính" 
             onPress={() => navigation.navigate('Faq')} 
+          />
+          <MenuItem
+            icon="alert-circle"
+            label="Báo cáo sự cố"
+            onPress={() => navigation.navigate('IssueReport')}
           />
           <MenuItem 
             icon="info" 

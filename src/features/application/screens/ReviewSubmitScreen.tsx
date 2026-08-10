@@ -197,13 +197,13 @@ export const ReviewSubmitScreen = () => {
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {isSupplementMode ? 'Nộp lại hồ sơ' : 'Bước 4/4 — Kiểm tra & nộp'}
+          {isSupplementMode ? 'Nộp lại hồ sơ' : 'Bước 5/5 — Rà soát'}
         </Text>
         <View style={{ width: 36 }} />
       </View>
 
       {/* Stepper - chỉ hiện khi tạo mới */}
-      {!isSupplementMode && <ApplicationStepper current={4} />}
+      {!isSupplementMode && <ApplicationStepper current={5} />}
 
       <ScrollView
         style={styles.scroll}

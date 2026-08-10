@@ -1,11 +1,12 @@
 /**
  * Cấu hình trạng thái hồ sơ đăng ký nhà ở xã hội.
- * Map từ giá trị BE → màu sắc UI, nhãn và hành động hiển thị.
+ * Map BE → nhãn người dân (mobile). Cọc → ký; đợt sau ở lịch TT.
  */
 
 import { RHSColors } from '../../../lib/theme';
 
-export interface StatusConfig {  label: string;
+export interface StatusConfig {
+  label: string;
   bg: string;
   textColor: string;
   dotColor: string;
@@ -25,40 +26,70 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: '#1E88E5',
   },
   REVIEWING: {
-    label: 'Đang xét duyệt',
+    label: 'Chủ đầu tư tiếp nhận',
     bg: '#FFF8E1',
     textColor: '#F57F17',
     dotColor: '#F9A825',
   },
   PENDING_SXD_REVIEW: {
-    label: 'Chờ Sở Xây dựng',
+    label: 'Sở Xây dựng tiếp nhận',
     bg: '#E3F2FD',
     textColor: '#1565C0',
     dotColor: '#1E88E5',
   },
   NEED_MORE_DOCUMENTS: {
-    label: 'Cần bổ sung',
+    label: 'Cần bổ sung giấy tờ',
     bg: '#FFF3E0',
     textColor: '#E65100',
     dotColor: '#FF9800',
   },
   APPROVED: {
-    label: 'Đã duyệt — chờ chốt',
+    label: 'Đã duyệt — chờ chốt suất',
     bg: '#E8F5E9',
     textColor: '#2E7D32',
     dotColor: '#4CAF50',
   },
   APPROVED_BY_TIMEOUT: {
-    label: 'Duyệt tự động — chờ chốt',
+    label: 'Đã duyệt — chờ chốt suất',
     bg: '#E8F5E9',
     textColor: '#2E7D32',
     dotColor: '#4CAF50',
+  },
+  DEPOSIT_PENDING: {
+    label: 'Chờ đóng tiền cọc',
+    bg: '#FFF3E0',
+    textColor: '#E65100',
+    dotColor: '#FF9800',
   },
   CONTRACT_PENDING: {
     label: 'Chờ ký hợp đồng',
     bg: '#E8EAF6',
     textColor: '#283593',
     dotColor: '#3F51B5',
+  },
+  CONTRACT_SIGNED: {
+    label: 'Đã ký hợp đồng',
+    bg: '#E8EAF6',
+    textColor: '#283593',
+    dotColor: '#3F51B5',
+  },
+  DEPOSIT_PAID: {
+    label: 'Đã đóng cọc',
+    bg: '#E8F5E9',
+    textColor: '#1B5E20',
+    dotColor: '#2E7D32',
+  },
+  INSTALLMENT_IN_PROGRESS: {
+    label: 'Đang đóng các khoản còn lại',
+    bg: '#E3F2FD',
+    textColor: '#1565C0',
+    dotColor: '#1E88E5',
+  },
+  FULLY_PAID: {
+    label: 'Đã thanh toán đủ',
+    bg: '#E0F2F1',
+    textColor: '#00695C',
+    dotColor: '#00897B',
   },
   LOTTERY_LOST: {
     label: 'Không trúng bốc thăm',
@@ -71,24 +102,6 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     bg: '#FFEBEE',
     textColor: '#C62828',
     dotColor: '#EF5350',
-  },
-  DEPOSIT_PAID: {
-    label: 'Đã thanh toán',
-    bg: '#E8F5E9',
-    textColor: '#1B5E20',
-    dotColor: '#2E7D32',
-  },
-  CONTRACT_SIGNED: {
-    label: 'Đã ký hợp đồng',
-    bg: '#E8EAF6',
-    textColor: '#283593',
-    dotColor: '#3F51B5',
-  },
-  FULLY_PAID: {
-    label: 'Đã thanh toán đủ',
-    bg: '#E0F2F1',
-    textColor: '#00695C',
-    dotColor: '#00897B',
   },
   EXPIRED: {
     label: 'Hết hạn',
@@ -144,14 +157,16 @@ export function getActionForStatus(status: string): StatusAction | null {
     case 'APPROVED':
     case 'APPROVED_BY_TIMEOUT':
       return { label: 'Chờ chốt danh sách / bốc thăm', icon: 'radio', color: RHSColors.blue700 };
+    case 'DEPOSIT_PENDING':
+      return { label: 'Đóng tiền cọc', icon: 'credit-card', color: RHSColors.red600 };
     case 'CONTRACT_PENDING':
-      return { label: 'Ký hợp đồng mua bán NOXH', icon: 'file-text', color: RHSColors.blue700 };
+      return { label: 'Ký hợp đồng', icon: 'file-text', color: RHSColors.blue700 };
+    case 'CONTRACT_SIGNED':
+    case 'INSTALLMENT_IN_PROGRESS':
     case 'DEPOSIT_PAID':
-      return { label: 'Xem hợp đồng / lịch thanh toán', icon: 'award', color: RHSColors.green600 };
+      return { label: 'Xem lịch thanh toán', icon: 'calendar', color: RHSColors.blue700 };
     case 'LOTTERY_LOST':
       return { label: 'Xem kết quả bốc thăm', icon: 'eye', color: RHSColors.red600 };
-    case 'CONTRACT_SIGNED':
-      return { label: 'Thanh toán Đợt 1 VNPay', icon: 'credit-card', color: RHSColors.red600 };
     case 'FULLY_PAID':
       return { label: 'Xem lịch thanh toán', icon: 'check-circle', color: RHSColors.green600 };
     case 'REJECTED':

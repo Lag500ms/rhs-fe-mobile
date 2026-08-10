@@ -27,9 +27,14 @@ import { HomeFilterBar, SortKey, SORT_OPTIONS } from '../components/HomeFilterBa
 import { getToken } from '../../../lib/tokenStorage';
 import { userApi } from '../../user/api/userApi';
 import { isEkycVerified } from '../../user/utils/ekycGate';
+import {
+  PROJECT_STATUS_FILTER_OPTIONS,
+  isBrowsableShowcase,
+  type ProjectStatusFilter,
+} from '../utils/projectStatus';
 
 type Nav = NativeStackNavigationProp<HomeStackParamList, 'HomeList'>;
-type FilterSheet = 'district' | 'price' | 'area' | 'sort' | null;
+type FilterSheet = 'district' | 'price' | 'area' | 'sort' | 'status' | null;
 
 const PRICE_RANGES = [
   { label: 'Dưới 300 triệu', min: 0, max: 300_000_000 },
@@ -47,17 +52,6 @@ const AREA_RANGES = [
   { label: 'Trên 70 m²', min: 70, max: undefined },
   { label: 'Tất cả', min: undefined, max: undefined },
 ];
-
-const OPEN_STATUS_VALUES = [
-  'open',
-  'open_for_registration',
-  'openforregistration',
-  'đang mở đăng ký',
-  'đang mở bán',
-  'đang mở',
-];
-const isOpenForRegistration = (status?: string) =>
-  !!status && OPEN_STATUS_VALUES.includes(status.trim().toLowerCase());
 
 const TAB_BAR_STYLE = {
   borderTopWidth: 1,
@@ -86,6 +80,7 @@ export const HomeScreen = () => {
   const [filterMaxPrice, setFilterMaxPrice] = useState<number | undefined>();
   const [filterMinArea, setFilterMinArea] = useState<number | undefined>();
   const [filterMaxArea, setFilterMaxArea] = useState<number | undefined>();
+  const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>('ALL');
   const [sortKey, setSortKey] = useState<SortKey>('default');
   const [activeSheet, setActiveSheet] = useState<FilterSheet>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -150,6 +145,7 @@ export const HomeScreen = () => {
     || filterMaxPrice !== undefined
     || filterMinArea !== undefined
     || filterMaxArea !== undefined
+    || statusFilter !== 'ALL'
     || sortKey !== 'default';
 
   const resetFilters = () => {
@@ -158,8 +154,14 @@ export const HomeScreen = () => {
     setFilterMaxPrice(undefined);
     setFilterMinArea(undefined);
     setFilterMaxArea(undefined);
+    setStatusFilter('ALL');
     setSortKey('default');
   };
+
+  const statusCodeParam = useMemo(
+    () => PROJECT_STATUS_FILTER_OPTIONS.find((o) => o.key === statusFilter)?.statusCode,
+    [statusFilter],
+  );
 
   const fetchProjects = useCallback(async (page = 1, append = false) => {
     try {
@@ -177,6 +179,7 @@ export const HomeScreen = () => {
         maxPrice: filterMaxPrice,
         minArea: filterMinArea,
         maxArea: filterMaxArea,
+        statusCode: statusCodeParam,
       });
 
       setHousingProjects((prev) => (page === 1 ? result.items : [...prev, ...result.items]));
@@ -188,14 +191,26 @@ export const HomeScreen = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [debouncedSearch, filterWard, filterMinPrice, filterMaxPrice, filterMinArea, filterMaxArea]);
+  }, [
+    debouncedSearch,
+    filterWard,
+    filterMinPrice,
+    filterMaxPrice,
+    filterMinArea,
+    filterMaxArea,
+    statusCodeParam,
+  ]);
 
   useEffect(() => {
     fetchProjects(1);
   }, [fetchProjects]);
 
   const visibleProjects = useMemo(() => {
-    let list = housingProjects.filter((p) => isOpenForRegistration(p.status));
+    // ALL: giữ OPEN + UPCOMING (showcase web). Khi chọn 1 status → BE đã lọc.
+    let list =
+      statusFilter === 'ALL'
+        ? housingProjects.filter((p) => isBrowsableShowcase(p.status))
+        : housingProjects;
     switch (sortKey) {
       case 'price_asc':
         list = [...list].sort((a, b) => (a.minPrice ?? 0) - (b.minPrice ?? 0));
@@ -210,7 +225,7 @@ export const HomeScreen = () => {
         break;
     }
     return list;
-  }, [housingProjects, sortKey]);
+  }, [housingProjects, sortKey, statusFilter]);
 
   useEffect(() => {
     if (
@@ -256,7 +271,7 @@ export const HomeScreen = () => {
           <RHSLogo size={36} />
           <View style={{ flex: 1 }}>
             <Text style={styles.heroTitle}>Tra cứu nhà ở xã hội</Text>
-            <Text style={styles.heroSub}>TP. Hồ Chí Minh · Đang mở đăng ký</Text>
+            <Text style={styles.heroSub}>TP. Hồ Chí Minh · Đang mở & sắp mở bán</Text>
           </View>
           <TouchableOpacity
             style={styles.announceBtn}
@@ -294,11 +309,13 @@ export const HomeScreen = () => {
         filterWard={filterWard}
         priceLabel={priceLabel}
         areaLabel={areaLabel}
+        statusFilter={statusFilter}
         sortKey={sortKey}
         hasActiveFilters={hasActiveFilters}
         onOpenWard={() => setActiveSheet('district')}
         onOpenPrice={() => setActiveSheet('price')}
         onOpenArea={() => setActiveSheet('area')}
+        onOpenStatus={() => setActiveSheet('status')}
         onOpenSort={() => setActiveSheet('sort')}
         onReset={resetFilters}
       />
@@ -355,7 +372,15 @@ export const HomeScreen = () => {
         ) : visibleProjects.length === 0 ? (
           <View style={styles.stateBox}>
             <Feather name="inbox" size={40} color={RHSColors.textMuted} />
-            <Text style={styles.stateText}>Chưa có dự án đang mở đăng ký</Text>
+            <Text style={styles.stateText}>
+              {statusFilter === 'UPCOMING'
+                ? 'Chưa có dự án sắp mở bán'
+                : statusFilter === 'OPEN'
+                  ? 'Chưa có dự án đang mở đăng ký'
+                  : statusFilter === 'CLOSED'
+                    ? 'Chưa có dự án đã đóng'
+                    : 'Chưa có dự án đang mở hoặc sắp mở'}
+            </Text>
           </View>
         ) : (
           <>
@@ -440,6 +465,20 @@ export const HomeScreen = () => {
             onPress={() => {
               setFilterMinArea(range.min);
               setFilterMaxArea(range.max);
+              closeSheet();
+            }}
+          />
+        ))}
+      </FilterSheetModal>
+
+      <FilterSheetModal visible={activeSheet === 'status'} title="Trạng thái mở bán" onClose={closeSheet}>
+        {PROJECT_STATUS_FILTER_OPTIONS.map((opt) => (
+          <SheetItem
+            key={opt.key}
+            label={opt.label}
+            active={statusFilter === opt.key}
+            onPress={() => {
+              setStatusFilter(opt.key);
               closeSheet();
             }}
           />

@@ -23,32 +23,56 @@ import {
   getRelationshipLabel,
 } from '../types/household';
 import { ApplicationStepper } from '../components/ApplicationStepper';
+import type {
+  ApplicationDraftMember,
+  ApplicationDraftPersonal,
+} from '../types/applicationDraft';
 
 export const HouseholdMembersScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { applicationId, projectName, applicationStatus, next } = route.params as {
-    applicationId: string;
+  const {
+    applicationId,
+    projectName,
+    applicationStatus,
+    next,
+    draftPersonal,
+  } = route.params as {
+    applicationId?: string;
     projectName?: string;
     applicationStatus?: string;
-    next?: 'UploadDocuments';
+    next?: 'UploadDocuments' | 'PriorityGroup';
+    draftPersonal?: ApplicationDraftPersonal;
   };
 
-  const canEdit = !applicationStatus
-    || applicationStatus === 'DRAFT'
-    || applicationStatus === 'NEED_MORE_DOCUMENTS';
+  const isDraftCreateFlow = !!draftPersonal && next === 'PriorityGroup';
+  const isCreateFlow = isDraftCreateFlow || next === 'UploadDocuments';
+
+  const canEdit =
+    isDraftCreateFlow ||
+    !applicationStatus ||
+    applicationStatus === 'DRAFT' ||
+    applicationStatus === 'NEED_MORE_DOCUMENTS';
 
   const [members, setMembers] = useState<HouseholdMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [draftMembers, setDraftMembers] = useState<ApplicationDraftMember[]>([]);
+  const [loading, setLoading] = useState(!isDraftCreateFlow);
   const [saving, setSaving] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editing, setEditing] = useState<HouseholdMember | null>(null);
+  const [editingLocalId, setEditingLocalId] = useState<string | null>(null);
   const [fullName, setFullName] = useState('');
   const [citizenId, setCitizenId] = useState('');
   const [relationship, setRelationship] = useState('SPOUSE');
   const [note, setNote] = useState('');
 
+  const displayCount = isDraftCreateFlow ? draftMembers.length : members.length;
+
   const loadMembers = useCallback(async () => {
+    if (!applicationId || isDraftCreateFlow) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await householdMemberApi.getMembers(applicationId);
@@ -58,7 +82,7 @@ export const HouseholdMembersScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [applicationId]);
+  }, [applicationId, isDraftCreateFlow]);
 
   useFocusEffect(
     useCallback(() => {
@@ -68,6 +92,7 @@ export const HouseholdMembersScreen = () => {
 
   const resetForm = () => {
     setEditing(null);
+    setEditingLocalId(null);
     setFullName('');
     setCitizenId('');
     setRelationship('SPOUSE');
@@ -81,6 +106,17 @@ export const HouseholdMembersScreen = () => {
 
   const openEdit = (member: HouseholdMember) => {
     setEditing(member);
+    setEditingLocalId(null);
+    setFullName(member.fullName);
+    setCitizenId(member.citizenId || '');
+    setRelationship(member.relationship || 'OTHER');
+    setNote(member.note || '');
+    setModalVisible(true);
+  };
+
+  const openEditDraft = (member: ApplicationDraftMember) => {
+    setEditing(null);
+    setEditingLocalId(member.localId);
     setFullName(member.fullName);
     setCitizenId(member.citizenId || '');
     setRelationship(member.relationship || 'OTHER');
@@ -105,6 +141,24 @@ export const HouseholdMembersScreen = () => {
       note: note.trim() || undefined,
     };
 
+    if (isDraftCreateFlow) {
+      if (editingLocalId) {
+        setDraftMembers((prev) =>
+          prev.map((m) => (m.localId === editingLocalId ? { ...m, ...payload } : m)),
+        );
+      } else {
+        setDraftMembers((prev) => [
+          ...prev,
+          { localId: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...payload },
+        ]);
+      }
+      setModalVisible(false);
+      resetForm();
+      return;
+    }
+
+    if (!applicationId) return;
+
     setSaving(true);
     try {
       if (editing) {
@@ -123,6 +177,7 @@ export const HouseholdMembersScreen = () => {
   };
 
   const handleDelete = (member: HouseholdMember) => {
+    if (!applicationId) return;
     Alert.alert('Xóa thành viên', `Xóa "${member.fullName}" khỏi hộ gia đình?`, [
       { text: 'Hủy', style: 'cancel' },
       {
@@ -140,15 +195,31 @@ export const HouseholdMembersScreen = () => {
     ]);
   };
 
+  const handleDeleteDraft = (member: ApplicationDraftMember) => {
+    Alert.alert('Xóa thành viên', `Xóa "${member.fullName}" khỏi hộ gia đình?`, [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Xóa',
+        style: 'destructive',
+        onPress: () => setDraftMembers((prev) => prev.filter((m) => m.localId !== member.localId)),
+      },
+    ]);
+  };
+
   const handleContinue = () => {
-    if (next === 'UploadDocuments') {
+    if (next === 'PriorityGroup' && draftPersonal) {
+      navigation.navigate('PriorityGroup', {
+        draftPersonal,
+        draftMembers,
+      });
+      return;
+    }
+    if (next === 'UploadDocuments' && applicationId) {
       navigation.replace('UploadDocuments', { applicationId, projectName });
       return;
     }
     navigation.goBack();
   };
-
-  const isCreateFlow = next === 'UploadDocuments';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -159,7 +230,7 @@ export const HouseholdMembersScreen = () => {
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
               <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Bước 2/4 — Thành viên</Text>
+            <Text style={styles.headerTitle}>Bước 2/5 — Hộ gia đình</Text>
             <View style={{ width: 36 }} />
           </View>
           <ApplicationStepper current={2} />
@@ -177,18 +248,40 @@ export const HouseholdMembersScreen = () => {
           <Text style={styles.hint}>
             Thêm các thành viên cùng hộ khẩu (họ tên, CCCD, quan hệ) để phục vụ hậu kiểm chéo.
             Độc thân / sống một mình: có thể bỏ trống rồi tiếp tục.
-            {projectName ? ` Dự án: ${projectName}` : ''}
+            {(projectName || draftPersonal?.projectName)
+              ? ` Dự án: ${projectName || draftPersonal?.projectName}`
+              : ''}
           </Text>
 
           <Text style={styles.countHint}>
-            Số người trong hộ = 1 (bạn) + {members.length} thành viên đã thêm
+            Số người trong hộ = 1 (bạn) + {displayCount} thành viên đã thêm
           </Text>
 
-          {members.length === 0 ? (
+          {displayCount === 0 ? (
             <View style={styles.empty}>
               <Feather name="users" size={36} color={RHSColors.grey400} />
               <Text style={styles.emptyText}>Chưa có thành viên nào</Text>
             </View>
+          ) : isDraftCreateFlow ? (
+            draftMembers.map((m) => (
+              <View key={m.localId} style={styles.card}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.name}>{m.fullName}</Text>
+                  <Text style={styles.meta}>{getRelationshipLabel(m.relationship)}</Text>
+                  {!!m.citizenId && <Text style={styles.meta}>CCCD: {m.citizenId}</Text>}
+                </View>
+                {canEdit && (
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity onPress={() => openEditDraft(m)} style={styles.iconBtn}>
+                      <Feather name="edit-2" size={16} color={RHSColors.blue700} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDeleteDraft(m)} style={styles.iconBtn}>
+                      <Feather name="trash-2" size={16} color={RHSColors.red600} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ))
           ) : (
             members.map((m) => (
               <View key={m.memberId} style={styles.card}>
@@ -223,7 +316,11 @@ export const HouseholdMembersScreen = () => {
       <SafeAreaView style={styles.bottomBar} edges={['bottom']}>
         <TouchableOpacity style={styles.continueBtn} onPress={handleContinue} activeOpacity={0.9}>
           <Text style={styles.continueBtnText}>
-            {next === 'UploadDocuments' ? 'Tiếp tục nộp giấy tờ' : 'Xong'}
+            {next === 'PriorityGroup'
+              ? 'Tiếp tục đối tượng'
+              : next === 'UploadDocuments'
+                ? 'Tiếp tục nộp giấy tờ'
+                : 'Xong'}
           </Text>
           <Feather name="arrow-right" size={18} color="#fff" />
         </TouchableOpacity>

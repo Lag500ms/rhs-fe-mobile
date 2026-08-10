@@ -64,6 +64,21 @@ export const ProfileScreen = () => {
     navigation.navigate('Auth', { screen: 'Login', params: { returnTo: 'Account' } });
   };
 
+  const handleLeaveProfile = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+  };
+
+  const goExploreProjects = () => {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
+    });
+  };
+
   const requestMediaPermission = async (): Promise<boolean> => {
     if (Platform.OS === 'android') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -189,6 +204,13 @@ export const ProfileScreen = () => {
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
       >
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={handleLeaveProfile}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Feather name="arrow-left" size={22} color="#fff" />
+        </TouchableOpacity>
         <Text style={styles.title}>Hồ sơ cá nhân</Text>
         <Text style={styles.subtitle}>
           {profile?.fullName || 'Thông tin tài khoản của bạn'}
@@ -252,6 +274,11 @@ export const ProfileScreen = () => {
         </View>
 
         {/* Actions */}
+        <ActionButton
+          icon="home"
+          text="Khám phá dự án NOXH"
+          onPress={goExploreProjects}
+        />
         <ActionButton icon="lock" text="Đổi mật khẩu" onPress={() => navigation.navigate('ChangePassword')} />
 
         <ActionButton
@@ -307,6 +334,16 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
+    position: 'relative',
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   title: {
     fontSize: 24,

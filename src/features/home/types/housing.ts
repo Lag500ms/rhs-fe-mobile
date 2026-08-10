@@ -30,7 +30,7 @@ export interface HousingProjectResponse {
   thumbnailUrl?: string;
   lotteryDate?: string;
   lotteryLocation?: string;
-  /** Tỉ lệ Đợt 1 (%), tối đa 30. Đợt 2 = phần còn lại. */
+  /** Tỉ lệ Đợt 1 công bố trên dự án (tham khảo). BE chuẩn: 6 đợt (10/20/20/20/25+PBT/5). */
   phase1Percentage?: number;
   createdAt: string;
   updatedAt?: string;
@@ -52,6 +52,8 @@ export interface HousingProjectFilterParams {
   minArea?: number;
   maxArea?: number;
   statusId?: string;
+  /** Exact match BE StatusCode (OPEN | UPCOMING | CLOSED | FULL…). */
+  statusCode?: string;
 }
 
 export interface PagedResult<T> {

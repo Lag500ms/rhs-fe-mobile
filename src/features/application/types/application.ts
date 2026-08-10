@@ -12,6 +12,14 @@ export interface CreateApplicationRequest {
   monthlyIncome?: number;
   spouseMonthlyIncome?: number;
   averageHousingAreaPerPerson?: number;
+  /** Gửi kèm khi tạo (BE CreateApplicationRequestDto.HouseholdMembers) */
+  householdMembers?: Array<{
+    fullName: string;
+    citizenId?: string;
+    dateOfBirth?: string;
+    relationship: string;
+    note?: string;
+  }>;
 }
 
 export interface UpdateApplicationRequest {

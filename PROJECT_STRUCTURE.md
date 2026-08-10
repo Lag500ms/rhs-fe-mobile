@@ -48,11 +48,12 @@
 
 **Chức năng chính:**
 - Khám phá và tìm kiếm dự án nhà ở xã hội
-- Tạo và quản lý hồ sơ đăng ký **mua** nhà ở xã hội (đối tượng hộ nghèo/cận nghèo đô thị)
-- Định danh điện tử (eKYC) qua CCCD + khuôn mặt
-- Thanh toán đặt cọc qua VNPay
+- Tạo và quản lý hồ sơ đăng ký **mua** nhà ở xã hội (các đối tượng theo Đ76; giấy tờ theo nhóm)
+- Định danh điện tử (eKYC) qua **VNPT**: OCR CCCD + Face Match (không dùng Liveness)
+- Thanh toán đặt cọc / đợt thanh toán qua VNPay
+- Ký hợp đồng nguyên tắc, tham gia bốc thăm
 - Quản lý thông tin cá nhân, thông báo, danh sách yêu thích
-- Đăng nhập sinh trắc học (vân tay/khuôn mặt)
+- Đăng nhập sinh trắc học thiết bị (vân tay/khuôn mặt — local device, khác eKYC)
 
 **Ngôn ngữ UI:** Tiếng Việt (vi-VN)
 
@@ -263,23 +264,24 @@ State được quản lý qua:
 | `MyApplicationsScreen` | `MyApplications` | Danh sách hồ sơ (list only) |
 | `ApplicationDetailScreen` | `ApplicationDetail` | Chi tiết full-screen + CTA sticky (thanh toán, hợp đồng, nộp lại…) |
 | `BasicInformationScreen` | `BasicInformation` | Bước 1/3 — thông tin (eKYC khóa định danh) |
-| `UploadDocumentsScreen` | `UploadDocuments` | Bước 2/3 — đủ 2 giấy tờ bắt buộc |
+| `UploadDocumentsScreen` | `UploadDocuments` | Bước 2/3 — upload giấy tờ bắt buộc theo `priorityGroup` (lookup API) |
 | `ReviewSubmitScreen` | `ReviewSubmit` | Bước 3/3 — xem lại & nộp |
 | `ContractViewerScreen` | `ContractViewer` | Xem PDF HĐ / biên nhận |
 
 **Components:** `ApplicationCard`, `DraftActionSheet`, `ApplicationPaymentSection`
 
-**Các loại giấy tờ (`DOC_TYPES`) — bắt buộc đủ 2:**
-- `HOUSING_CONDITION_PROOF` — Giấy xác nhận nhà ở (`NO_HOUSE` hoặc `SMALL_HOUSE` &lt; 15 m²/người)
-- `POVERTY_HOUSEHOLD_CERTIFICATE` — Giấy chứng nhận hộ nghèo / cận nghèo
+**Giấy tờ bắt buộc:** lấy từ `GET /api/lookup/document-types/required?priorityGroup=…`  
+- Luôn có `HOUSING_CONDITION_PROOF`  
+- + giấy chứng minh đối tượng theo nhóm Đ76  
+- + `INCOME_CERTIFICATE` nếu nhóm cần xét thu nhập  
 
-**Gate nộp:** đủ 2 loại trên (mobile + BE). AI verify **không** chặn nộp (AI là trợ lý CĐT trên web/BE).
+**Gate nộp:** đủ các loại required của nhóm đã chọn (mobile + BE). AI verify **không** chặn nộp (AI là trợ lý CĐT trên web/BE).
 
 **Trạng thái hồ sơ (`STATUS_CONFIG`):**  
-`DRAFT → SUBMITTED → REVIEWING → NEED_MORE_DOCUMENTS → PENDING_SXD_REVIEW → APPROVED → DEPOSIT_PAID`  
-Cũng có: `REJECTED`, `EXPIRED`, `CANCELED`
+`DRAFT → SUBMITTED → REVIEWING → NEED_MORE_DOCUMENTS → PENDING_SXD_REVIEW → APPROVED → CONTRACT_PENDING → CONTRACT_SIGNED → DEPOSIT_PAID`  
+Cũng có: `REJECTED`, `EXPIRED`, `CANCELED`, `FULLY_PAID`, `LOTTERY_LOST`, …
 
-**Sau APPROVED:** đặt cọc = tham gia bốc thăm (không phải giữ căn). `DEPOSIT_PAID` → xem HĐ nguyên tắc + mã tham dự.
+**Sau khi vào luồng HĐ:** ký HĐ nguyên tắc → đặt cọc VNPay trong hạn. `DEPOSIT_PAID` → mã tham dự / tham gia bốc thăm theo quy trình dự án.
 
 > Nghiệp vụ đầy đủ: [`BUSINESS_FLOW.md`](./BUSINESS_FLOW.md) và backend `BUSINESS_FLOW.md`.
 
@@ -303,13 +305,14 @@ Cũng có: `REJECTED`, `EXPIRED`, `CANCELED`
 
 ### 5.6 ekyc — Định danh điện tử
 
-**Vai trò:** Xác thực danh tính qua CCCD + khuôn mặt (FPT AI).
+**Vai trò:** Xác thực danh tính qua CCCD + khuôn mặt (**VNPT eKYC**).
 
 **Navigator:** `EKycNavigator.tsx` → 1 screen  
-**API:** `eKycApi` — `ocr`, `faceMatch`, `liveness`, `checkCitizenId`, `updateProfileFromOcr`
+**API:** `eKycApi` — `ocr`, `faceMatch`, `checkCitizenId`, `updateProfileFromOcr`  
+(Không gọi liveness — BE không hỗ trợ liveness qua VNPT REST.)
 
 **Screen:** `EKycScreen` (`EKycHome`) — Multi-step wizard:
-1. Welcome → 2. OCR (scan CCCD) → 3. Face match (selfie vs CCCD ảnh) → 4. Liveness (quay video chống spoof) → 5. Complete/Failed
+1. Welcome → 2. OCR (scan CCCD) → 3. Face match (selfie vs CCCD) → 4. Complete
 
 **Trigger:** Từ `HousingProjectDetailScreen` khi user bấm "Apply" mà chưa hoàn thành eKYC.
 
@@ -440,7 +443,7 @@ App.tsx (Root NativeStack, headerShown: false)
 | `application/api/housingApplicationApi.ts` | 6 | CRUD hồ sơ, nộp, nộp lại |
 | `application/api/housingDocumentApi.ts` | 4 | Upload/xóa giấy tờ, AI verification |
 | `payment/api/paymentApi.ts` | 5 | Tạo URL thanh toán, poll trạng thái, lịch sử |
-| `ekyc/api/eKycApi.ts` | 5 | OCR, face match, liveness, check CCCD |
+| `ekyc/api/eKycApi.ts` | 4 | OCR, face match, check CCCD, update profile from OCR |
 | `user/api/userApi.ts` | 5 | Profile CRUD, ảnh đại diện, xóa TK |
 | `notification/api/notificationApi.ts` | 4 | List, unread count, mark read |
 | `issue-reports/api/issueReportApi.ts` | 2 | Tạo + xem báo cáo |

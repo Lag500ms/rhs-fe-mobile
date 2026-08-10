@@ -248,7 +248,7 @@ export const UploadDocumentsScreen = () => {
             <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
-            {isSupplementMode ? 'Bổ sung giấy tờ' : 'Bước 3/4 — Giấy tờ'}
+            {isSupplementMode ? 'Bổ sung giấy tờ' : 'Bước 4/5 — Tài liệu'}
           </Text>
           <View style={{ width: 36 }} />
         </View>
@@ -268,12 +268,12 @@ export const UploadDocumentsScreen = () => {
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {isSupplementMode ? 'Bổ sung giấy tờ' : 'Bước 3/4 — Giấy tờ'}
+          {isSupplementMode ? 'Bổ sung giấy tờ' : 'Bước 4/5 — Tài liệu'}
         </Text>
         <View style={{ width: 36 }} />
       </View>
 
-      {!isSupplementMode && <ApplicationStepper current={3} />}
+      {!isSupplementMode && <ApplicationStepper current={4} />}
 
       <ScrollView
         style={styles.scroll}

@@ -18,10 +18,9 @@ import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme';
 import { userApi } from '../../user/api/userApi';
 import { housingApplicationApi } from '../api/housingApplicationApi';
-import { lookupApi } from '../api/lookupApi';
-import { CreateApplicationRequest, PriorityGroupItem } from '../types/application';
 import { ApplicationStepper } from '../components/ApplicationStepper';
 import { isReadyForApplicationForm } from '../../user/utils/ekycGate';
+import type { ApplicationDraftPersonal } from '../types/applicationDraft';
 
 const HOUSING_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'NO_HOUSE', label: 'Chưa có nhà ở thuộc sở hữu của mình' },
@@ -34,12 +33,6 @@ const MARITAL_STATUS_OPTIONS = [
   { value: 'DIVORCED', label: 'Ly hôn' },
   { value: 'WIDOWED', label: 'Góa' },
 ];
-
-function requiredDocCount(group: PriorityGroupItem | undefined): number {
-  if (!group) return 0;
-  // (A) điều kiện nhà ở + (B) chứng minh đối tượng + (C) thu nhập nếu cần
-  return group.requiresIncomeCertificate ? 3 : 2;
-}
 
 export const BasicInformationScreen = () => {
   const navigation = useNavigation<any>();
@@ -60,8 +53,6 @@ export const BasicInformationScreen = () => {
   }, [navigation]);
 
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [objectOptions, setObjectOptions] = useState<PriorityGroupItem[]>([]);
   const [activeBlock, setActiveBlock] = useState<string | null>(null);
 
   // ── Locked fields from eKYC ──
@@ -78,13 +69,12 @@ export const BasicInformationScreen = () => {
   const [workPlace, setWorkPlace] = useState('');
   const [housingStatus, setHousingStatus] = useState('');
   const [maritalStatus, setMaritalStatus] = useState('');
-  const [priorityGroup, setPriorityGroup] = useState('');
+  const [monthlyIncome, setMonthlyIncome] = useState('');
+  const [spouseMonthlyIncome, setSpouseMonthlyIncome] = useState('');
   const [averageHousingAreaPerPerson, setAverageHousingAreaPerPerson] = useState('');
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const selectedGroup = objectOptions.find((g) => g.code === priorityGroup);
 
   // Sync currentResidence when checkbox is toggled
   useEffect(() => {
@@ -96,17 +86,14 @@ export const BasicInformationScreen = () => {
     }
   }, [sameAsPermanent, permanentAddress]);
 
-  // Load profile + danh mục đối tượng từ BE + active-check
+  // Load profile + active-check
   useEffect(() => {
     (async () => {
       try {
-        const [profileResult, groups, active] = await Promise.all([
+        const [profileResult, active] = await Promise.all([
           userApi.getProfile(),
-          lookupApi.getPriorityGroups(),
           housingApplicationApi.activeCheck().catch(() => null),
         ]);
-
-        setObjectOptions(groups);
 
         if (active?.hasActiveApplication) {
           setActiveBlock(
@@ -133,10 +120,7 @@ export const BasicInformationScreen = () => {
         }
       } catch {
         setEkycReady(false);
-        Alert.alert(
-          'Lỗi',
-          'Không thể tải danh sách đối tượng thụ hưởng. Kiểm tra kết nối và thử lại.',
-        );
+        Alert.alert('Lỗi', 'Không thể tải thông tin hồ sơ. Kiểm tra kết nối và thử lại.');
       } finally {
         setLoading(false);
       }
@@ -154,10 +138,22 @@ export const BasicInformationScreen = () => {
         if (!value) newErrors.housingStatus = 'Vui lòng chọn thực trạng nhà ở';
         else delete newErrors.housingStatus;
         break;
-      case 'priorityGroup':
-        if (!value) newErrors.priorityGroup = 'Vui lòng chọn đối tượng thụ hưởng';
-        else delete newErrors.priorityGroup;
+      case 'monthlyIncome': {
+        if (value.trim() === '') newErrors.monthlyIncome = 'Vui lòng nhập thu nhập hàng tháng';
+        else if (isNaN(Number(value)) || Number(value) < 0) newErrors.monthlyIncome = 'Thu nhập không hợp lệ';
+        else delete newErrors.monthlyIncome;
         break;
+      }
+      case 'spouseMonthlyIncome': {
+        if (maritalStatus === 'MARRIED') {
+          if (value.trim() === '') newErrors.spouseMonthlyIncome = 'Bắt buộc khi đã kết hôn (có thể là 0)';
+          else if (isNaN(Number(value)) || Number(value) < 0) newErrors.spouseMonthlyIncome = 'Thu nhập không hợp lệ';
+          else delete newErrors.spouseMonthlyIncome;
+        } else {
+          delete newErrors.spouseMonthlyIncome;
+        }
+        break;
+      }
       case 'averageHousingAreaPerPerson': {
         const areaNum = parseFloat(value.replace(/,/g, ''));
         if (!value.trim()) newErrors.averageHousingAreaPerPerson = 'Vui lòng nhập diện tích bình quân đầu người';
@@ -178,9 +174,17 @@ export const BasicInformationScreen = () => {
     if (!currentResidence.trim()) newErrors.currentResidence = 'Vui lòng nhập nơi ở hiện tại';
     if (!housingStatus) newErrors.housingStatus = 'Vui lòng chọn thực trạng nhà ở';
     if (!maritalStatus) newErrors.maritalStatus = 'Vui lòng chọn tình trạng hôn nhân';
-    if (!priorityGroup) newErrors.priorityGroup = 'Vui lòng chọn đối tượng thụ hưởng theo Điều 76 Luật Nhà ở';
-    else if (objectOptions.length > 0 && !objectOptions.some((g) => g.code === priorityGroup)) {
-      newErrors.priorityGroup = 'Đối tượng không hợp lệ. Vui lòng chọn lại.';
+    if (monthlyIncome.trim() === '' || isNaN(Number(monthlyIncome)) || Number(monthlyIncome) < 0) {
+      newErrors.monthlyIncome = 'Vui lòng nhập thu nhập hàng tháng hợp lệ';
+    }
+    if (maritalStatus === 'MARRIED') {
+      if (
+        spouseMonthlyIncome.trim() === '' ||
+        isNaN(Number(spouseMonthlyIncome)) ||
+        Number(spouseMonthlyIncome) < 0
+      ) {
+        newErrors.spouseMonthlyIncome = 'Khi đã kết hôn: bắt buộc khai thu nhập vợ/chồng (có thể là 0)';
+      }
     }
 
     if (housingStatus === 'SMALL_HOUSE') {
@@ -198,49 +202,38 @@ export const BasicInformationScreen = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSaveAndContinue = async () => {
+  const handleSaveAndContinue = () => {
     if (activeBlock) {
       Alert.alert('Không thể tạo hồ sơ', activeBlock);
       return;
     }
     if (!validate()) return;
-    if (objectOptions.length === 0) {
-      Alert.alert('Lỗi', 'Chưa có danh sách đối tượng. Vui lòng thử lại.');
-      return;
-    }
 
-    setSubmitting(true);
-    try {
-      const payload: CreateApplicationRequest = {
-        projectId,
-        fullName: fullName.trim(),
-        citizenId: citizenId.replace(/\s/g, ''),
-        permanentAddress: permanentAddress.trim(),
-        currentResidence: currentResidence.trim(),
-        occupation: occupation.trim() || undefined,
-        workPlace: workPlace.trim() || undefined,
-        housingStatus,
-        maritalStatus,
-        priorityGroup,
-        averageHousingAreaPerPerson:
-          housingStatus === 'SMALL_HOUSE' && averageHousingAreaPerPerson.trim()
-            ? parseFloat(averageHousingAreaPerPerson.replace(/,/g, ''))
-            : undefined,
-      };
+    const draftPersonal: ApplicationDraftPersonal = {
+      projectId,
+      projectName,
+      fullName: fullName.trim(),
+      citizenId: citizenId.replace(/\s/g, ''),
+      permanentAddress: permanentAddress.trim(),
+      currentResidence: currentResidence.trim(),
+      occupation: occupation.trim() || undefined,
+      workPlace: workPlace.trim() || undefined,
+      housingStatus,
+      maritalStatus,
+      monthlyIncome: Number(monthlyIncome),
+      spouseMonthlyIncome:
+        maritalStatus === 'MARRIED' ? Number(spouseMonthlyIncome) : undefined,
+      averageHousingAreaPerPerson:
+        housingStatus === 'SMALL_HOUSE' && averageHousingAreaPerPerson.trim()
+          ? parseFloat(averageHousingAreaPerPerson.replace(/,/g, ''))
+          : undefined,
+    };
 
-      const result = await housingApplicationApi.createApplication(payload);
-      navigation.replace('HouseholdMembers', {
-        applicationId: result.applicationId,
-        projectName,
-        applicationStatus: 'DRAFT',
-        next: 'UploadDocuments',
-      });
-    } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Có lỗi xảy ra.';
-      Alert.alert('Lỗi', msg);
-    } finally {
-      setSubmitting(false);
-    }
+    navigation.navigate('HouseholdMembers', {
+      draftPersonal,
+      projectName,
+      next: 'PriorityGroup',
+    });
   };
 
   if (loading) {
@@ -263,7 +256,7 @@ export const BasicInformationScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bước 1/4 — Thông tin</Text>
+        <Text style={styles.headerTitle}>Bước 1/5 — Cá nhân</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -483,62 +476,38 @@ export const BasicInformationScreen = () => {
               Số thành viên hộ = 1 (bạn) + thành viên thêm ở bước tiếp theo. Độc thân có thể bỏ trống bước đó.
             </Text>
 
-            <Text style={[styles.label, { marginTop: 16 }]}>Thuộc đối tượng *</Text>
-            {objectOptions.length === 0 ? (
-              <Text style={styles.helperText}>
-                Không tải được danh sách đối tượng. Quay lại màn hình trước và thử lại.
-              </Text>
-            ) : (
-              objectOptions.map((opt) => (
-                <TouchableOpacity
-                  key={opt.code}
-                  style={[
-                    styles.radio,
-                    priorityGroup === opt.code && styles.radioActive,
-                    errors.priorityGroup && priorityGroup !== opt.code && styles.radioError,
-                  ]}
-                  onPress={() => {
-                    setPriorityGroup(opt.code);
-                    validateField('priorityGroup', opt.code);
+            <Text style={[styles.label, { marginTop: 16 }]}>Thu nhập hàng tháng (VNĐ) *</Text>
+            <TextInput
+              style={[styles.input, errors.monthlyIncome && styles.inputError]}
+              value={monthlyIncome}
+              onChangeText={(v) => {
+                setMonthlyIncome(v.replace(/[^\d.]/g, ''));
+                validateField('monthlyIncome', v.replace(/[^\d.]/g, ''));
+              }}
+              placeholder="Ví dụ: 12000000"
+              keyboardType="numeric"
+              placeholderTextColor={RHSColors.textMuted}
+            />
+            {errors.monthlyIncome && <Text style={styles.errorText}>{errors.monthlyIncome}</Text>}
+
+            {maritalStatus === 'MARRIED' && (
+              <>
+                <Text style={[styles.label, { marginTop: 12 }]}>Thu nhập vợ/chồng (VNĐ) *</Text>
+                <TextInput
+                  style={[styles.input, errors.spouseMonthlyIncome && styles.inputError]}
+                  value={spouseMonthlyIncome}
+                  onChangeText={(v) => {
+                    setSpouseMonthlyIncome(v.replace(/[^\d.]/g, ''));
+                    validateField('spouseMonthlyIncome', v.replace(/[^\d.]/g, ''));
                   }}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    style={[
-                      styles.radioDot,
-                      priorityGroup === opt.code && styles.radioDotActive,
-                    ]}
-                  >
-                    {priorityGroup === opt.code && <View style={styles.radioDotFill} />}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={[
-                        styles.radioLabel,
-                        priorityGroup === opt.code && styles.radioLabelActive,
-                      ]}
-                    >
-                      {opt.label}
-                    </Text>
-                    {priorityGroup === opt.code && (
-                      <Text style={styles.helperText}>
-                        Cần nộp {requiredDocCount(opt)} giấy tờ
-                        {opt.requiredDocumentLabel
-                          ? ` · gồm ${opt.requiredDocumentLabel}`
-                          : ''}
-                        {opt.requiresIncomeCertificate ? ' + giấy xác nhận thu nhập' : ''}
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-            {errors.priorityGroup && <Text style={styles.errorText}>{errors.priorityGroup}</Text>}
-            {selectedGroup && !errors.priorityGroup && (
-              <Text style={[styles.helperText, { marginTop: 8 }]}>
-                Bước giấy tờ sẽ yêu cầu đúng {requiredDocCount(selectedGroup)} file PDF theo đối
-                tượng này.
-              </Text>
+                  placeholder="Có thể nhập 0"
+                  keyboardType="numeric"
+                  placeholderTextColor={RHSColors.textMuted}
+                />
+                {errors.spouseMonthlyIncome && (
+                  <Text style={styles.errorText}>{errors.spouseMonthlyIncome}</Text>
+                )}
+              </>
             )}
           </View>
           </View>
@@ -618,18 +587,12 @@ export const BasicInformationScreen = () => {
           <TouchableOpacity
             style={[styles.submitBtn, !!activeBlock && { opacity: 0.5 }]}
             onPress={handleSaveAndContinue}
-            disabled={submitting || !!activeBlock}
+            disabled={!!activeBlock}
             activeOpacity={0.9}
           >
             <View style={styles.submitGrad}>
-              {submitting ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Feather name="save" size={18} color="#fff" />
-                  <Text style={styles.submitText}>Lưu nháp & tiếp tục</Text>
-                </>
-              )}
+              <Feather name="arrow-right" size={18} color="#fff" />
+              <Text style={styles.submitText}>Tiếp tục hộ gia đình</Text>
             </View>
           </TouchableOpacity>
           <View style={{ height: 40 }} />

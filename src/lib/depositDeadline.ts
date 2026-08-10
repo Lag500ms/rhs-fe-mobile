@@ -1,31 +1,31 @@
 /**
- * Helper đồng bộ policy BE `DEPOSIT_PAYMENT_HOURS` (mặc định 168h = 7 ngày).
- * Mốc đúng: sau khi ký HĐ (`CONTRACT_SIGNED` / SignedAt) — không dùng trên `APPROVED`.
+ * Helper đồng bộ hạn Đợt 1 (cọc) — BE installment DueDays=7 / DEPOSIT_PAYMENT_HOURS≈168h.
+ * Mốc: khi vào DEPOSIT_PENDING (trúng / cấp nhà), không phải sau khi ký HĐ.
  */
 export const DEPOSIT_PAYMENT_HOURS = 168;
 export const DEPOSIT_PAYMENT_DAYS = 7;
 
-const DEPOSIT_DEADLINE_STATUSES = new Set(['CONTRACT_SIGNED']);
+const DEPOSIT_DEADLINE_STATUSES = new Set(['DEPOSIT_PENDING']);
 
 export function isDepositDeadlineStatus(status: string | null | undefined): boolean {
   return !!status && DEPOSIT_DEADLINE_STATUSES.has(status);
 }
 
-/** @param signedAt Mốc ký HĐ — không dùng finalDecisionDate (ngày duyệt SXD). */
-export function getDepositDeadline(signedAt: string | Date): Date {
+/** @param startedAt Mốc vào DEPOSIT_PENDING (updatedAt / created installment). */
+export function getDepositDeadline(startedAt: string | Date): Date {
   const d =
-    typeof signedAt === 'string'
-      ? new Date(signedAt)
-      : new Date(signedAt.getTime());
+    typeof startedAt === 'string'
+      ? new Date(startedAt)
+      : new Date(startedAt.getTime());
   d.setTime(d.getTime() + DEPOSIT_PAYMENT_HOURS * 60 * 60 * 1000);
   return d;
 }
 
 export function getDepositRemainingMs(
-  signedAt: string,
+  startedAt: string,
   nowMs = Date.now(),
 ): number {
-  return getDepositDeadline(signedAt).getTime() - nowMs;
+  return getDepositDeadline(startedAt).getTime() - nowMs;
 }
 
 export function formatDepositHhmmss(remainingMs: number): string {
@@ -39,4 +39,9 @@ export function formatDepositHhmmss(remainingMs: number): string {
     return `${days} ngày ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+export function isPaymentSuccessStatus(status?: string | null): boolean {
+  const s = String(status || '').toLowerCase();
+  return s === 'success' || s === 'paid';
 }

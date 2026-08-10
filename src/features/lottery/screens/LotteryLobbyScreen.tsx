@@ -18,6 +18,7 @@ import { lotteryApi } from '../api/lotteryApi';
 import { connectLotteryLobby, leaveLotteryLobby } from '../api/lotteryHub';
 import {
   LOTTERY_RESULT_LABEL,
+  LOTTERY_SESSION_LABEL,
   type LiveDrawResult,
   type LotteryScheduleDetail,
 } from '../types/lottery';
@@ -63,24 +64,32 @@ export const LotteryLobbyScreen = () => {
   const [joined, setJoined] = useState(false);
   const [joining, setJoining] = useState(false);
   const [lobbyCount, setLobbyCount] = useState(0);
+  const [sxdCount, setSxdCount] = useState(0);
   const [sessionStatus, setSessionStatus] = useState('');
   const [hubStatus, setHubStatus] = useState('Chưa vào sảnh');
+  const [useRestMode, setUseRestMode] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [myResult, setMyResult] = useState<LiveDrawResult | null>(null);
   const [feed, setFeed] = useState<LiveDrawResult[]>([]);
   const hubRef = useRef<any>(null);
 
   const countdown = useCountdown(schedule?.lotteryDate);
+  const sxdOnline = sxdCount >= 1;
+
+  const applyScheduleSnapshot = useCallback((data: LotteryScheduleDetail) => {
+    setSchedule(data);
+    if (data.sessionStatus) setSessionStatus(data.sessionStatus);
+    if (typeof data.sxdOnlineCount === 'number') setSxdCount(data.sxdOnlineCount);
+  }, []);
 
   const loadSchedule = useCallback(async () => {
     try {
       const data = await lotteryApi.getSchedule(projectId);
-      setSchedule(data);
-      if (data.sessionStatus) setSessionStatus(data.sessionStatus);
+      applyScheduleSnapshot(data);
     } catch (err: any) {
       Alert.alert('Lỗi', err?.response?.data?.message || 'Không tải được lịch.');
     }
-  }, [projectId]);
+  }, [projectId, applyScheduleSnapshot]);
 
   useEffect(() => {
     void loadSchedule();
@@ -92,6 +101,26 @@ export const LotteryLobbyScreen = () => {
       hubRef.current = null;
     };
   }, [projectId]);
+
+  // REST fallback: poll schedule ~4s (giống web live) khi không có SignalR
+  useEffect(() => {
+    if (!joined || !useRestMode) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const data = await lotteryApi.getSchedule(projectId);
+        if (!cancelled) applyScheduleSnapshot(data);
+      } catch {
+        /* quiet */
+      }
+    };
+    void tick();
+    const id = setInterval(() => void tick(), 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [joined, useRestMode, projectId, applyScheduleSnapshot]);
 
   const handleJoin = async () => {
     const code = otp.trim();
@@ -118,22 +147,36 @@ export const LotteryLobbyScreen = () => {
         {
           onLobbyCount: (c) => setLobbyCount(c),
           onStatus: (s) => setSessionStatus(s),
+          onSxdSupervisorCount: (c) => setSxdCount(c),
           onDrawResult: (r) => {
             setFeed((prev) => [r, ...prev].slice(0, 30));
             if (applicationId && r.applicationId === applicationId) {
               setMyResult(r);
+              Alert.alert(
+                'Kết quả của bạn',
+                `${LOTTERY_RESULT_LABEL[r.result] ?? r.result}${
+                  r.slotCode ? `\nMã suất: ${r.slotCode}` : ''
+                }`,
+              );
             }
           },
           onError: (msg) => {
             setHubStatus(msg.includes('signalr') ? 'Chế độ REST' : msg);
+            setUseRestMode(true);
           },
         },
         code,
       );
 
       hubRef.current = conn;
+      const rest = !conn;
+      setUseRestMode(rest);
       setJoined(true);
       setHubStatus(conn ? 'Đã vào sảnh (trực tuyến)' : 'Chế độ REST (không SignalR)');
+      if (rest) {
+        // Lấy snapshot SXD/status ngay khi vào REST
+        void loadSchedule();
+      }
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||
@@ -156,6 +199,13 @@ export const LotteryLobbyScreen = () => {
       Alert.alert('Chưa Live', 'Nút bốc chỉ mở khi CĐT chuyển phiên sang Live.');
       return;
     }
+    if (!sxdOnline) {
+      Alert.alert(
+        'Chưa có SXD giám sát',
+        'Backend yêu cầu ít nhất 1 cán bộ Sở Xây dựng trong sảnh trước khi bốc. Vui lòng chờ SXD vào giám sát.',
+      );
+      return;
+    }
     if (myResult) {
       Alert.alert('Đã bốc', `Kết quả của bạn: ${LOTTERY_RESULT_LABEL[myResult.result] ?? myResult.result}`);
       return;
@@ -167,7 +217,18 @@ export const LotteryLobbyScreen = () => {
         try {
           await hubRef.current.invoke('DrawUnit', projectId);
           await new Promise((r) => setTimeout(r, 1200));
-        } catch {
+        } catch (hubErr: any) {
+          const hubMsg =
+            hubErr?.message ||
+            hubErr?.toString?.() ||
+            '';
+          if (/sxd|giám sát|supervisor/i.test(hubMsg)) {
+            Alert.alert(
+              'Chưa có SXD giám sát',
+              hubMsg || 'Cần ít nhất 1 SXD trong sảnh trước khi bốc thăm.',
+            );
+            return;
+          }
           result = await lotteryApi.drawUnit(projectId);
         }
       } else {
@@ -184,7 +245,16 @@ export const LotteryLobbyScreen = () => {
         );
       }
     } catch (err: any) {
-      Alert.alert('Không bốc được', err?.response?.data?.message || err?.message || 'Thử lại sau.');
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.Message ||
+        err?.message ||
+        'Thử lại sau.';
+      if (/sxd|giám sát|supervisor/i.test(String(msg))) {
+        Alert.alert('Chưa có SXD giám sát', msg);
+      } else {
+        Alert.alert('Không bốc được', msg);
+      }
     } finally {
       setDrawing(false);
     }
@@ -196,7 +266,12 @@ export const LotteryLobbyScreen = () => {
     countdown.ready &&
     !drawing &&
     !myResult &&
+    sxdOnline &&
     (!sessionStatus || sessionStatus === 'Live');
+
+  const sessionLabel = sessionStatus
+    ? LOTTERY_SESSION_LABEL[sessionStatus] ?? sessionStatus
+    : '';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -241,13 +316,28 @@ export const LotteryLobbyScreen = () => {
             <View style={styles.stats}>
               <Stat label="Trong sảnh" value={String(lobbyCount || '—')} />
               <Stat label="Căn còn" value={String(schedule?.availableUnits ?? '—')} />
-              <Stat label="Đếm ngược" value={countdown.label} />
+              <Stat
+                label="SXD giám sát"
+                value={String(sxdCount)}
+                highlight={!sxdOnline}
+              />
             </View>
-            {!!sessionStatus && (
-              <Text style={styles.session}>Phiên: {sessionStatus}</Text>
+            <Text style={styles.countdownLine}>Đếm ngược: {countdown.label}</Text>
+            {!!sessionLabel && (
+              <Text style={styles.session}>Phiên: {sessionLabel}</Text>
             )}
             {sessionStatus && sessionStatus !== 'Live' && (
               <Text style={styles.warn}>Chờ CĐT mở Live trước khi bốc.</Text>
+            )}
+            {!sxdOnline && (
+              <Text style={styles.warn}>
+                Chưa có SXD trong sảnh — không thể bốc thăm (BE bắt buộc ≥1 giám sát).
+              </Text>
+            )}
+            {useRestMode && (
+              <Text style={styles.restHint}>
+                Đang dùng chế độ REST — tự làm mới trạng thái mỗi 4 giây.
+              </Text>
             )}
 
             <TouchableOpacity
@@ -262,7 +352,13 @@ export const LotteryLobbyScreen = () => {
                 <>
                   <Feather name="shuffle" size={22} color="#fff" />
                   <Text style={styles.drawText}>
-                    {myResult ? 'Đã bốc thăm' : countdown.ready ? 'Bốc thăm ngay' : 'Chờ đến giờ'}
+                    {myResult
+                      ? 'Đã bốc thăm'
+                      : !sxdOnline
+                        ? 'Chờ SXD giám sát'
+                        : countdown.ready
+                          ? 'Bốc thăm ngay'
+                          : 'Chờ đến giờ'}
                   </Text>
                 </>
               )}
@@ -311,10 +407,18 @@ export const LotteryLobbyScreen = () => {
   );
 };
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
   return (
-    <View style={styles.stat}>
-      <Text style={styles.statValue} numberOfLines={1}>
+    <View style={[styles.stat, highlight && styles.statWarn]}>
+      <Text style={[styles.statValue, highlight && styles.statValueWarn]} numberOfLines={1}>
         {value}
       </Text>
       <Text style={styles.statLabel}>{label}</Text>
@@ -358,7 +462,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  stats: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  stats: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   stat: {
     flex: 1,
     backgroundColor: '#fff',
@@ -367,10 +471,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: RHSColors.border,
   },
+  statWarn: { borderColor: RHSColors.red400, backgroundColor: RHSColors.red50 },
   statValue: { fontWeight: '800', fontSize: 16, color: RHSColors.blue700 },
+  statValueWarn: { color: RHSColors.red700 },
   statLabel: { ...typography.caption, color: RHSColors.textMuted, marginTop: 4 },
+  countdownLine: { ...typography.caption, color: RHSColors.textMuted, marginBottom: 6 },
   session: { ...typography.caption, color: RHSColors.textMuted, marginBottom: 8 },
-  warn: { ...typography.caption, color: RHSColors.red700, marginBottom: 12 },
+  warn: { ...typography.caption, color: RHSColors.red700, marginBottom: 8 },
+  restHint: { ...typography.caption, color: RHSColors.amber700, marginBottom: 12 },
   drawBtn: {
     backgroundColor: RHSColors.blue700,
     borderRadius: borderRadius.xl,

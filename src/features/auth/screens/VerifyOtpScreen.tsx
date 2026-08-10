@@ -119,8 +119,14 @@ export const VerifyOtpScreen = () => {
         Alert.alert('Thành công', 'Kích hoạt tài khoản thành công!', [
           {
             text: 'OK',
-            onPress: () =>
-              navigation.reset({ index: 0, routes: [{ name: 'UserProfile' }] }),
+            onPress: () => {
+              // Giống Login: giữ MainTabs dưới stack để Profile có đường back,
+              // tránh kẹt hồ sơ cá nhân không còn tab bar.
+              navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+              setTimeout(() => {
+                navigation.navigate('UserProfile');
+              }, 100);
+            },
           },
         ]);
       } else {

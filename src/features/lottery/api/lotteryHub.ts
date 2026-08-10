@@ -27,6 +27,7 @@ export async function connectLotteryLobby(
     onLobbyCount?: (count: number) => void;
     onDrawResult?: (result: LiveDrawResult) => void;
     onStatus?: (status: string) => void;
+    onSxdSupervisorCount?: (count: number) => void;
     onError?: (message: string) => void;
   },
   joinCode?: string | null,
@@ -74,6 +75,11 @@ export async function connectLotteryLobby(
   if (handlers.onStatus) {
     connection.on('ReceiveLotteryStatus', (status: string) => {
       handlers.onStatus?.(String(status ?? ''));
+    });
+  }
+  if (handlers.onSxdSupervisorCount) {
+    connection.on('ReceiveSxdSupervisorCount', (count: number) => {
+      handlers.onSxdSupervisorCount?.(Number(count) || 0);
     });
   }
 

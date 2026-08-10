@@ -215,6 +215,26 @@ export const MyApplicationsScreen = () => {
         )}
         <View style={{ flex: 1 }} />
         {isLoggedIn && (
+          <TouchableOpacity
+            style={styles.headerLottery}
+            onPress={() => navigation.navigate('MyContracts')}
+            activeOpacity={0.8}
+          >
+            <Feather name="file-text" size={18} color={RHSColors.blue700} />
+            <Text style={styles.headerLotteryText}>HĐ</Text>
+          </TouchableOpacity>
+        )}
+        {isLoggedIn && (
+          <TouchableOpacity
+            style={styles.headerLottery}
+            onPress={() => navigation.navigate('MyLottery')}
+            activeOpacity={0.8}
+          >
+            <Feather name="shuffle" size={18} color={RHSColors.blue700} />
+            <Text style={styles.headerLotteryText}>Bốc thăm</Text>
+          </TouchableOpacity>
+        )}
+        {isLoggedIn && (
           <TouchableOpacity style={styles.headerRefresh} onPress={() => fetchData(true)}>
             <Feather name="refresh-cw" size={20} color={RHSColors.blue700} />
           </TouchableOpacity>
@@ -282,6 +302,17 @@ const styles = StyleSheet.create({
   },
   countBadgeText: { ...typography.caption, fontWeight: '700', color: '#fff' },
   headerRefresh: { padding: 6 },
+  headerLottery: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    marginRight: 4,
+    borderRadius: borderRadius.md,
+    backgroundColor: RHSColors.blue50,
+  },
+  headerLotteryText: { fontSize: 12, fontWeight: '700', color: RHSColors.blue700 },
 
   loadingContainer: {
     flex: 1,

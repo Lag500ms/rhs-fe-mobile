@@ -3,57 +3,85 @@ import { View, Text, StyleSheet } from 'react-native';
 import { RHSColors, borderRadius } from '../../../lib/theme';
 import { getStatusConfig } from '../utils/statusConfig';
 
-/** Pipeline người dân — khớp BE, kết thúc ở Thanh toán Đợt 1 */
+/**
+ * Tiến độ sau khi nộp — kể chuyện ngắn, không trùng wizard 5 bước tạo hồ sơ.
+ * Cọc tiền → Ký HĐ; các đợt sau nằm ở lịch thanh toán.
+ */
 const PIPELINE = [
-  'SUBMITTED',
-  'PENDING_SXD_REVIEW',
-  'APPROVED',
-  'CONTRACT_PENDING',
-  'DEPOSIT_PAID',
+  {
+    key: 'SUBMITTED',
+    label: 'Đã nộp',
+    hint: 'Hồ sơ đã gửi lên hệ thống',
+  },
+  {
+    key: 'REVIEWING',
+    label: 'Chủ đầu tư tiếp nhận hồ sơ',
+    hint: 'CĐT đang tiếp nhận và thẩm định',
+  },
+  {
+    key: 'PENDING_SXD_REVIEW',
+    label: 'Sở Xây dựng tiếp nhận hồ sơ',
+    hint: 'Sở duyệt hoặc từ chối',
+  },
+  {
+    key: 'APPROVED',
+    label: 'Chờ chốt suất',
+    hint: 'Cấp thẳng hoặc sau bốc thăm',
+  },
+  {
+    key: 'DEPOSIT_PENDING',
+    label: 'Cọc tiền',
+    hint: 'Đóng cọc để giữ suất nhà',
+  },
+  {
+    key: 'CONTRACT_PENDING',
+    label: 'Ký hợp đồng',
+    hint: 'Ký hợp đồng mua bán',
+  },
 ] as const;
 
-const STEP_LABEL: Record<(typeof PIPELINE)[number], string> = {
-  SUBMITTED: 'Nộp hồ sơ',
-  PENDING_SXD_REVIEW: 'Chờ Sở',
-  APPROVED: 'Đã duyệt',
-  CONTRACT_PENDING: 'Ký HĐ',
-  DEPOSIT_PAID: 'Thanh toán',
-};
-
 const TERMINAL_FAIL = new Set(['REJECTED', 'CANCELED', 'EXPIRED', 'LOTTERY_LOST']);
-/** BE: đã xong pipeline tiến độ hồ sơ */
-const TERMINAL_SUCCESS = new Set(['DEPOSIT_PAID', 'FULLY_PAID']);
+const TERMINAL_SUCCESS = new Set([
+  'CONTRACT_SIGNED',
+  'INSTALLMENT_IN_PROGRESS',
+  'DEPOSIT_PAID',
+  'FULLY_PAID',
+]);
 
-/**
- * Map applicationStatus từ BE → chỉ số bước (0..4).
- * CONTRACT_SIGNED = đang ở bước Đợt 1 (chưa trả).
- * DEPOSIT_PAID / FULLY_PAID = đã xong bước Đợt 1.
- */
 function resolveIndex(status: string): number {
   switch (status) {
     case 'DRAFT':
-    case 'NEED_MORE_DOCUMENTS':
     case 'SUBMITTED':
-    case 'REVIEWING':
       return 0;
-    case 'PENDING_SXD_REVIEW':
+    case 'REVIEWING':
+    case 'NEED_MORE_DOCUMENTS':
       return 1;
+    case 'PENDING_SXD_REVIEW':
+      return 2;
     case 'APPROVED':
     case 'APPROVED_BY_TIMEOUT':
-      return 2;
-    case 'CONTRACT_PENDING':
+    case 'LOTTERY_LOST':
       return 3;
+    case 'DEPOSIT_PENDING':
+      return 4;
+    case 'CONTRACT_PENDING':
     case 'CONTRACT_SIGNED':
-      return 4; // đang chờ thanh toán Đợt 1
+    case 'INSTALLMENT_IN_PROGRESS':
     case 'DEPOSIT_PAID':
     case 'FULLY_PAID':
-      return 4;
+      return 5;
     default:
       return 0;
   }
 }
 
-export function ApplicationTimeline({ currentStatus }: { currentStatus: string }) {
+type Props = {
+  currentStatus: string;
+  /** Ghi chú CĐT khi yêu cầu bổ sung */
+  needMoreNote?: string | null;
+};
+
+export function ApplicationTimeline({ currentStatus, needMoreNote }: Props) {
   const status = (currentStatus || '').toUpperCase();
   const currentIdx = resolveIndex(status);
   const isNeedMore = status === 'NEED_MORE_DOCUMENTS';
@@ -64,8 +92,11 @@ export function ApplicationTimeline({ currentStatus }: { currentStatus: string }
     <View style={styles.wrap}>
       {isNeedMore && (
         <View style={[styles.banner, styles.bannerWarn]}>
+          <Text style={styles.bannerWarnTitle}>Chủ đầu tư cần bạn bổ sung giấy tờ</Text>
           <Text style={styles.bannerWarnText}>
-            Hồ sơ cần bổ sung giấy tờ. Vui lòng tải lại tài liệu và nộp lại.
+            {needMoreNote?.trim()
+              ? needMoreNote.trim()
+              : 'Vui lòng cập nhật giấy tờ theo yêu cầu, rồi nộp lại hồ sơ.'}
           </Text>
         </View>
       )}
@@ -76,44 +107,62 @@ export function ApplicationTimeline({ currentStatus }: { currentStatus: string }
           </Text>
         </View>
       )}
-      {status === 'CONTRACT_SIGNED' && (
+      {isComplete && (
         <View style={[styles.banner, styles.bannerInfo]}>
           <Text style={styles.bannerInfoText}>
-            Đã ký hợp đồng — bước tiếp theo: thanh toán.
+            {status === 'FULLY_PAID'
+              ? 'Bạn đã hoàn tất các khoản trên lịch thanh toán.'
+              : 'Đã ký hợp đồng. Các khoản còn lại xem trong lịch thanh toán — chủ đầu tư sẽ mở dần theo tiến độ.'}
           </Text>
         </View>
       )}
 
-      <View style={styles.row}>
-        {PIPELINE.map((code, idx) => {
-          // DEPOSIT_PAID / FULLY_PAID → tất cả bước ✓ (kể cả Đợt 1)
-          const done = !isFailed && (isComplete ? idx <= currentIdx : idx < currentIdx);
+      <View style={styles.list}>
+        {PIPELINE.map((step, idx) => {
+          const done =
+            !isFailed && (isComplete ? idx <= currentIdx : idx < currentIdx);
           const active = !isFailed && !isComplete && idx === currentIdx;
+          const needMoreHere = active && isNeedMore;
+          const isLast = idx === PIPELINE.length - 1;
 
           return (
-            <View key={code} style={styles.step}>
-              <View
-                style={[
-                  styles.dot,
-                  done && styles.dotDone,
-                  active && styles.dotActive,
-                ]}
-              >
-                <Text style={styles.dotText}>{done ? '✓' : idx + 1}</Text>
+            <View key={step.key} style={styles.row}>
+              <View style={styles.rail}>
+                <View
+                  style={[
+                    styles.dot,
+                    done && styles.dotDone,
+                    active && styles.dotActive,
+                    needMoreHere && styles.dotWarn,
+                  ]}
+                >
+                  <Text style={styles.dotText}>{done ? '✓' : idx + 1}</Text>
+                </View>
+                {!isLast && (
+                  <View style={[styles.line, (done || active) && styles.lineActive]} />
+                )}
               </View>
-              <Text
-                style={[
-                  styles.label,
-                  active && styles.labelActive,
-                  done && styles.labelDone,
-                ]}
-                numberOfLines={2}
-              >
-                {STEP_LABEL[code]}
-              </Text>
-              {idx < PIPELINE.length - 1 && (
-                <View style={[styles.line, (done || active) && styles.lineActive]} />
-              )}
+              <View style={styles.body}>
+                <Text
+                  style={[
+                    styles.label,
+                    active && styles.labelActive,
+                    done && styles.labelDone,
+                    needMoreHere && styles.labelWarn,
+                  ]}
+                >
+                  {needMoreHere ? 'Cần bổ sung giấy tờ' : step.label}
+                </Text>
+                <Text style={styles.hint}>
+                  {needMoreHere
+                    ? 'Bổ sung xong rồi nộp lại để chủ đầu tư xét tiếp'
+                    : active
+                      ? step.hint
+                      : done
+                        ? 'Đã xong'
+                        : step.hint}
+                </Text>
+              </View>
             </View>
           );
         })}
@@ -123,45 +172,48 @@ export function ApplicationTimeline({ currentStatus }: { currentStatus: string }
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 10 },
-  banner: { borderRadius: borderRadius.md, padding: 10 },
-  bannerWarn: { backgroundColor: '#FFF3E0' },
-  bannerWarnText: { color: '#E65100', fontSize: 13, fontWeight: '600' },
+  wrap: { gap: 12 },
+  banner: { borderRadius: borderRadius.md, padding: 12 },
+  bannerWarn: { backgroundColor: '#FFF8F0', borderWidth: 1, borderColor: '#FFCC80' },
+  bannerWarnTitle: {
+    color: '#E65100',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  bannerWarnText: { color: '#BF360C', fontSize: 13, lineHeight: 19 },
   bannerDanger: { backgroundColor: '#FFEBEE' },
-  bannerDangerText: { color: '#C62828', fontSize: 13, fontWeight: '600' },
-  bannerInfo: { backgroundColor: '#E3F2FD' },
-  bannerInfoText: { color: '#1565C0', fontSize: 13, fontWeight: '600' },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  step: { flex: 1, alignItems: 'center', position: 'relative' },
+  bannerDangerText: { color: '#C62828', fontSize: 13, fontWeight: '600', lineHeight: 19 },
+  bannerInfo: { backgroundColor: '#F0F7FF' },
+  bannerInfoText: { color: '#1565C0', fontSize: 13, fontWeight: '600', lineHeight: 19 },
+  list: { gap: 0 },
+  row: { flexDirection: 'row', minHeight: 52 },
+  rail: { width: 28, alignItems: 'center' },
   dot: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#E8E8E8',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
   },
   dotDone: { backgroundColor: RHSColors.green600 },
   dotActive: { backgroundColor: RHSColors.blue700 },
+  dotWarn: { backgroundColor: '#EF6C00' },
   dotText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-  label: {
-    marginTop: 6,
-    fontSize: 10,
-    textAlign: 'center',
-    color: RHSColors.textMuted,
-    paddingHorizontal: 2,
-  },
-  labelActive: { color: RHSColors.blue700, fontWeight: '700' },
-  labelDone: { color: RHSColors.green700, fontWeight: '600' },
   line: {
-    position: 'absolute',
-    top: 12,
-    left: '55%',
-    width: '90%',
-    height: 2,
-    backgroundColor: '#E0E0E0',
-    zIndex: 1,
+    flex: 1,
+    width: 2,
+    backgroundColor: '#E8E8E8',
+    marginVertical: 2,
+    minHeight: 18,
   },
-  lineActive: { backgroundColor: RHSColors.blue600 },
+  lineActive: { backgroundColor: RHSColors.blue400 },
+  body: { flex: 1, paddingLeft: 10, paddingBottom: 14 },
+  label: { fontSize: 14, fontWeight: '600', color: RHSColors.textMuted },
+  labelActive: { color: RHSColors.blue700, fontWeight: '700' },
+  labelDone: { color: RHSColors.green700 },
+  labelWarn: { color: '#E65100', fontWeight: '700' },
+  hint: { marginTop: 2, fontSize: 12, color: RHSColors.textMuted, lineHeight: 17 },
 });

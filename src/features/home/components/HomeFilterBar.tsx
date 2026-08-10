@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { Feather } from '@expo/vector-icons';
 import { RHSColors, borderRadius, spacing } from '../../../lib/theme';
 import { HCM_PROVINCE_SHORT } from '../utils/hcmLocations';
+import type { ProjectStatusFilter } from '../utils/projectStatus';
+import { PROJECT_STATUS_FILTER_OPTIONS } from '../utils/projectStatus';
 
 export type SortKey = 'default' | 'price_asc' | 'price_desc' | 'units_desc';
 
@@ -17,11 +19,13 @@ type Props = {
   filterWard: string | null;
   priceLabel: string | null;
   areaLabel: string | null;
+  statusFilter: ProjectStatusFilter;
   sortKey: SortKey;
   hasActiveFilters: boolean;
   onOpenWard: () => void;
   onOpenPrice: () => void;
   onOpenArea: () => void;
+  onOpenStatus: () => void;
   onOpenSort: () => void;
   onReset: () => void;
 };
@@ -30,15 +34,19 @@ export const HomeFilterBar: React.FC<Props> = ({
   filterWard,
   priceLabel,
   areaLabel,
+  statusFilter,
   sortKey,
   hasActiveFilters,
   onOpenWard,
   onOpenPrice,
   onOpenArea,
+  onOpenStatus,
   onOpenSort,
   onReset,
 }) => {
   const sortLabel = SORT_OPTIONS.find((o) => o.key === sortKey)?.label || 'Sắp xếp';
+  const statusLabel =
+    PROJECT_STATUS_FILTER_OPTIONS.find((o) => o.key === statusFilter)?.label || 'Trạng thái';
 
   return (
     <View style={styles.filterBar}>
@@ -48,6 +56,12 @@ export const HomeFilterBar: React.FC<Props> = ({
           <Text style={[styles.chipText, { color: RHSColors.blue700 }]}>{HCM_PROVINCE_SHORT}</Text>
         </View>
 
+        <Chip
+          icon="flag"
+          label={statusFilter === 'ALL' ? 'Trạng thái' : statusLabel}
+          active={statusFilter !== 'ALL'}
+          onPress={onOpenStatus}
+        />
         <Chip
           icon="navigation"
           label={filterWard || 'Phường/Xã'}
@@ -116,7 +130,7 @@ const styles = StyleSheet.create({
     backgroundColor: RHSColors.grey100,
     borderWidth: 1,
     borderColor: RHSColors.border,
-    maxWidth: 160,
+    maxWidth: 180,
   },
   chipLocked: {
     backgroundColor: RHSColors.blue50,

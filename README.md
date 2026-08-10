@@ -8,7 +8,7 @@
 | [`PROJECT_STRUCTURE.md`](./PROJECT_STRUCTURE.md) | Kiến trúc thư mục, navigation, API, coding standards |
 | Backend [`BUSINESS_FLOW.md`](../SEP490_Resilience_Housing_Supply_Backend/BUSINESS_FLOW.md) | Nguồn sự thật nghiệp vụ toàn hệ thống (Đ29–30, Đ38, Đ44, hướng A, AI trợ lý CĐT) |
 
-**Cập nhật:** 2026-07-13
+**Cập nhật:** 2026-08-02
 
 ---
 
@@ -22,6 +22,8 @@ npx expo start
 
 ## Phạm vi
 
-- eKYC, hồ sơ, **2 giấy tờ bắt buộc**, nộp, đặt cọc VNPay, HĐ nguyên tắc, thông báo  
-- **Không** gồm UI CĐT / SXD / Admin (web)  
-- AI quét giấy tờ = trợ lý thẩm định **cho CĐT** trên BE/web — mobile không bắt chờ AI để nộp  
+- eKYC (**VNPT**: OCR CCCD + Face Match; không dùng Liveness)
+- Hồ sơ đăng ký mua NOXH (giấy tờ theo nhóm đối tượng Đ76), nộp, theo dõi trạng thái
+- Đặt cọc / đợt thanh toán VNPay, HĐ nguyên tắc, thông báo, wishlist, lottery lobby
+- **Không** gồm UI CĐT / SXD / Admin (dùng **CAP/FE** web)
+- AI quét giấy tờ = trợ lý thẩm định **cho CĐT** trên BE/web — mobile không bắt chờ AI để nộp

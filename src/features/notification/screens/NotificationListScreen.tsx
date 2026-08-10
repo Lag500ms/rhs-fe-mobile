@@ -27,6 +27,7 @@ import {
   typography,
   shadows,
 } from '../../../lib/theme';
+import { housingApplicationApi } from '../../application/api/housingApplicationApi';
 
 // ─── Icon & Color mapping theo NotificationType ──────────────────
 
@@ -274,13 +275,22 @@ export const NotificationListScreen: React.FC = () => {
           /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
         );
         if (projectMatch) {
+          const projectId = projectMatch[0];
+          let applicationId: string | undefined;
+          try {
+            const mine = await housingApplicationApi.getMyApplications();
+            const match = (mine.items || []).find((a) => a.projectId === projectId);
+            applicationId = match?.applicationId;
+          } catch {
+            /* optional */
+          }
           navigation.navigate('Applications', {
             screen: type === 'LOTTERY_RESULT_PUBLISHED' ? 'LotteryResult' : 'LotterySchedule',
-            params: { projectId: projectMatch[0] },
+            params: { projectId, applicationId },
           });
           return;
         }
-        navigation.navigate('Applications');
+        navigation.navigate('Applications', { screen: 'MyLottery' });
         return;
       }
       if (

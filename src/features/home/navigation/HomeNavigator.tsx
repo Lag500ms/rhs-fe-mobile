@@ -7,6 +7,7 @@ import { MapFullScreen } from '../screens/MapFullScreen';
 import { AnnouncementsScreen } from '../screens/AnnouncementsScreen';
 import { LotteryScheduleScreen } from '../../lottery/screens/LotteryScheduleScreen';
 import { LotteryLobbyScreen } from '../../lottery/screens/LotteryLobbyScreen';
+import { LotteryLiveScreen } from '../../lottery/screens/LotteryLiveScreen';
 import { LotteryResultScreen } from '../../lottery/screens/LotteryResultScreen';
 import { HousingProjectResponse } from '../types/housing';
 
@@ -17,6 +18,7 @@ export type HomeStackParamList = {
   Announcements: { announcementId?: string } | undefined;
   LotterySchedule: { projectId: string; projectName?: string; applicationId?: string };
   LotteryLobby: { projectId: string; projectName?: string; applicationId?: string };
+  LotteryLive: { projectId: string; projectName?: string; applicationId?: string };
   LotteryResult: { projectId: string; projectName?: string; applicationId?: string };
 };
 
@@ -31,6 +33,7 @@ export const HomeNavigator = () => {
       <Stack.Screen name="Announcements" component={AnnouncementsScreen} />
       <Stack.Screen name="LotterySchedule" component={LotteryScheduleScreen} />
       <Stack.Screen name="LotteryLobby" component={LotteryLobbyScreen} />
+      <Stack.Screen name="LotteryLive" component={LotteryLiveScreen} />
       <Stack.Screen name="LotteryResult" component={LotteryResultScreen} />
     </Stack.Navigator>
   );

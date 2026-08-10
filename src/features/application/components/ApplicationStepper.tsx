@@ -3,25 +3,21 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { RHSColors } from '../../../lib/theme';
 
-/** Luồng nộp hồ sơ thực tế trên mobile */
+/** Khớp web: Cá nhân → Hộ → Đối tượng → Tài liệu → Rà soát */
 export const APPLICATION_STEPS = [
-  { key: 'info', label: 'Thông tin' },
-  { key: 'members', label: 'Thành viên' },
-  { key: 'docs', label: 'Giấy tờ' },
-  { key: 'submit', label: 'Nộp hồ sơ' },
+  { key: 'info', label: 'Cá nhân' },
+  { key: 'members', label: 'Hộ' },
+  { key: 'priority', label: 'Đối tượng' },
+  { key: 'docs', label: 'Tài liệu' },
+  { key: 'submit', label: 'Rà soát' },
 ] as const;
 
-export type ApplicationStepIndex = 1 | 2 | 3 | 4;
+export type ApplicationStepIndex = 1 | 2 | 3 | 4 | 5;
 
 type Props = {
-  /** Bước hiện tại (1–4) */
   current: ApplicationStepIndex;
 };
 
-/**
- * Stepper dùng chung cho luồng tạo hồ sơ:
- * Thông tin → Thành viên hộ khẩu → Giấy tờ → Nộp hồ sơ
- */
 export function ApplicationStepper({ current }: Props) {
   return (
     <View style={styles.stepper}>
@@ -42,7 +38,7 @@ export function ApplicationStepper({ current }: Props) {
                 ]}
               >
                 {done ? (
-                  <Feather name="check" size={14} color="#fff" />
+                  <Feather name="check" size={12} color="#fff" />
                 ) : (
                   <Text style={active ? styles.stepCircleText : styles.stepCircleTextInactive}>
                     {stepNum}
@@ -81,17 +77,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: RHSColors.grey200,
   },
-  stepItem: { alignItems: 'center', gap: 4, maxWidth: 72 },
+  stepItem: { alignItems: 'center', gap: 3, maxWidth: 58 },
   stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: RHSColors.grey300,
     backgroundColor: '#fff',
@@ -100,17 +96,17 @@ const styles = StyleSheet.create({
   },
   stepCircleActive: { backgroundColor: RHSColors.blue700, borderColor: RHSColors.blue700 },
   stepCircleDone: { backgroundColor: RHSColors.green600, borderColor: RHSColors.green600 },
-  stepCircleText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  stepCircleTextInactive: { fontSize: 13, fontWeight: '700', color: RHSColors.grey500 },
-  stepLabel: { fontSize: 10, fontWeight: '500', color: RHSColors.grey500 },
+  stepCircleText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  stepCircleTextInactive: { fontSize: 11, fontWeight: '700', color: RHSColors.grey500 },
+  stepLabel: { fontSize: 9, fontWeight: '500', color: RHSColors.grey500 },
   stepLabelActive: { color: RHSColors.blue700, fontWeight: '700' },
   stepLabelDone: { color: RHSColors.green600, fontWeight: '700' },
   stepLine: {
     flex: 1,
     height: 1.5,
     backgroundColor: RHSColors.grey300,
-    marginHorizontal: 4,
-    marginBottom: 16,
+    marginHorizontal: 2,
+    marginBottom: 14,
   },
   stepLineActive: { backgroundColor: RHSColors.blue700 },
   stepLineDone: { backgroundColor: RHSColors.green600 },

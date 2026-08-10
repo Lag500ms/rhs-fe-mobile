@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,21 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
-import { RHSColors, borderRadius, shadows, spacing, typography } from '../../../lib/theme';
+import { RHSColors, borderRadius, spacing, typography } from '../../../lib/theme';
 import { paymentApi } from '../api/paymentApi';
 import { InstallmentPhase, InstallmentSummary } from '../types/payment';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const formatVnd = (amount: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -29,18 +36,43 @@ const formatDate = (value?: string | null) => {
   }
 };
 
-const statusMeta = (status: string) => {
-  switch (status) {
-    case 'PAID':
-      return { label: 'Đã thanh toán', color: RHSColors.green700, bg: RHSColors.green50 };
-    case 'OVERDUE':
-      return { label: 'Quá hạn', color: RHSColors.red700, bg: RHSColors.red50 };
-    case 'CANCELLED':
-      return { label: 'Đã hủy', color: RHSColors.grey500, bg: RHSColors.grey100 };
-    default:
-      return { label: 'Chờ thanh toán', color: RHSColors.amber700, bg: RHSColors.amber50 };
-  }
-};
+function phaseTitle(phase: InstallmentPhase): string {
+  const order = phase.phaseOrder;
+  if (order === 1) return 'Cọc';
+  if (order === 2) return 'Sau ký HĐ';
+  if (phase.phaseName?.trim()) return phase.phaseName.trim();
+  return `Tiến độ ${order}`;
+}
+
+function phaseTitleLong(phase: InstallmentPhase): string {
+  const order = phase.phaseOrder;
+  if (order === 1) return 'Đóng tiền cọc';
+  if (order === 2) return 'Thanh toán sau khi ký hợp đồng';
+  if (phase.phaseName?.trim()) return phase.phaseName.trim();
+  return `Theo tiến độ xây dựng (${order})`;
+}
+
+function isPaid(status: string) {
+  return String(status || '').toUpperCase() === 'PAID';
+}
+
+function isPayable(status: string) {
+  const st = String(status || '').toUpperCase();
+  return st === 'PENDING' || st === 'OVERDUE';
+}
+
+function isLocked(status: string) {
+  return String(status || '').toUpperCase() === 'LOCKED';
+}
+
+/** Chỉ số đợt “đang làm” — ưu tiên đến hạn; không thì đợt chưa trả đầu tiên. */
+function resolveCurrentIndex(phases: InstallmentPhase[]): number {
+  const payableIdx = phases.findIndex((p) => isPayable(p.status));
+  if (payableIdx >= 0) return payableIdx;
+  const firstOpen = phases.findIndex((p) => !isPaid(p.status) && String(p.status).toUpperCase() !== 'CANCELLED' && String(p.status).toUpperCase() !== 'CANCELED');
+  if (firstOpen >= 0) return firstOpen;
+  return Math.max(0, phases.length - 1);
+}
 
 export const PaymentScheduleScreen = () => {
   const navigation = useNavigation<any>();
@@ -54,6 +86,7 @@ export const PaymentScheduleScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -80,8 +113,33 @@ export const PaymentScheduleScreen = () => {
     }, [load]),
   );
 
+  const phases = useMemo(() => {
+    if (!summary?.phases?.length) return [];
+    return summary.phases.slice().sort((a, b) => a.phaseOrder - b.phaseOrder);
+  }, [summary]);
+
+  const currentIdx = useMemo(() => resolveCurrentIndex(phases), [phases]);
+  const current = phases[currentIdx];
+  const journeyPhases = useMemo(() => phases.slice(0, currentIdx + 1), [phases, currentIdx]);
+  const history = useMemo(() => phases.filter((p) => isPaid(p.status)), [phases]);
+
+  const toggleExpand = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded((v) => !v);
+  };
+
   const handlePay = async (phase: InstallmentPhase) => {
-    if (phase.status !== 'PENDING' && phase.status !== 'OVERDUE') return;
+    const st = String(phase.status || '').toUpperCase();
+    if (st === 'LOCKED') {
+      Alert.alert(
+        'Chưa tới lúc đóng',
+        phase.phaseOrder === 2
+          ? 'Khoản này mở sau khi bạn ký hợp đồng.'
+          : 'Khoản này mở khi chủ đầu tư thông báo theo tiến độ xây dựng.',
+      );
+      return;
+    }
+    if (st !== 'PENDING' && st !== 'OVERDUE') return;
     setPayingId(phase.id);
     try {
       const result = await paymentApi.payInstallment(phase.id);
@@ -92,13 +150,13 @@ export const PaymentScheduleScreen = () => {
           applicationId,
           projectName: projectName || '',
           amount: phase.amount,
-          phaseLabel: `Đợt ${phase.phaseOrder}${phase.phaseName ? `: ${phase.phaseName}` : ''}`,
+          phaseLabel: phaseTitleLong(phase),
         });
       } else {
         Alert.alert('Lỗi', result.message || 'Không tạo được URL thanh toán.');
       }
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.response?.data?.message || e?.message || 'Không thanh toán được đợt này.');
+      Alert.alert('Lỗi', e?.response?.data?.message || e?.message || 'Không thanh toán được khoản này.');
     } finally {
       setPayingId(null);
     }
@@ -121,92 +179,179 @@ export const PaymentScheduleScreen = () => {
         >
           {projectName ? <Text style={styles.project}>{projectName}</Text> : null}
 
-          {!summary || summary.phases.length === 0 ? (
+          {!summary || phases.length === 0 ? (
             <View style={styles.empty}>
               <Feather name="calendar" size={40} color={RHSColors.grey400} />
               <Text style={styles.emptyTitle}>Chưa có lịch đóng tiền</Text>
               <Text style={styles.emptyDesc}>
-                Lịch thanh toán theo đợt sẽ xuất hiện sau khi hồ sơ trúng và được gán căn.
+                Lịch xuất hiện sau khi chủ đầu tư cấp suất nhà. Khi đó bạn đóng cọc, rồi ký hợp đồng.
               </Text>
             </View>
           ) : (
             <>
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>Tổng quan</Text>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Tổng cần đóng</Text>
-                  <Text style={styles.summaryValue}>{formatVnd(summary.totalAmount)}</Text>
+              {/* Thanh ngang tiến độ */}
+              <TouchableOpacity
+                style={styles.progressCard}
+                onPress={toggleExpand}
+                activeOpacity={0.9}
+              >
+                <View style={styles.progressHead}>
+                  <Text style={styles.progressEyebrow}>Tiến độ đóng tiền</Text>
+                  <Feather
+                    name={expanded ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color={RHSColors.textMuted}
+                  />
                 </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Đã đóng</Text>
-                  <Text style={[styles.summaryValue, { color: RHSColors.green700 }]}>
-                    {formatVnd(summary.totalPaid)}
-                  </Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Còn lại</Text>
-                  <Text style={[styles.summaryValue, { color: RHSColors.red700 }]}>
-                    {formatVnd(summary.totalRemaining)}
-                  </Text>
-                </View>
-                <Text style={styles.phaseCount}>
-                  {summary.paidPhases}/{summary.totalPhases} đợt đã thanh toán
-                </Text>
-                {!!summary.apartmentTypeName && (
-                  <Text style={styles.aptMeta}>
-                    {summary.apartmentTypeName}
-                    {summary.apartmentArea ? ` · ${summary.apartmentArea} m²` : ''}
-                  </Text>
-                )}
-              </View>
 
-              {summary.phases
-                .slice()
-                .sort((a, b) => a.phaseOrder - b.phaseOrder)
-                .map((phase) => {
-                  const meta = statusMeta(phase.status);
-                  const canPay = phase.status === 'PENDING' || phase.status === 'OVERDUE';
-                  return (
-                    <View key={phase.id} style={styles.phaseCard}>
-                      <View style={styles.phaseHeader}>
-                        <Text style={styles.phaseName}>
-                          Đợt {phase.phaseOrder}: {phase.phaseName}
-                        </Text>
-                        <View style={[styles.badge, { backgroundColor: meta.bg }]}>
-                          <Text style={[styles.badgeText, { color: meta.color }]}>{meta.label}</Text>
+                <View style={styles.barTrack}>
+                  {phases.map((phase, idx) => {
+                    const paid = isPaid(phase.status);
+                    const active = idx === currentIdx && !paid;
+                    return (
+                      <View
+                        key={phase.id}
+                        style={[
+                          styles.barSeg,
+                          paid && styles.barSegPaid,
+                          active && styles.barSegActive,
+                          idx === 0 && styles.barSegFirst,
+                          idx === phases.length - 1 && styles.barSegLast,
+                        ]}
+                      />
+                    );
+                  })}
+                </View>
+
+                <View style={styles.barLabels}>
+                  {phases.map((phase, idx) => (
+                    <Text
+                      key={`lbl-${phase.id}`}
+                      style={[
+                        styles.barLabel,
+                        idx === currentIdx && styles.barLabelActive,
+                        isPaid(phase.status) && styles.barLabelDone,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {phaseTitle(phase)}
+                    </Text>
+                  ))}
+                </View>
+
+                {current ? (
+                  <Text style={styles.nowLine}>
+                    {isPaid(current.status)
+                      ? 'Đã hoàn tất các khoản trên lịch'
+                      : isPayable(current.status)
+                        ? `Đang tới: ${phaseTitleLong(current)} · ${formatVnd(current.amount)}`
+                        : isLocked(current.status)
+                          ? `Tiếp theo: ${phaseTitleLong(current)} (chưa mở)`
+                          : `Hiện tại: ${phaseTitleLong(current)}`}
+                  </Text>
+                ) : null}
+
+                <Text style={styles.tapHint}>
+                  {expanded ? 'Thu gọn chi tiết' : 'Chạm để xem các bước đến hiện tại'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Expand: các bước đã qua → hiện tại */}
+              {expanded && (
+                <View style={styles.journeyCard}>
+                  <Text style={styles.sectionTitle}>Đến bước hiện tại</Text>
+                  {journeyPhases.map((phase, idx) => {
+                    const paid = isPaid(phase.status);
+                    const payable = isPayable(phase.status);
+                    const isCurrent = idx === journeyPhases.length - 1;
+                    return (
+                      <View
+                        key={phase.id}
+                        style={[styles.journeyRow, isCurrent && payable && styles.journeyRowCurrent]}
+                      >
+                        <View style={styles.journeyRail}>
+                          <View
+                            style={[
+                              styles.journeyDot,
+                              paid && styles.journeyDotPaid,
+                              payable && styles.journeyDotActive,
+                            ]}
+                          >
+                            <Text style={styles.journeyDotText}>{paid ? '✓' : phase.phaseOrder}</Text>
+                          </View>
+                          {idx < journeyPhases.length - 1 && <View style={styles.journeyLine} />}
+                        </View>
+                        <View style={styles.journeyBody}>
+                          <Text style={styles.journeyName}>{phaseTitleLong(phase)}</Text>
+                          <Text style={styles.journeyMeta}>
+                            {formatVnd(phase.amount)}
+                            {paid && phase.paidAt ? ` · ${formatDate(phase.paidAt)}` : ''}
+                            {payable ? ' · Đến hạn đóng' : ''}
+                            {isLocked(phase.status) ? ' · Chưa mở' : ''}
+                          </Text>
+                          {payable && (
+                            <TouchableOpacity
+                              style={styles.payBtn}
+                              onPress={() => handlePay(phase)}
+                              disabled={payingId === phase.id}
+                              activeOpacity={0.9}
+                            >
+                              {payingId === phase.id ? (
+                                <ActivityIndicator color="#fff" />
+                              ) : (
+                                <Text style={styles.payBtnText}>Thanh toán</Text>
+                              )}
+                            </TouchableOpacity>
+                          )}
                         </View>
                       </View>
-                      <Text style={styles.amount}>{formatVnd(phase.amount)}</Text>
-                      <Text style={styles.due}>Hạn: {formatDate(phase.dueDate)}</Text>
-                      {phase.paidAt ? (
-                        <Text style={styles.due}>Đã đóng: {formatDate(phase.paidAt)}</Text>
-                      ) : (
-                        <Text style={styles.due}>
-                          {phase.remainingDays >= 0
-                            ? `Còn ${phase.remainingDays} ngày`
-                            : `Quá hạn ${Math.abs(phase.remainingDays)} ngày`}
-                        </Text>
-                      )}
-                      {canPay && (
-                        <TouchableOpacity
-                          style={styles.payBtn}
-                          onPress={() => handlePay(phase)}
-                          disabled={payingId === phase.id}
-                          activeOpacity={0.9}
-                        >
-                          {payingId === phase.id ? (
-                            <ActivityIndicator color="#fff" />
-                          ) : (
-                            <>
-                              <Feather name="credit-card" size={16} color="#fff" />
-                              <Text style={styles.payBtnText}>Thanh toán qua VNPay</Text>
-                            </>
-                          )}
-                        </TouchableOpacity>
-                      )}
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* CTA nhanh nếu chưa expand nhưng có khoản đến hạn */}
+              {!expanded && current && isPayable(current.status) && (
+                <TouchableOpacity
+                  style={styles.payBtnLarge}
+                  onPress={() => handlePay(current)}
+                  disabled={payingId === current.id}
+                  activeOpacity={0.9}
+                >
+                  {payingId === current.id ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <Feather name="credit-card" size={16} color="#fff" />
+                      <Text style={styles.payBtnText}>
+                        Thanh toán {formatVnd(current.amount)}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+
+              {/* Lịch sử */}
+              <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Lịch sử thanh toán</Text>
+              {history.length === 0 ? (
+                <Text style={styles.historyEmpty}>Chưa có khoản nào đã đóng.</Text>
+              ) : (
+                history.map((phase) => (
+                  <View key={`h-${phase.id}`} style={styles.historyRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.historyName}>{phaseTitleLong(phase)}</Text>
+                      <Text style={styles.historyMeta}>Đã đóng · {formatDate(phase.paidAt)}</Text>
                     </View>
-                  );
-                })}
+                    <Text style={styles.historyAmount}>{formatVnd(phase.amount)}</Text>
+                  </View>
+                ))
+              )}
+
+              <View style={styles.summaryFoot}>
+                <Text style={styles.summaryFootText}>
+                  Đã đóng {formatVnd(summary.totalPaid)} / {formatVnd(summary.totalAmount)}
+                </Text>
+              </View>
             </>
           )}
         </ScrollView>
@@ -222,37 +367,132 @@ const styles = StyleSheet.create({
   project: { ...typography.h3, color: RHSColors.text, marginBottom: spacing.md },
   empty: { alignItems: 'center', paddingVertical: spacing.xxl, gap: spacing.sm },
   emptyTitle: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text },
-  emptyDesc: { ...typography.caption, color: RHSColors.textMuted, textAlign: 'center', lineHeight: 18 },
-  summaryCard: {
-    backgroundColor: '#fff',
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: RHSColors.border,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    ...shadows.sm,
+  emptyDesc: {
+    ...typography.caption,
+    color: RHSColors.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: spacing.md,
   },
-  summaryTitle: { ...typography.bodySmall, fontWeight: '700', marginBottom: spacing.sm, color: RHSColors.text },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  summaryLabel: { ...typography.bodySmall, color: RHSColors.textMuted },
-  summaryValue: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text },
-  phaseCount: { ...typography.caption, color: RHSColors.blue700, marginTop: spacing.sm, fontWeight: '600' },
-  aptMeta: { ...typography.caption, color: RHSColors.textMuted, marginTop: 4 },
-  phaseCard: {
+
+  progressCard: {
     backgroundColor: '#fff',
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: RHSColors.border,
     padding: spacing.lg,
+  },
+  progressHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  progressEyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: RHSColors.textMuted,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  barTrack: {
+    flexDirection: 'row',
+    height: 10,
+    borderRadius: 5,
+    overflow: 'hidden',
+    gap: 3,
+    backgroundColor: 'transparent',
+  },
+  barSeg: {
+    flex: 1,
+    backgroundColor: RHSColors.grey200,
+    borderRadius: 3,
+  },
+  barSegFirst: {},
+  barSegLast: {},
+  barSegPaid: { backgroundColor: RHSColors.green600 },
+  barSegActive: { backgroundColor: RHSColors.blue700 },
+  barLabels: {
+    flexDirection: 'row',
+    marginTop: 8,
+    gap: 3,
+  },
+  barLabel: {
+    flex: 1,
+    fontSize: 9,
+    color: RHSColors.textMuted,
+    textAlign: 'center',
+  },
+  barLabelActive: { color: RHSColors.blue700, fontWeight: '700' },
+  barLabelDone: { color: RHSColors.green700 },
+  nowLine: {
+    marginTop: spacing.md,
+    fontSize: 14,
+    fontWeight: '700',
+    color: RHSColors.text,
+    lineHeight: 20,
+  },
+  tapHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: RHSColors.textMuted,
+  },
+
+  journeyCard: {
+    marginTop: spacing.md,
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
+    padding: spacing.lg,
+  },
+  sectionTitle: {
+    ...typography.bodySmall,
+    fontWeight: '700',
+    color: RHSColors.text,
     marginBottom: spacing.sm,
   },
-  phaseHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  phaseName: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text, flex: 1 },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: borderRadius.sm },
-  badgeText: { fontSize: 11, fontWeight: '700' },
-  amount: { fontSize: 18, fontWeight: '800', color: RHSColors.text, marginTop: spacing.sm },
-  due: { ...typography.caption, color: RHSColors.textMuted, marginTop: 4 },
+  journeyRow: { flexDirection: 'row', minHeight: 48 },
+  journeyRowCurrent: {
+    backgroundColor: '#F5F9FC',
+    marginHorizontal: -8,
+    paddingHorizontal: 8,
+    borderRadius: borderRadius.md,
+  },
+  journeyRail: { width: 28, alignItems: 'center' },
+  journeyDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: RHSColors.grey300,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  journeyDotPaid: { backgroundColor: RHSColors.green600 },
+  journeyDotActive: { backgroundColor: RHSColors.blue700 },
+  journeyDotText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  journeyLine: {
+    flex: 1,
+    width: 2,
+    backgroundColor: RHSColors.grey200,
+    marginVertical: 2,
+    minHeight: 12,
+  },
+  journeyBody: { flex: 1, paddingLeft: 10, paddingBottom: 14 },
+  journeyName: { fontSize: 14, fontWeight: '600', color: RHSColors.text },
+  journeyMeta: { marginTop: 2, fontSize: 12, color: RHSColors.textMuted },
+
   payBtn: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+    backgroundColor: RHSColors.red600,
+    borderRadius: borderRadius.md,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  payBtnLarge: {
     marginTop: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
@@ -261,7 +501,27 @@ const styles = StyleSheet.create({
     backgroundColor: RHSColors.red600,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
-    minHeight: 44,
+    minHeight: 48,
   },
   payBtnText: { ...typography.button, color: '#fff', fontSize: 14 },
+
+  historyEmpty: {
+    ...typography.caption,
+    color: RHSColors.textMuted,
+    marginBottom: spacing.md,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: RHSColors.border,
+  },
+  historyName: { fontSize: 13, fontWeight: '600', color: RHSColors.text },
+  historyMeta: { fontSize: 11, color: RHSColors.textMuted, marginTop: 2 },
+  historyAmount: { fontSize: 13, fontWeight: '700', color: RHSColors.green700 },
+
+  summaryFoot: { marginTop: spacing.lg },
+  summaryFootText: { fontSize: 12, color: RHSColors.textMuted, textAlign: 'center' },
 });

@@ -30,6 +30,12 @@ import { housingApplicationApi } from '../../application/api/housingApplicationA
 import { WishlistHeart } from '../../../components/WishlistHeart';
 import { lotteryApi } from '../../lottery/api/lotteryApi';
 import type { LotteryScheduleDetail } from '../../lottery/types/lottery';
+import {
+  isOpenForRegistration,
+  isUpcoming,
+  labelProjectStatus,
+  statusBadgeColor,
+} from '../utils/projectStatus';
 
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -83,6 +89,35 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
     } finally {
       setLoadingLottery(false);
     }
+  };
+
+  const openLotterySchedule = async () => {
+    let applicationId: string | undefined;
+    try {
+      const token = await getToken();
+      if (token) {
+        const mine = await housingApplicationApi.getMyApplications();
+        const match = (mine.items || []).find((a) => {
+          if (a.projectId !== project.id) return false;
+          const s = String(a.applicationStatus || '').toUpperCase();
+          return [
+            'APPROVED',
+            'APPROVED_BY_TIMEOUT',
+            'PROPOSED',
+            'CONTRACT_PENDING',
+            'LOTTERY_LOST',
+          ].includes(s);
+        });
+        applicationId = match?.applicationId;
+      }
+    } catch {
+      /* optional */
+    }
+    navigation.navigate('LotterySchedule', {
+      projectId: project.id,
+      projectName: project.projectName,
+      applicationId,
+    });
   };
 
   const fetchSuggestedProjects = async () => {
@@ -158,6 +193,21 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
   };
 
   const handleRegister = async () => {
+    if (!isOpenForRegistration(project.status)) {
+      if (isUpcoming(project.status)) {
+        Alert.alert(
+          'Dự án sắp mở bán',
+          'Chưa tới thời điểm đăng ký. Bạn vẫn có thể nhấn trái tim để lưu vào danh sách quan tâm và nhận thông tin khi mở.',
+        );
+        return;
+      }
+      Alert.alert(
+        'Không thể đăng ký',
+        `Dự án đang ở trạng thái “${labelProjectStatus(project.status)}”, chưa nhận hồ sơ mới.`,
+      );
+      return;
+    }
+
     try {
       const rootNav = navigation.getParent()?.getParent();
 
@@ -297,7 +347,9 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
             <View style={styles.thumbPlace}><Feather name="home" size={52} color={RHSColors.grey400}/></View>
           )}
           {project.status && (
-            <View style={styles.statusBadge}><Text style={styles.statusText}>{project.status}</Text></View>
+            <View style={[styles.statusBadge, { backgroundColor: statusBadgeColor(project.status) }]}>
+              <Text style={styles.statusText}>{labelProjectStatus(project.status)}</Text>
+            </View>
           )}
         </View>
 
@@ -317,14 +369,14 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
             <Text style={styles.detailText}>
               {project.phase1Percentage != null && project.phase1Percentage > 0 ? (
                 <>
-                  Trả trước (Đợt 1):{' '}
+                  Lịch thanh toán 6 đợt (mẫu): Đợt 1 ~10% khi cấp suất, Đợt 2 sau ký HĐ, Đợt 3–6 theo
+                  tiến độ CĐT. Tỉ lệ công bố Đợt 1 dự án:{' '}
                   <Text style={{ color: RHSColors.blue700, fontWeight: '700' }}>
                     {Number(project.phase1Percentage)}%
                   </Text>
-                  {' '}giá căn · Đợt 2 = phần còn lại
                 </>
               ) : (
-                'Trả trước (Đợt 1): chưa công bố'
+                'Lịch thanh toán: 6 đợt (Đợt 1 cọc khi cấp suất → ký HĐ → Đợt 2–6 theo tiến độ)'
               )}
             </Text>
           </View>
@@ -392,12 +444,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
               </Text>
               <TouchableOpacity
                 style={styles.lotteryBtn}
-                onPress={() =>
-                  navigation.navigate('LotterySchedule', {
-                    projectId: project.id,
-                    projectName: project.projectName,
-                  })
-                }
+                onPress={() => void openLotterySchedule()}
                 activeOpacity={0.85}
               >
                 <Feather name="radio" size={16} color="#fff" />
@@ -436,11 +483,33 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           )}
         </View>
 
-        {/* Register button - BLUE */}
-        <TouchableOpacity style={styles.registerBtn} onPress={handleRegister} activeOpacity={0.9}>
+        {/* Register / soft CTA — UPCOMING vẫn xem + wishlist */}
+        {isUpcoming(project.status) && (
+          <View style={styles.upcomingHint}>
+            <Feather name="clock" size={16} color={RHSColors.amber700} />
+            <Text style={styles.upcomingHintText}>
+              Dự án sắp mở bán. Hãy lưu quan tâm (❤) để theo dõi — đăng ký sẽ mở khi chuyển sang “Đang mở”.
+            </Text>
+          </View>
+        )}
+        <TouchableOpacity
+          style={[styles.registerBtn, !isOpenForRegistration(project.status) && styles.registerBtnMuted]}
+          onPress={handleRegister}
+          activeOpacity={0.9}
+        >
           <View style={styles.registerGrad}>
-            <Feather name="edit-3" size={18} color="#fff"/>
-            <Text style={styles.registerText}>Đăng ký nhà ở</Text>
+            <Feather
+              name={isOpenForRegistration(project.status) ? 'edit-3' : 'bell'}
+              size={18}
+              color="#fff"
+            />
+            <Text style={styles.registerText}>
+              {isOpenForRegistration(project.status)
+                ? 'Đăng ký nhà ở'
+                : isUpcoming(project.status)
+                  ? 'Chưa mở đăng ký — đã lưu ❤ được'
+                  : `Không nhận hồ sơ (${labelProjectStatus(project.status)})`}
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -627,6 +696,7 @@ const styles = StyleSheet.create({
 
   // Register button - BLUE no gradient
   registerBtn: { marginHorizontal: 14, borderRadius: borderRadius.md, overflow: 'hidden' },
+  registerBtnMuted: { opacity: 0.92 },
   registerGrad: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -635,6 +705,17 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: RHSColors.blue700,
   },
-  registerText: { ...typography.button, color: '#fff' },
+  registerText: { ...typography.button, color: '#fff', textAlign: 'center', paddingHorizontal: 8 },
+  upcomingHint: {
+    marginHorizontal: 14,
+    marginBottom: 10,
+    padding: 12,
+    borderRadius: borderRadius.md,
+    backgroundColor: RHSColors.amber50,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  upcomingHintText: { flex: 1, ...typography.bodySmall, color: RHSColors.amber700, lineHeight: 20 },
 
 });

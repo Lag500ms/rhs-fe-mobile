@@ -38,6 +38,7 @@ function mapSchedule(raw: unknown): LotteryScheduleDetail {
     ),
     joinCode: (o.joinCode ?? o.JoinCode) as string | null | undefined,
     sessionStatus: (o.sessionStatus ?? o.SessionStatus) as string | null | undefined,
+    sxdOnlineCount: Number(o.sxdOnlineCount ?? o.SxdOnlineCount ?? 0),
     eligibleParticipants: list.map((it) => {
       const p = (it ?? {}) as Record<string, unknown>;
       return {
