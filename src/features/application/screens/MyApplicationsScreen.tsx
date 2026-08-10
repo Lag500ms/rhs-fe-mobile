@@ -19,6 +19,7 @@ import { ApplicationSummary } from '../types/application';
 import { ApplicationCard } from '../components/ApplicationCard';
 import { DraftActionSheet } from '../components/DraftActionSheet';
 import { getActionForStatus } from '../utils/statusConfig';
+import { EmptyStateIllustration } from '../../../components/EmptyStateIllustration';
 
 export const MyApplicationsScreen = () => {
   const navigation = useNavigation<any>();
@@ -165,9 +166,7 @@ export const MyApplicationsScreen = () => {
       return (
         <View style={styles.emptyContainer}>
           <View style={styles.illustrationWrap}>
-            <View style={[styles.illustrationBox, { backgroundColor: RHSColors.red50 }]}>
-              <Feather name="file-text" size={72} color={RHSColors.govRed} />
-            </View>
+            <EmptyStateIllustration name="login" size={240} />
           </View>
           <Text style={styles.emptyTitle}>Chưa đăng nhập</Text>
           <Text style={styles.emptyDesc}>
@@ -184,9 +183,7 @@ export const MyApplicationsScreen = () => {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.illustrationWrap}>
-          <View style={[styles.illustrationBox, { backgroundColor: RHSColors.blue50 }]}>
-            <Feather name="inbox" size={72} color={RHSColors.blue700} />
-          </View>
+          <EmptyStateIllustration name="login" size={240} />
         </View>
         <Text style={styles.emptyTitle}>Chưa có hồ sơ nào</Text>
         <Text style={styles.emptyDesc}>
@@ -337,13 +334,6 @@ const styles = StyleSheet.create({
   illustrationWrap: {
     marginBottom: spacing.xxl,
     width: '100%',
-    alignItems: 'center',
-  },
-  illustrationBox: {
-    width: 200,
-    height: 180,
-    borderRadius: borderRadius.xl,
-    justifyContent: 'center',
     alignItems: 'center',
   },
   emptyTitle: { ...typography.h2, color: RHSColors.text, textAlign: 'center', marginBottom: spacing.md },

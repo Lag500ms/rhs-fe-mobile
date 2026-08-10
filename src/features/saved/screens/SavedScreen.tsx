@@ -11,7 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RHSColors, shadows, borderRadius, typography, spacing } from '../../../lib/theme';
 import { getToken } from '../../../lib/tokenStorage';
@@ -20,6 +20,7 @@ import { WishlistItemResponse, PagedResult } from '../types/wishlist';
 import { housingApi } from '../../home/api/housingApi';
 import { priceRange } from '../utils/format';
 import { WishlistHeart } from '../../../components/WishlistHeart';
+import { EmptyStateIllustration } from '../../../components/EmptyStateIllustration';
 
 const PAGE_SIZE = 10;
 
@@ -192,8 +193,8 @@ export const SavedScreen = () => {
     if (!isLoggedIn) {
       return (
         <View style={styles.emptyContainer}>
-          <View style={styles.illustrationBox}>
-            <Ionicons name="heart-outline" size={56} color={RHSColors.red600} />
+          <View style={styles.illustrationWrap}>
+            <EmptyStateIllustration name="wishlist" size={240} />
           </View>
           <Text style={styles.emptyTitle}>Chưa đăng nhập</Text>
           <Text style={styles.emptyDesc}>
@@ -209,8 +210,8 @@ export const SavedScreen = () => {
 
     return (
       <View style={styles.emptyContainer}>
-        <View style={styles.illustrationBox}>
-          <Ionicons name="heart-outline" size={56} color={RHSColors.red600} />
+        <View style={styles.illustrationWrap}>
+          <EmptyStateIllustration name="wishlist" size={240} />
         </View>
         <Text style={styles.emptyTitle}>Chưa có dự án quan tâm</Text>
         <Text style={styles.emptyDesc}>
@@ -307,14 +308,10 @@ const styles = StyleSheet.create({
   },
   listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 28 },
   emptyContainer: { alignItems: 'center', paddingHorizontal: 24 },
-  illustrationBox: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    backgroundColor: RHSColors.red50,
-    justifyContent: 'center',
-    alignItems: 'center',
+  illustrationWrap: {
     marginBottom: 20,
+    width: '100%',
+    alignItems: 'center',
   },
   emptyTitle: {
     fontSize: 18,

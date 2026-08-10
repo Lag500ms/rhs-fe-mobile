@@ -27,6 +27,7 @@ import {
   shadows,
 } from '../../../lib/theme';
 import { housingApplicationApi } from '../../application/api/housingApplicationApi';
+import { EmptyStateIllustration } from '../../../components/EmptyStateIllustration';
 
 const NOTIFICATION_CONFIG: Record<
   string,
@@ -300,9 +301,7 @@ export const NotificationListScreen: React.FC = () => {
       return (
         <View style={styles.emptyContainer}>
           <View style={styles.illustrationWrap}>
-            <View style={[styles.illustrationBox, { backgroundColor: RHSColors.blue50 }]}>
-              <Feather name="bell" size={72} color={RHSColors.blue700} />
-            </View>
+            <EmptyStateIllustration name="notifications" size={240} />
           </View>
           <Text style={styles.emptyTitle}>Chưa đăng nhập</Text>
           <Text style={styles.emptyDesc}>
@@ -345,9 +344,7 @@ export const NotificationListScreen: React.FC = () => {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.illustrationWrap}>
-          <View style={[styles.illustrationBox, { backgroundColor: RHSColors.blue50 }]}>
-            <Feather name="bell-off" size={72} color={RHSColors.blue700} />
-          </View>
+          <EmptyStateIllustration name="notifications" size={240} />
         </View>
         <Text style={styles.emptyTitle}>Chưa có thông báo</Text>
         <Text style={styles.emptyDesc}>
