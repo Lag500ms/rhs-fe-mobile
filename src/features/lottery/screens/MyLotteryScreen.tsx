@@ -16,6 +16,12 @@ import { ScreenHeader } from '../../../components/ScreenHeader';
 import { RHSColors, borderRadius, spacing, typography } from '../../../lib/theme';
 import { housingApplicationApi } from '../../application/api/housingApplicationApi';
 import type { ApplicationSummary } from '../../application/types/application';
+import {
+  hasLotterySession,
+  isLotteryFinishedPhase,
+  isLotteryLivePhase,
+  normalizeLotterySession,
+} from '../../application/utils/lotterySession';
 import { lotteryApi } from '../api/lotteryApi';
 import {
   LOTTERY_RESULT_LABEL,
@@ -26,7 +32,7 @@ import {
 
 type Row = {
   application: ApplicationSummary;
-  schedule: LotteryScheduleDetail | null;
+  schedule: LotteryScheduleDetail;
   result: LotteryDrawResult | null;
 };
 
@@ -60,13 +66,15 @@ export const MyLotteryScreen = () => {
     try {
       const data = await housingApplicationApi.getMyApplications();
       const apps = data.items || [];
-      const eligible = apps.filter((a) => ELIGIBLE.has(String(a.applicationStatus || '').toUpperCase()));
+      const eligible = apps.filter((a) =>
+        ELIGIBLE.has(String(a.applicationStatus || '').toUpperCase()),
+      );
       if (eligible.length === 0) {
         setRows([]);
         setInfo(
           apps.length === 0
             ? 'Bạn chưa có hồ sơ nào. Hãy tạo và nộp hồ sơ trước khi tham gia bốc thăm.'
-            : 'Chưa có hồ sơ đủ điều kiện bốc thăm. Hồ sơ cần được duyệt (APPROVED) trước.',
+            : 'Chưa có hồ sơ đủ điều kiện bốc thăm. Hồ sơ cần được duyệt trước.',
         );
         return;
       }
@@ -88,7 +96,18 @@ export const MyLotteryScreen = () => {
           return { application: app, schedule, result };
         }),
       );
-      setRows(enriched);
+
+      // Chỉ hiện khi CĐT đã lên lịch / mở phiên
+      const withSession = enriched.filter(
+        (r): r is Row => !!r.schedule && hasLotterySession(r.schedule),
+      ) as Row[];
+
+      setRows(withSession);
+      if (withSession.length === 0) {
+        setInfo(
+          'Chủ đầu tư chưa lên lịch bốc thăm cho hồ sơ đã duyệt của bạn. Khi có lịch, mục này sẽ hiện tại đây.',
+        );
+      }
     } catch (err: any) {
       Alert.alert('Lỗi', err?.response?.data?.message || err?.message || 'Không tải được danh sách.');
     } finally {
@@ -136,10 +155,11 @@ export const MyLotteryScreen = () => {
   };
 
   const renderItem = ({ item }: { item: Row }) => {
-    const phase = item.schedule?.sessionStatus || 'NOT_SCHEDULED';
-    const phaseLabel = LOTTERY_SESSION_LABEL[phase] ?? 'Không rõ';
-    const isFinished = phase === 'Finished' || phase === 'Published' || phase === 'FINISHED';
-    const isLive = phase === 'Live' || phase === 'RUNNING';
+    const phase = normalizeLotterySession(item.schedule.sessionStatus);
+    const phaseLabel = LOTTERY_SESSION_LABEL[phase] ?? LOTTERY_SESSION_LABEL[item.schedule.sessionStatus || ''] ?? 'Đã lên lịch';
+    const finished = isLotteryFinishedPhase(item.schedule);
+    const liveOrLobby = isLotteryLivePhase(item.schedule);
+    const isLive = phase === 'Live';
     const own = findOwnResult(item);
     const ownCode = own?.result || own?.lotteryResult || null;
     const won = ownCode === 'WON' || ownCode === 'PRIORITY_WON';
@@ -150,14 +170,14 @@ export const MyLotteryScreen = () => {
           <Text style={styles.projectName} numberOfLines={2}>
             {item.application.projectName}
           </Text>
-          <View style={[styles.badge, isLive && styles.badgeLive, isFinished && styles.badgeDone]}>
+          <View style={[styles.badge, isLive && styles.badgeLive, finished && styles.badgeDone]}>
             <Text style={styles.badgeText}>{phaseLabel}</Text>
           </View>
         </View>
         <Text style={styles.meta}>
           Hồ sơ #{item.application.applicationId.slice(0, 8).toUpperCase()}
         </Text>
-        {!!item.schedule?.lotteryDate && (
+        {!!item.schedule.lotteryDate && (
           <Text style={styles.meta}>
             Lịch:{' '}
             {new Date(item.schedule.lotteryDate).toLocaleString('vi-VN', {
@@ -175,28 +195,34 @@ export const MyLotteryScreen = () => {
             <Text style={styles.ownTitle}>
               Kết quả của bạn: {LOTTERY_RESULT_LABEL[ownCode] ?? ownCode}
             </Text>
-            {!!(own.slotCode) && (
+            {!!own.slotCode && (
               <Text style={styles.ownMeta}>Mã suất: {own.slotCode}</Text>
             )}
           </View>
         ) : null}
 
         <View style={styles.actions}>
-          {!isFinished && (
+          {liveOrLobby && !finished ? (
             <TouchableOpacity style={styles.primaryBtn} onPress={() => enterLobby(item)} activeOpacity={0.85}>
               <Feather name="radio" size={16} color="#fff" />
               <Text style={styles.primaryBtnText}>{isLive ? 'Vào sảnh / Bốc' : 'Vào sảnh'}</Text>
             </TouchableOpacity>
-          )}
-          <TouchableOpacity style={styles.secondaryBtn} onPress={() => openLive(item)} activeOpacity={0.85}>
-            <Text style={styles.secondaryBtnText}>Xem phiên trực tiếp</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={() => openSchedule(item)} activeOpacity={0.85}>
-            <Text style={styles.secondaryBtnText}>Lịch</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={() => openResult(item)} activeOpacity={0.85}>
-            <Text style={styles.secondaryBtnText}>Kết quả</Text>
-          </TouchableOpacity>
+          ) : null}
+          {isLive ? (
+            <TouchableOpacity style={styles.secondaryBtn} onPress={() => openLive(item)} activeOpacity={0.85}>
+              <Text style={styles.secondaryBtnText}>Xem phiên trực tiếp</Text>
+            </TouchableOpacity>
+          ) : null}
+          {!finished ? (
+            <TouchableOpacity style={styles.secondaryBtn} onPress={() => openSchedule(item)} activeOpacity={0.85}>
+              <Text style={styles.secondaryBtnText}>Xem lịch</Text>
+            </TouchableOpacity>
+          ) : null}
+          {finished || ownCode ? (
+            <TouchableOpacity style={styles.secondaryBtn} onPress={() => openResult(item)} activeOpacity={0.85}>
+              <Text style={styles.secondaryBtnText}>Kết quả</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
     );
@@ -216,16 +242,16 @@ export const MyLotteryScreen = () => {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListHeaderComponent={
-            <Text style={styles.hint}>
-              Hồ sơ đã duyệt hiển thị tại đây. Vào sảnh bằng mã xác thực để bốc khi chủ đầu tư mở
-              phiên trực tiếp (cần Sở giám sát). Dùng «Xem phiên trực tiếp» để theo dõi tiến độ mà
-              không cần mã.
-            </Text>
+            rows.length > 0 ? (
+              <Text style={styles.hint}>
+                Chỉ hiện dự án đã được chủ đầu tư lên lịch bốc thăm.
+              </Text>
+            ) : null
           }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Feather name="inbox" size={48} color={RHSColors.textMuted} />
-              <Text style={styles.emptyText}>{info || 'Chưa có dữ liệu bốc thăm.'}</Text>
+              <Feather name="calendar" size={40} color={RHSColors.grey400} />
+              <Text style={styles.emptyText}>{info || 'Chưa có lịch bốc thăm.'}</Text>
             </View>
           }
           refreshControl={
@@ -233,7 +259,6 @@ export const MyLotteryScreen = () => {
               refreshing={refreshing}
               onRefresh={() => void load(true)}
               colors={[RHSColors.blue700]}
-              tintColor={RHSColors.blue700}
             />
           }
         />
@@ -244,54 +269,60 @@ export const MyLotteryScreen = () => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  list: { padding: spacing.lg, paddingBottom: 40 },
-  hint: { ...typography.body, color: RHSColors.textMuted, marginBottom: 14 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  list: { padding: spacing.lg, paddingBottom: spacing.xxxl, flexGrow: 1 },
+  hint: { ...typography.caption, color: RHSColors.textMuted, marginBottom: spacing.md },
+  empty: { alignItems: 'center', paddingVertical: 48, gap: 12 },
+  emptyText: {
+    ...typography.body,
+    color: RHSColors.textMuted,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: RHSColors.white,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: RHSColors.border,
-    marginBottom: 12,
+    gap: 8,
   },
   cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  projectName: { flex: 1, fontWeight: '800', fontSize: 16, color: RHSColors.text },
+  projectName: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text, flex: 1 },
   badge: {
     backgroundColor: RHSColors.blue50,
-    borderRadius: 8,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
   },
-  badgeLive: { backgroundColor: RHSColors.amber50 },
+  badgeLive: { backgroundColor: '#FFEBEE' },
   badgeDone: { backgroundColor: RHSColors.green50 },
   badgeText: { fontSize: 11, fontWeight: '700', color: RHSColors.blue700 },
-  meta: { ...typography.caption, color: RHSColors.textMuted, marginTop: 4 },
-  ownBox: { marginTop: 10, borderRadius: borderRadius.md, padding: 10 },
+  meta: { ...typography.caption, color: RHSColors.textMuted },
+  ownBox: { borderRadius: borderRadius.md, padding: spacing.sm, marginTop: 4 },
   ownWon: { backgroundColor: RHSColors.green50 },
-  ownLost: { backgroundColor: RHSColors.amber50 },
-  ownTitle: { fontWeight: '700', color: RHSColors.text },
-  ownMeta: { ...typography.caption, marginTop: 2, color: RHSColors.textMuted },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  ownLost: { backgroundColor: RHSColors.red50 },
+  ownTitle: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text },
+  ownMeta: { ...typography.caption, color: RHSColors.textSecondary, marginTop: 2 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
   primaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: RHSColors.blue700,
-    borderRadius: borderRadius.md,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    borderRadius: borderRadius.md,
   },
-  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  primaryBtnText: { ...typography.caption, fontWeight: '700', color: '#fff' },
   secondaryBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: RHSColors.border,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+    backgroundColor: RHSColors.white,
   },
-  secondaryBtnText: { color: RHSColors.blue700, fontWeight: '700', fontSize: 13 },
-  empty: { alignItems: 'center', paddingVertical: 48, gap: 12 },
-  emptyText: { ...typography.body, color: RHSColors.textMuted, textAlign: 'center', paddingHorizontal: 24 },
+  secondaryBtnText: { ...typography.caption, fontWeight: '600', color: RHSColors.blue700 },
 });

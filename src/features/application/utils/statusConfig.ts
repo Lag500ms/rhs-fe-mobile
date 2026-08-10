@@ -156,7 +156,7 @@ export function getActionForStatus(status: string): StatusAction | null {
       return { label: 'Xem chi tiết', icon: 'eye', color: RHSColors.blue700 };
     case 'APPROVED':
     case 'APPROVED_BY_TIMEOUT':
-      return { label: 'Chờ chốt danh sách / bốc thăm', icon: 'radio', color: RHSColors.blue700 };
+      return { label: 'Chờ chốt suất / lịch bốc thăm', icon: 'radio', color: RHSColors.blue700 };
     case 'DEPOSIT_PENDING':
       return { label: 'Đóng tiền cọc', icon: 'credit-card', color: RHSColors.red600 };
     case 'CONTRACT_PENDING':

@@ -28,6 +28,14 @@ import {
   getDepositRemainingMs,
   isPaymentSuccessStatus,
 } from '../../../lib/depositDeadline';
+import { lotteryApi } from '../../lottery/api/lotteryApi';
+import type { LotteryScheduleDetail } from '../../lottery/types/lottery';
+import {
+  hasLotterySession,
+  isLotteryFinishedPhase,
+  isLotteryLivePhase,
+  normalizeLotterySession,
+} from '../utils/lotterySession';
 
 type BottomAction = {
   label: string;
@@ -67,6 +75,8 @@ export const ApplicationDetailScreen = () => {
   const [paymentPdfUrl, setPaymentPdfUrl] = useState<string | null>(null);
   const [loadingReceipt, setLoadingReceipt] = useState(false);
   const [slotCodeCopied, setSlotCodeCopied] = useState(false);
+  const [lotterySchedule, setLotterySchedule] = useState<LotteryScheduleDetail | null>(null);
+  const [loadingLottery, setLoadingLottery] = useState(false);
 
   useLayoutEffect(() => {
     const parent = navigation.getParent();
@@ -147,6 +157,32 @@ export const ApplicationDetailScreen = () => {
       setPaymentPdfUrl(null);
     }
   }, [detail?.applicationStatus, detail?.applicationId, checkExistingPayment]);
+
+  useEffect(() => {
+    const status = detail?.applicationStatus;
+    const projectId = detail?.projectId;
+    if (!projectId || (status !== 'APPROVED' && status !== 'APPROVED_BY_TIMEOUT')) {
+      setLotterySchedule(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingLottery(true);
+    (async () => {
+      try {
+        const schedule = await lotteryApi.getSchedule(projectId);
+        if (!cancelled) setLotterySchedule(schedule);
+      } catch {
+        if (!cancelled) setLotterySchedule(null);
+      } finally {
+        if (!cancelled) setLoadingLottery(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.applicationStatus, detail?.projectId]);
 
   const handleStartPayment = useCallback(async () => {
     if (!detail) return;
@@ -325,33 +361,86 @@ export const ApplicationDetailScreen = () => {
       }];
     }
 
-    // APPROVED: CTA bốc thăm nổi (lịch/sảnh chỉ mở khi CĐT+Sở đã công bố)
+    // APPROVED: chỉ hiện bốc/live khi CĐT đã lên lịch phiên
     if (status === 'APPROVED' || status === 'APPROVED_BY_TIMEOUT') {
-      const lotteryCta: BottomAction = {
-        label: 'Vào lịch / sảnh bốc thăm',
-        icon: 'shuffle',
-        onPress: () =>
-          navigation.navigate('LotterySchedule', {
-            projectId: detail.projectId,
-            projectName: detail.projectName,
-            applicationId: detail.applicationId,
-          }),
-        variant: 'primary',
-      };
-      if (detail.receiptUrl) {
-        return [
-          lotteryCta,
-          {
-            label: loadingReceipt ? 'Đang tải...' : 'Xem biên nhận',
-            icon: 'file-text',
-            onPress: handleViewReceipt,
+      const actions: BottomAction[] = [];
+      const scheduled = hasLotterySession(lotterySchedule);
+      const live = isLotteryLivePhase(lotterySchedule);
+      const finished = isLotteryFinishedPhase(lotterySchedule);
+      const phase = normalizeLotterySession(lotterySchedule?.sessionStatus);
+
+      if (loadingLottery) {
+        actions.push({
+          label: 'Đang kiểm tra lịch bốc thăm…',
+          icon: 'shuffle',
+          onPress: () => undefined,
+          variant: 'secondary',
+          loading: true,
+          disabled: true,
+        });
+      } else if (finished) {
+        actions.push({
+          label: 'Xem kết quả bốc thăm',
+          icon: 'award',
+          onPress: () =>
+            navigation.navigate('LotteryResult', {
+              projectId: detail.projectId,
+              projectName: detail.projectName,
+              applicationId: detail.applicationId,
+            }),
+          variant: 'primary',
+        });
+      } else if (live) {
+        actions.push({
+          label: phase === 'Live' ? 'Vào phiên bốc thăm (Live)' : 'Vào sảnh bốc thăm',
+          icon: 'radio',
+          onPress: () =>
+            navigation.navigate('LotteryLobby', {
+              projectId: detail.projectId,
+              projectName: detail.projectName,
+              applicationId: detail.applicationId,
+            }),
+          variant: 'primary',
+        });
+        if (phase === 'Live') {
+          actions.push({
+            label: 'Xem phiên trực tiếp',
+            icon: 'eye',
+            onPress: () =>
+              navigation.navigate('LotteryLive', {
+                projectId: detail.projectId,
+                projectName: detail.projectName,
+                applicationId: detail.applicationId,
+              }),
             variant: 'secondary',
-            loading: loadingReceipt,
-            disabled: loadingReceipt,
-          },
-        ];
+          });
+        }
+      } else if (scheduled) {
+        actions.push({
+          label: 'Xem lịch bốc thăm',
+          icon: 'calendar',
+          onPress: () =>
+            navigation.navigate('LotterySchedule', {
+              projectId: detail.projectId,
+              projectName: detail.projectName,
+              applicationId: detail.applicationId,
+            }),
+          variant: 'primary',
+        });
       }
-      return [lotteryCta];
+      // Chưa có lịch từ CĐT → không CTA bốc thăm (chỉ biên nhận nếu có)
+
+      if (detail.receiptUrl) {
+        actions.push({
+          label: loadingReceipt ? 'Đang tải...' : 'Xem biên nhận',
+          icon: 'file-text',
+          onPress: handleViewReceipt,
+          variant: actions.length === 0 ? 'primary' : 'secondary',
+          loading: loadingReceipt,
+          disabled: loadingReceipt,
+        });
+      }
+      return actions;
     }
 
     // Trúng/cấp suất → đóng cọc trước khi ký
@@ -535,7 +624,8 @@ export const ApplicationDetailScreen = () => {
     return [];
   };
 
-  // Khớp BE ClosedStatuses (+ đang trả góp không cho hủy).
+  // Khớp BE ClosedStatuses (+ INSTALLMENT_IN_PROGRESS). Vẫn hủy được tới CONTRACT_PENDING.
+  // Dừng hủy từ CONTRACT_SIGNED / DEPOSIT_PAID trở đi.
   const CLOSED_FOR_CANCEL = [
     'DEPOSIT_PAID',
     'FULLY_PAID',
