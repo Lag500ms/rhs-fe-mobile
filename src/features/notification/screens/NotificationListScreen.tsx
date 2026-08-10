@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import { ScreenHeader } from '../../../components/ScreenHeader';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import {
   getMyNotifications,
   markAsRead,
@@ -28,8 +27,6 @@ import {
   shadows,
 } from '../../../lib/theme';
 import { housingApplicationApi } from '../../application/api/housingApplicationApi';
-
-// ─── Icon & Color mapping theo NotificationType ──────────────────
 
 const NOTIFICATION_CONFIG: Record<
   string,
@@ -92,26 +89,21 @@ const NOTIFICATION_CONFIG: Record<
   },
 };
 
-// ─── Component ──────────────────────────────────────────────────
-
 export const NotificationListScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
-  // Tab root (NotificationHome) không hiện nút back — tránh god/duplicate chrome
   const showBack = route.name !== 'NotificationHome' && navigation.canGoBack();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
 
-  // Dùng ref để tránh race condition khi gọi API nhiều lần
   const isFetchingRef = useRef<boolean>(false);
-
-  // ─── Fetch notifications ──────────────────────────────────────
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const fetchNotifications = useCallback(
     async (page: number, isRefresh: boolean = false): Promise<void> => {
@@ -121,147 +113,83 @@ export const NotificationListScreen: React.FC = () => {
         setNotifications([]);
         setIsLoading(false);
         setIsRefreshing(false);
-        setIsLoadingMore(false);
         setHasError(false);
         return;
       }
 
-      setIsLoggedIn(true);
       if (isFetchingRef.current) return;
       isFetchingRef.current = true;
 
       try {
+        setIsLoggedIn(true);
         setHasError(false);
+        if (isRefresh) setIsRefreshing(true);
+        else if (page === 1) setIsLoading(true);
 
-        if (isRefresh) {
-          setIsRefreshing(true);
-        } else if (page === 1) {
-          setIsLoading(true);
-        } else {
-          setIsLoadingMore(true);
-        }
-
-        const response: NotificationListResponse = await getMyNotifications(
-          page,
-          20
-        );
-
-        setNotifications((prev) =>
-          page === 1 ? response.items : [...prev, ...response.items]
-        );
-        setCurrentPage(response.page);
-        setTotalPages(response.totalPages);
+        const response: NotificationListResponse = await getMyNotifications(page, 20);
+        const items = response.items ?? [];
+        setNotifications((prev) => (page === 1 ? items : [...prev, ...items]));
+        setCurrentPage(response.page ?? page);
+        setTotalPages(response.totalPages ?? 1);
       } catch {
         setHasError(true);
+        if (page === 1) setNotifications([]);
       } finally {
+        isFetchingRef.current = false;
         setIsLoading(false);
         setIsRefreshing(false);
         setIsLoadingMore(false);
-        isFetchingRef.current = false;
       }
     },
     []
   );
-
-  // ─── Load first page khi màn hình được focus ──────────────────
 
   useFocusEffect(
     useCallback(() => {
-      void (async () => {
-        const token = await getToken();
-        // Chưa đăng nhập: không reload / không gọi API
-        if (!token) {
-          setIsLoggedIn(false);
-          setNotifications([]);
-          setIsLoading(false);
-          setIsRefreshing(false);
-          setHasError(false);
-          return;
-        }
-        await fetchNotifications(1);
-      })();
+      void fetchNotifications(1);
     }, [fetchNotifications])
   );
 
-  // ─── Pull to refresh ──────────────────────────────────────────
-
-  const handleRefresh = useCallback(async (): Promise<void> => {
-    const token = await getToken();
-    if (!token) {
-      setIsLoggedIn(false);
-      setIsRefreshing(false);
-      return;
-    }
-    await fetchNotifications(1, true);
+  const handleRefresh = useCallback((): void => {
+    void fetchNotifications(1, true);
   }, [fetchNotifications]);
 
-  // ─── Infinite scroll ──────────────────────────────────────────
-
   const handleEndReached = useCallback((): void => {
-    if (
-      !isLoggedIn
-      || isFetchingRef.current
-      || isLoadingMore
-      || currentPage >= totalPages
-    ) {
-      return;
-    }
+    if (!isLoggedIn || isLoadingMore || currentPage >= totalPages) return;
+    setIsLoadingMore(true);
     void fetchNotifications(currentPage + 1);
-  }, [isLoggedIn, currentPage, totalPages, isLoadingMore, fetchNotifications]);
+  }, [isLoggedIn, isLoadingMore, currentPage, totalPages, fetchNotifications]);
 
-  // ─── Mark as read ─────────────────────────────────────────────
-
-  const handleMarkAsRead = useCallback(
-    async (notification: Notification): Promise<void> => {
-      // Optimistic update: cập nhật UI ngay lập tức
+  const handleMarkAsRead = useCallback(async (notification: Notification): Promise<void> => {
+    setNotifications((prev) =>
+      prev.map((item) =>
+        item.notificationId === notification.notificationId ? { ...item, isRead: true } : item
+      )
+    );
+    try {
+      await markAsRead(notification.notificationId);
+    } catch {
       setNotifications((prev) =>
         prev.map((item) =>
-          item.notificationId === notification.notificationId ? { ...item, isRead: true } : item
+          item.notificationId === notification.notificationId
+            ? { ...item, isRead: notification.isRead }
+            : item
         )
       );
-
-      try {
-        await markAsRead(notification.notificationId);
-      } catch (error) {
-        // Rollback nếu API fail
-        console.error('Failed to mark as read:', error);
-        setNotifications((prev) =>
-          prev.map((item) =>
-            item.notificationId === notification.notificationId
-              ? { ...item, isRead: notification.isRead }
-              : item
-          )
-        );
-        Alert.alert(
-          'Lỗi',
-          'Không thể đánh dấu đã đọc. Vui lòng thử lại.',
-          [{ text: 'Đồng ý' }]
-        );
-      }
-    },
-    []
-  );
-
-  // ─── Mark all as read ─────────────────────────────────────────
+      Alert.alert('Lỗi', 'Không thể đánh dấu đã đọc. Vui lòng thử lại.', [{ text: 'Đồng ý' }]);
+    }
+  }, []);
 
   const handleMarkAllAsRead = useCallback(async (): Promise<void> => {
     try {
       await markAllAsRead();
-      // Cập nhật toàn bộ notifications thành isRead = true
-      setNotifications((prev) =>
-        prev.map((item) => ({ ...item, isRead: true }))
-      );
-    } catch (error) {
-      console.error('Failed to mark all as read:', error);
-      Alert.alert(
-        'Lỗi',
-        'Không thể đánh dấu tất cả đã đọc. Vui lòng thử lại.',
-        [{ text: 'Đồng ý' }]
-      );
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch {
+      Alert.alert('Lỗi', 'Không thể đánh dấu tất cả đã đọc. Vui lòng thử lại.', [
+        { text: 'Đồng ý' },
+      ]);
     }
   }, []);
-
-  // ─── Navigate to detail ───────────────────────────────────────
 
   const handlePressNotification = useCallback(
     async (notification: Notification): Promise<void> => {
@@ -269,10 +197,9 @@ export const NotificationListScreen: React.FC = () => {
         await handleMarkAsRead(notification);
       }
       const type = notification.notificationType;
-      // Deep-link gần đúng: mở tab Hồ sơ; lịch bốc thăm mở qua Applications stack nếu có projectId trong content
       if (type === 'LOTTERY_SCHEDULED' || type === 'LOTTERY_RESULT_PUBLISHED') {
         const projectMatch = notification.content?.match(
-          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
+          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
         );
         if (projectMatch) {
           const projectId = projectMatch[0];
@@ -305,59 +232,34 @@ export const NotificationListScreen: React.FC = () => {
         navigation.navigate('Applications');
       }
     },
-    [handleMarkAsRead, navigation],
+    [handleMarkAsRead, navigation]
   );
 
-  // ─── Render item ──────────────────────────────────────────────
-
   const renderNotificationItem = useCallback(
-    ({ item }: { item: Notification }) => {
+    ({ item }: { item: Notification }): React.ReactElement => {
       const config = NOTIFICATION_CONFIG[item.notificationType] || {
-        icon: 'notifications-outline',
+        icon: 'notifications-outline' as keyof typeof Ionicons.glyphMap,
         color: RHSColors.blue700,
         bg: RHSColors.blue50,
       };
-
-      const formattedDate = new Date(item.createdAt).toLocaleDateString(
-        'vi-VN',
-        {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        }
-      );
+      const formattedDate = item.createdAt
+        ? new Date(item.createdAt).toLocaleString('vi-VN')
+        : '';
 
       return (
         <TouchableOpacity
-          onPress={() => handlePressNotification(item)}
-          style={[
-            styles.itemContainer,
-            !item.isRead && styles.unreadItemContainer,
-          ]}
-          activeOpacity={0.7}
+          style={[styles.itemContainer, !item.isRead && styles.unreadItemContainer]}
+          onPress={() => void handlePressNotification(item)}
+          activeOpacity={0.75}
         >
-          <View
-            style={[
-              styles.iconContainer,
-              { backgroundColor: config.bg },
-            ]}
-          >
-            <Ionicons
-              name={config.icon}
-              size={24}
-              color={config.color}
-            />
+          <View style={[styles.iconContainer, { backgroundColor: config.bg }]}>
+            <Ionicons name={config.icon} size={22} color={config.color} />
           </View>
 
           <View style={styles.contentContainer}>
             <View style={styles.titleRow}>
               <Text
-                style={[
-                  styles.title,
-                  !item.isRead && styles.unreadTitle,
-                ]}
+                style={[styles.itemTitle, !item.isRead && styles.unreadTitle]}
                 numberOfLines={1}
               >
                 {item.title}
@@ -365,10 +267,7 @@ export const NotificationListScreen: React.FC = () => {
               {!item.isRead && <View style={styles.unreadDot} />}
             </View>
 
-            <Text
-              style={styles.message}
-              numberOfLines={2}
-            >
+            <Text style={styles.message} numberOfLines={2}>
               {item.content}
             </Text>
 
@@ -380,11 +279,8 @@ export const NotificationListScreen: React.FC = () => {
     [handlePressNotification]
   );
 
-  // ─── Render footer (loading more) ────────────────────────────
-
   const renderFooter = useCallback((): React.ReactNode => {
     if (!isLoadingMore) return null;
-
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color={RHSColors.blue700} />
@@ -393,29 +289,32 @@ export const NotificationListScreen: React.FC = () => {
     );
   }, [isLoadingMore]);
 
-  // ─── Render empty state ───────────────────────────────────────
-
   const handleLoginPress = useCallback((): void => {
-    navigation.navigate('Auth', { screen: 'Login' });
+    navigation.navigate('Auth', { screen: 'Login', params: { returnTo: 'Account' } });
   }, [navigation]);
 
-  const renderEmptyState = useCallback((): React.ReactNode => {
-    if (isLoading || isLoggedIn === null) {
-      return (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={RHSColors.blue700} />
-          <Text style={styles.emptyText}>Đang tải thông báo...</Text>
-        </View>
-      );
-    }
+  const renderEmpty = useCallback((): React.ReactNode => {
+    if (isLoading) return null;
 
-    if (isLoggedIn === false) {
+    if (!isLoggedIn) {
       return (
-        <View style={styles.centerContainer}>
-          <Ionicons name="lock-closed-outline" size={56} color={RHSColors.grey400} />
-          <Text style={styles.emptyText}>Đăng nhập để xem thông báo</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={handleLoginPress}>
-            <Text style={styles.retryButtonText}>Đăng nhập</Text>
+        <View style={styles.emptyContainer}>
+          <View style={styles.illustrationWrap}>
+            <View style={[styles.illustrationBox, { backgroundColor: RHSColors.blue50 }]}>
+              <Feather name="bell" size={72} color={RHSColors.blue700} />
+            </View>
+          </View>
+          <Text style={styles.emptyTitle}>Chưa đăng nhập</Text>
+          <Text style={styles.emptyDesc}>
+            Vui lòng đăng nhập để xem thông báo về hồ sơ, thanh toán và bốc thăm
+          </Text>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleLoginPress}
+            activeOpacity={0.85}
+          >
+            <Feather name="log-in" size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.actionButtonText}>Đăng nhập ngay</Text>
           </TouchableOpacity>
         </View>
       );
@@ -423,75 +322,92 @@ export const NotificationListScreen: React.FC = () => {
 
     if (hasError) {
       return (
-        <View style={styles.centerContainer}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={64}
-            color={RHSColors.grey400}
-          />
-          <Text style={styles.emptyText}>Không thể tải thông báo</Text>
+        <View style={styles.emptyContainer}>
+          <View style={styles.illustrationWrap}>
+            <View style={[styles.illustrationBox, { backgroundColor: RHSColors.amber50 }]}>
+              <Feather name="alert-circle" size={72} color={RHSColors.amber700} />
+            </View>
+          </View>
+          <Text style={styles.emptyTitle}>Không thể tải thông báo</Text>
+          <Text style={styles.emptyDesc}>Kiểm tra kết nối mạng và thử lại.</Text>
           <TouchableOpacity
-            style={styles.retryButton}
+            style={styles.actionButton}
             onPress={() => void fetchNotifications(1)}
+            activeOpacity={0.85}
           >
-            <Text style={styles.retryButtonText}>Thử lại</Text>
+            <Feather name="refresh-cw" size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.actionButtonText}>Thử lại</Text>
           </TouchableOpacity>
         </View>
       );
     }
 
     return (
-      <View style={styles.centerContainer}>
-        <Ionicons
-          name="notifications-off-outline"
-          size={64}
-          color={RHSColors.grey400}
-        />
-        <Text style={styles.emptyText}>Không có thông báo nào</Text>
+      <View style={styles.emptyContainer}>
+        <View style={styles.illustrationWrap}>
+          <View style={[styles.illustrationBox, { backgroundColor: RHSColors.blue50 }]}>
+            <Feather name="bell-off" size={72} color={RHSColors.blue700} />
+          </View>
+        </View>
+        <Text style={styles.emptyTitle}>Chưa có thông báo</Text>
+        <Text style={styles.emptyDesc}>
+          Khi có cập nhật về hồ sơ hoặc thanh toán, thông báo sẽ hiện tại đây.
+        </Text>
       </View>
     );
   }, [isLoading, isLoggedIn, hasError, fetchNotifications, handleLoginPress]);
 
-  // ─── Header right action ──────────────────────────────────────
-
-  const headerRightAction = isLoggedIn ? (
-    <TouchableOpacity
-      onPress={handleMarkAllAsRead}
-      style={styles.markAllButton}
-      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-    >
-      <Text style={styles.markAllButtonText}>Đánh dấu tất cả đã đọc</Text>
-    </TouchableOpacity>
-  ) : undefined;
-
-  // ─── Main render ──────────────────────────────────────────────
-
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader
-        title="Thông báo"
-        showBack={showBack}
-        rightAction={headerRightAction}
-        isWhite={true}
-      />
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <View style={styles.header}>
+        {showBack ? (
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.headerBack}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
+          </TouchableOpacity>
+        ) : null}
+        <Text style={styles.headerTitle}>Thông báo</Text>
+        {isLoggedIn && unreadCount > 0 && (
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{unreadCount}</Text>
+          </View>
+        )}
+        <View style={{ flex: 1 }} />
+        {isLoggedIn && unreadCount > 0 && (
+          <TouchableOpacity
+            onPress={() => void handleMarkAllAsRead()}
+            style={styles.markAllBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.markAllBtnText}>Đọc hết</Text>
+          </TouchableOpacity>
+        )}
+        {isLoggedIn && (
+          <TouchableOpacity style={styles.headerRefresh} onPress={handleRefresh}>
+            <Feather name="refresh-cw" size={20} color={RHSColors.blue700} />
+          </TouchableOpacity>
+        )}
+      </View>
 
-      {isLoading || isLoggedIn === null ? (
-        <View style={styles.centerContainer}>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={RHSColors.blue700} />
-          <Text style={styles.emptyText}>Đang tải thông báo...</Text>
         </View>
-      ) : isLoggedIn === false ? (
-        renderEmptyState()
       ) : (
         <FlatList
-          data={notifications}
+          data={isLoggedIn ? notifications : []}
           keyExtractor={(item) => item.notificationId}
           renderItem={renderNotificationItem}
           contentContainerStyle={
-            notifications.length === 0 ? styles.emptyListContent : undefined
+            !isLoggedIn || notifications.length === 0
+              ? styles.emptyListContent
+              : styles.listContent
           }
-          ListEmptyComponent={renderEmptyState}
-          ListFooterComponent={renderFooter}
+          ListEmptyComponent={renderEmpty}
+          ListFooterComponent={isLoggedIn ? renderFooter : null}
           refreshControl={
             isLoggedIn ? (
               <RefreshControl
@@ -499,47 +415,110 @@ export const NotificationListScreen: React.FC = () => {
                 onRefresh={handleRefresh}
                 colors={[RHSColors.blue700]}
                 tintColor={RHSColors.blue700}
-                title="Đang làm mới..."
-                titleColor={RHSColors.textSecondary}
               />
             ) : undefined
           }
-          onEndReached={handleEndReached}
+          onEndReached={isLoggedIn ? handleEndReached : undefined}
           onEndReachedThreshold={0.3}
           showsVerticalScrollIndicator={false}
-          removeClippedSubviews={true}
-          maxToRenderPerBatch={10}
-          updateCellsBatchingPeriod={50}
-          initialNumToRender={10}
-          windowSize={5}
         />
       )}
     </SafeAreaView>
   );
 };
 
-// ─── Styles ─────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: RHSColors.surface,
-  },
-  centerContainer: {
-    flex: 1,
+  safe: { flex: 1, backgroundColor: RHSColors.surface },
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    backgroundColor: RHSColors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: RHSColors.border,
+  },
+  headerBack: { marginRight: spacing.sm, padding: 2 },
+  headerTitle: { ...typography.h1, color: RHSColors.text },
+  countBadge: {
+    marginLeft: spacing.sm,
+    backgroundColor: RHSColors.blue700,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  countBadgeText: { ...typography.caption, fontWeight: '700', color: '#fff' },
+  markAllBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    marginRight: 4,
+  },
+  markAllBtnText: { fontSize: 13, fontWeight: '700', color: RHSColors.blue700 },
+  headerRefresh: { padding: 6 },
+
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
-    padding: spacing.xxl,
+    alignItems: 'center',
+  },
+  listContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxl,
   },
   emptyListContent: {
     flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xxxl,
   },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  illustrationWrap: {
+    marginBottom: spacing.xxl,
+    width: '100%',
+    alignItems: 'center',
+  },
+  illustrationBox: {
+    width: 200,
+    height: 180,
+    borderRadius: borderRadius.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    ...typography.h2,
+    color: RHSColors.text,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyDesc: {
+    ...typography.bodySmall,
+    color: RHSColors.textMuted,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: spacing.xxl,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    backgroundColor: RHSColors.blue700,
+    paddingHorizontal: spacing.xxxl,
+    paddingVertical: 14,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.md,
+  },
+  actionButtonText: { ...typography.buttonSmall, color: '#fff' },
+
   itemContainer: {
     flexDirection: 'row',
     backgroundColor: RHSColors.surfaceCard,
     padding: spacing.lg,
-    marginHorizontal: spacing.lg,
-    marginVertical: spacing.xs,
+    marginBottom: spacing.sm,
     borderRadius: borderRadius.md,
     ...shadows.sm,
     borderWidth: 1,
@@ -559,16 +538,13 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
     flexShrink: 0,
   },
-  contentContainer: {
-    flex: 1,
-    justifyContent: 'space-between',
-  },
+  contentContainer: { flex: 1, justifyContent: 'space-between' },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.xs,
   },
-  title: {
+  itemTitle: {
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
@@ -607,33 +583,5 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 13,
     color: RHSColors.textSecondary,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: RHSColors.textMuted,
-    marginTop: spacing.md,
-    textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: spacing.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    backgroundColor: RHSColors.blue700,
-    borderRadius: borderRadius.md,
-    ...shadows.sm,
-  },
-  retryButtonText: {
-    color: RHSColors.white,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  markAllButton: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-  },
-  markAllButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: RHSColors.blue700,
   },
 });
