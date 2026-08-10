@@ -72,7 +72,7 @@ export const EKycScreen = () => {
 
       setStep('facematch');
     } catch (e: any) {
-      Alert.alert('Lỗi OCR', e?.message ?? 'Vui lòng thử lại.');
+      Alert.alert('Lỗi đọc giấy tờ', e?.message ?? 'Vui lòng thử lại.');
     } finally {
       setBusy(false);
     }

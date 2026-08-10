@@ -125,16 +125,16 @@ export const LotteryLobbyScreen = () => {
   const handleJoin = async () => {
     const code = otp.trim();
     if (code.length < 6) {
-      Alert.alert('Thiếu OTP', 'Nhập mã OTP 6 số từ thông báo sau khi Sở duyệt lịch.');
+      Alert.alert('Thiếu mã xác thực', 'Nhập mã 6 số từ thông báo sau khi Sở duyệt lịch.');
       return;
     }
     if (joining) return;
     setJoining(true);
-    setHubStatus('Đang xác thực OTP...');
+    setHubStatus('Đang xác thực mã...');
     try {
       const verified = await lotteryApi.verifyOtp(projectId, code);
       if (!verified.success) {
-        throw new Error(verified.message || 'OTP không hợp lệ');
+        throw new Error(verified.message || 'Mã xác thực không hợp lệ');
       }
       if (verified.sessionStatus) setSessionStatus(verified.sessionStatus);
 
@@ -196,13 +196,16 @@ export const LotteryLobbyScreen = () => {
       return;
     }
     if (sessionStatus && sessionStatus !== 'Live') {
-      Alert.alert('Chưa Live', 'Nút bốc chỉ mở khi CĐT chuyển phiên sang Live.');
+      Alert.alert(
+        'Chưa mở phiên trực tiếp',
+        'Nút bốc chỉ mở khi chủ đầu tư chuyển phiên sang trạng thái đang diễn ra.',
+      );
       return;
     }
     if (!sxdOnline) {
       Alert.alert(
-        'Chưa có SXD giám sát',
-        'Backend yêu cầu ít nhất 1 cán bộ Sở Xây dựng trong sảnh trước khi bốc. Vui lòng chờ SXD vào giám sát.',
+        'Chưa có Sở giám sát',
+        'Hệ thống yêu cầu ít nhất 1 cán bộ Sở Xây dựng trong sảnh trước khi bốc. Vui lòng chờ Sở vào giám sát.',
       );
       return;
     }
@@ -224,8 +227,8 @@ export const LotteryLobbyScreen = () => {
             '';
           if (/sxd|giám sát|supervisor/i.test(hubMsg)) {
             Alert.alert(
-              'Chưa có SXD giám sát',
-              hubMsg || 'Cần ít nhất 1 SXD trong sảnh trước khi bốc thăm.',
+              'Chưa có Sở giám sát',
+              hubMsg || 'Cần ít nhất 1 cán bộ Sở trong sảnh trước khi bốc thăm.',
             );
             return;
           }
@@ -251,7 +254,7 @@ export const LotteryLobbyScreen = () => {
         err?.message ||
         'Thử lại sau.';
       if (/sxd|giám sát|supervisor/i.test(String(msg))) {
-        Alert.alert('Chưa có SXD giám sát', msg);
+        Alert.alert('Chưa có Sở giám sát', msg);
       } else {
         Alert.alert('Không bốc được', msg);
       }
@@ -270,7 +273,7 @@ export const LotteryLobbyScreen = () => {
     (!sessionStatus || sessionStatus === 'Live');
 
   const sessionLabel = sessionStatus
-    ? LOTTERY_SESSION_LABEL[sessionStatus] ?? sessionStatus
+    ? LOTTERY_SESSION_LABEL[sessionStatus] ?? 'Không rõ'
     : '';
 
   return (
@@ -283,7 +286,7 @@ export const LotteryLobbyScreen = () => {
         {!joined ? (
           <View style={styles.joinCard}>
             <Text style={styles.joinHint}>
-              Nhập mã OTP 6 số từ thông báo sau khi Sở duyệt lịch bốc thăm.
+              Nhập mã xác thực 6 số từ thông báo sau khi Sở duyệt lịch bốc thăm.
             </Text>
             <TextInput
               style={styles.otpInput}
@@ -317,7 +320,7 @@ export const LotteryLobbyScreen = () => {
               <Stat label="Trong sảnh" value={String(lobbyCount || '—')} />
               <Stat label="Căn còn" value={String(schedule?.availableUnits ?? '—')} />
               <Stat
-                label="SXD giám sát"
+                label="Sở giám sát"
                 value={String(sxdCount)}
                 highlight={!sxdOnline}
               />
@@ -327,16 +330,16 @@ export const LotteryLobbyScreen = () => {
               <Text style={styles.session}>Phiên: {sessionLabel}</Text>
             )}
             {sessionStatus && sessionStatus !== 'Live' && (
-              <Text style={styles.warn}>Chờ CĐT mở Live trước khi bốc.</Text>
+              <Text style={styles.warn}>Chờ chủ đầu tư mở phiên trực tiếp trước khi bốc.</Text>
             )}
             {!sxdOnline && (
               <Text style={styles.warn}>
-                Chưa có SXD trong sảnh — không thể bốc thăm (BE bắt buộc ≥1 giám sát).
+                Chưa có cán bộ Sở trong sảnh — không thể bốc thăm (cần ít nhất 1 người giám sát).
               </Text>
             )}
             {useRestMode && (
               <Text style={styles.restHint}>
-                Đang dùng chế độ REST — tự làm mới trạng thái mỗi 4 giây.
+                Đang dùng chế độ dự phòng — tự làm mới trạng thái mỗi 4 giây.
               </Text>
             )}
 
@@ -355,7 +358,7 @@ export const LotteryLobbyScreen = () => {
                     {myResult
                       ? 'Đã bốc thăm'
                       : !sxdOnline
-                        ? 'Chờ SXD giám sát'
+                        ? 'Chờ Sở giám sát'
                         : countdown.ready
                           ? 'Bốc thăm ngay'
                           : 'Chờ đến giờ'}

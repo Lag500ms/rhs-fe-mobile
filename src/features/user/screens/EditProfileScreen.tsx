@@ -51,7 +51,7 @@ export const EditProfileScreen = () => {
       const result = await userApi.updateProfile(updateData);
       if (result.success) {
         Alert.alert('Thành công', 'Cập nhật số điện thoại thành công', [
-          { text: 'OK', onPress: () => navigation.goBack() },
+          { text: 'Đồng ý', onPress: () => navigation.goBack() },
         ]);
       } else {
         Alert.alert('Lỗi', result.message || 'Cập nhật thất bại');

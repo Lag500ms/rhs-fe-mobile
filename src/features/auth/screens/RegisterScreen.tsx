@@ -61,8 +61,8 @@ export const RegisterScreen = () => {
       if (result.success) {
         Alert.alert(
           'Đăng ký thành công!',
-          'Vui lòng kiểm tra email để nhận mã xác thực OTP.',
-          [{ text: 'Nhập OTP', onPress: () => navigation.navigate('VerifyOtp', { email: email.trim() }) }]
+          'Vui lòng kiểm tra email để nhận mã xác thực.',
+          [{ text: 'Nhập mã', onPress: () => navigation.navigate('VerifyOtp', { email: email.trim() }) }]
         );
       } else {
         Alert.alert('Đăng ký thất bại', result.message || 'Vui lòng thử lại sau.');

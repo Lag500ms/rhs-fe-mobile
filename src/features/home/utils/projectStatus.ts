@@ -79,7 +79,7 @@ export function labelProjectStatus(status?: string | null): string {
     closed: 'Đã đóng đăng ký',
     full: 'Đã hết suất',
   };
-  return map[norm(status)] ?? status;
+  return map[norm(status)] ?? 'Trạng thái khác';
 }
 
 export function statusBadgeColor(status?: string | null): string {

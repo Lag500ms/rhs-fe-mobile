@@ -52,7 +52,7 @@ export const WithdrawApplicationScreen = () => {
       Alert.alert(
         'Đã hủy hồ sơ',
         'Hồ sơ của bạn đã được hủy thành công.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }],
+        [{ text: 'Đồng ý', onPress: () => navigation.goBack() }],
       );
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Không thể hủy hồ sơ. Vui lòng thử lại.';

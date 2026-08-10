@@ -87,7 +87,7 @@ export const ApplicationDetailScreen = () => {
       setDetail(data);
     } catch (e: any) {
       const msg = e?.response?.data?.message || 'Không thể tải chi tiết hồ sơ.';
-      Alert.alert('Lỗi', msg, [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      Alert.alert('Lỗi', msg, [{ text: 'Đồng ý', onPress: () => navigation.goBack() }]);
     } finally {
       setLoading(false);
     }

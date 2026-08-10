@@ -213,7 +213,7 @@ export const ContractViewerScreen = () => {
     if (!applicationId || !agreed) return;
     Alert.alert(
       'Xác nhận ký hợp đồng',
-      'Bạn đồng ý với toàn bộ điều khoản hợp đồng mua bán nhà ở xã hội? Hệ thống sẽ ghi nhận chữ ký điện tử (không dùng OTP).',
+      'Bạn đồng ý với toàn bộ điều khoản hợp đồng mua bán nhà ở xã hội? Hệ thống sẽ ghi nhận chữ ký điện tử (không cần mã xác thực).',
       [
         { text: 'Hủy', style: 'cancel' },
         {

@@ -56,7 +56,7 @@ export const DeleteAccountScreen = () => {
               const result = await userApi.deleteAccount({ password, reason });
               if (result.success) {
                 Alert.alert('Thành công', 'Tài khoản đã được xóa thành công', [
-                  { text: 'OK', onPress: () => navigation.navigate('Auth') },
+                  { text: 'Đồng ý', onPress: () => navigation.navigate('Auth') },
                 ]);
               } else {
                 Alert.alert('Lỗi', result.message || 'Xóa tài khoản thất bại');

@@ -137,7 +137,7 @@ export const MyLotteryScreen = () => {
 
   const renderItem = ({ item }: { item: Row }) => {
     const phase = item.schedule?.sessionStatus || 'NOT_SCHEDULED';
-    const phaseLabel = LOTTERY_SESSION_LABEL[phase] ?? phase;
+    const phaseLabel = LOTTERY_SESSION_LABEL[phase] ?? 'Không rõ';
     const isFinished = phase === 'Finished' || phase === 'Published' || phase === 'FINISHED';
     const isLive = phase === 'Live' || phase === 'RUNNING';
     const own = findOwnResult(item);
@@ -189,7 +189,7 @@ export const MyLotteryScreen = () => {
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => openLive(item)} activeOpacity={0.85}>
-            <Text style={styles.secondaryBtnText}>Xem Live</Text>
+            <Text style={styles.secondaryBtnText}>Xem phiên trực tiếp</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => openSchedule(item)} activeOpacity={0.85}>
             <Text style={styles.secondaryBtnText}>Lịch</Text>
@@ -217,8 +217,9 @@ export const MyLotteryScreen = () => {
           contentContainerStyle={styles.list}
           ListHeaderComponent={
             <Text style={styles.hint}>
-              Hồ sơ đã duyệt hiển thị tại đây. Vào sảnh bằng OTP để bốc khi CĐT mở Live (cần SXD giám
-              sát). Dùng «Xem Live» để theo dõi ticker / tiến độ mà không cần OTP.
+              Hồ sơ đã duyệt hiển thị tại đây. Vào sảnh bằng mã xác thực để bốc khi chủ đầu tư mở
+              phiên trực tiếp (cần Sở giám sát). Dùng «Xem phiên trực tiếp» để theo dõi tiến độ mà
+              không cần mã.
             </Text>
           }
           ListEmptyComponent={

@@ -51,8 +51,8 @@ export const ForgotPasswordScreen = () => {
       const result = await authApi.forgotPassword({ email });
 
       if (result.success) {
-        Alert.alert('Thành công', 'Mã OTP đã được gửi đến email của bạn', [
-          { text: 'OK', onPress: () => navigation.navigate('ResetPassword', { email }) },
+        Alert.alert('Thành công', 'Mã xác thực đã được gửi đến email của bạn', [
+          { text: 'Đồng ý', onPress: () => navigation.navigate('ResetPassword', { email }) },
         ]);
       } else {
         Alert.alert('Lỗi', result.message || 'Gửi yêu cầu thất bại');
@@ -83,7 +83,7 @@ export const ForgotPasswordScreen = () => {
 
         <Text style={styles.title}>Quên mật khẩu</Text>
         <Text style={styles.subtitle}>
-          Nhập email của bạn để nhận mã OTP đặt lại mật khẩu
+          Nhập email của bạn để nhận mã xác thực đặt lại mật khẩu
         </Text>
 
         <View style={styles.formContainer}>

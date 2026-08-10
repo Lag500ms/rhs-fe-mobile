@@ -33,12 +33,12 @@ export const LOTTERY_SESSION_LABEL: Record<string, string> = {
   NOT_SCHEDULED: 'Chưa lên lịch',
   Scheduled: 'Đã lên lịch',
   WaitingLobby: 'Sảnh chờ',
-  Live: 'Đang Live',
+  Live: 'Đang diễn ra',
   Finished: 'Đã kết thúc — chờ công bố',
   Published: 'Đã công bố',
   SCHEDULED: 'Đã lên lịch',
   APPROVED: 'Đã duyệt — chờ mở sảnh',
-  RUNNING: 'Đang Live',
+  RUNNING: 'Đang diễn ra',
   FINISHED: 'Đã kết thúc',
 };
 

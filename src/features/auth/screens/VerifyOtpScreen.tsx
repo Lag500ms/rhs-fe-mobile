@@ -102,7 +102,7 @@ export const VerifyOtpScreen = () => {
 
   const handleVerifyOtp = async () => {
     if (otpCode.length < OTP_LENGTH) {
-      setError('Vui lòng nhập đầy đủ mã OTP 6 chữ số');
+      setError('Vui lòng nhập đầy đủ mã xác thực 6 chữ số');
       return;
     }
 
@@ -118,7 +118,7 @@ export const VerifyOtpScreen = () => {
         }
         Alert.alert('Thành công', 'Kích hoạt tài khoản thành công!', [
           {
-            text: 'OK',
+            text: 'Đồng ý',
             onPress: () => {
               // Giống Login: giữ MainTabs dưới stack để Profile có đường back,
               // tránh kẹt hồ sơ cá nhân không còn tab bar.
@@ -130,7 +130,7 @@ export const VerifyOtpScreen = () => {
           },
         ]);
       } else {
-        setError(result.message || 'Xác thực OTP thất bại');
+        setError(result.message || 'Xác thực thất bại');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
@@ -146,13 +146,13 @@ export const VerifyOtpScreen = () => {
     try {
       const result = await authApi.resendOtp(email);
       if (result.success) {
-        Alert.alert('Thành công', 'Mã OTP mới đã được gửi đến email của bạn');
+        Alert.alert('Thành công', 'Mã xác thực mới đã được gửi đến email của bạn');
         // Xóa ô cũ và bắt đầu lại bộ đếm 60 giây
         setDigits(Array(OTP_LENGTH).fill(''));
         setCountdown(RESEND_COUNTDOWN);
         focusDigit(0);
       } else {
-        setError(result.message || 'Gửi lại OTP thất bại');
+        setError(result.message || 'Gửi lại mã thất bại');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Có lỗi xảy ra');
@@ -174,7 +174,7 @@ export const VerifyOtpScreen = () => {
           <Feather name="arrow-left" size={22} color="#fff" />
         </TouchableOpacity>
         <RHSLogo size={48} />
-        <Text style={styles.brandTitle}>Xác thực OTP</Text>
+        <Text style={styles.brandTitle}>Xác thực email</Text>
         <Text style={styles.brandSubtitle}>Nhập mã xác thực được gửi đến email</Text>
       </LinearGradient>
 
@@ -192,7 +192,7 @@ export const VerifyOtpScreen = () => {
 
             <Text style={styles.title}>Nhập mã xác thực</Text>
             <Text style={styles.subtitle}>
-              Mã OTP 6 chữ số đã được gửi đến{' '}
+              Mã xác thực 6 chữ số đã được gửi đến{' '}
               <Text style={{ fontWeight: '700', color: RHSColors.blue700 }}>{email}</Text>
             </Text>
 
@@ -259,10 +259,10 @@ export const VerifyOtpScreen = () => {
                 <ActivityIndicator size="small" color={RHSColors.blue700} />
               ) : countdown > 0 ? (
                 <Text style={styles.resendTextDisabled}>
-                  Gửi lại mã OTP sau {countdown}s
+                  Gửi lại mã sau {countdown}s
                 </Text>
               ) : (
-                <Text style={styles.resendText}>Gửi lại mã OTP</Text>
+                <Text style={styles.resendText}>Gửi lại mã xác thực</Text>
               )}
             </TouchableOpacity>
           </View>

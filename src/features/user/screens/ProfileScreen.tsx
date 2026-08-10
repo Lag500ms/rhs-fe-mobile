@@ -133,10 +133,10 @@ export const ProfileScreen = () => {
     try {
       const result = await userApi.uploadProfileImage(asset);
       if (result.success) {
-        Alert.alert('Thành công', 'Upload ảnh đại diện thành công');
+        Alert.alert('Thành công', 'Tải ảnh đại diện thành công');
         checkAuthAndLoad();
       } else {
-        Alert.alert('Lỗi', result.message || 'Upload thất bại');
+        Alert.alert('Lỗi', result.message || 'Tải ảnh thất bại');
       }
     } catch (error: any) {
       const status = error.response?.status;

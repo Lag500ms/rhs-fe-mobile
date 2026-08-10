@@ -204,7 +204,7 @@ export const UploadDocumentsScreen = () => {
       }));
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Không thể upload tài liệu.';
-      Alert.alert('Lỗi upload', msg);
+      Alert.alert('Lỗi tải lên', msg);
     } finally {
       setUploading((prev) => ({ ...prev, [docKey]: false }));
     }
@@ -228,7 +228,7 @@ export const UploadDocumentsScreen = () => {
 
   const handleSaveAndBack = () => {
     Alert.alert('Đã lưu', 'Giấy tờ của bạn đã được lưu. Bạn có thể tiếp tục chỉnh sửa sau.', [
-      { text: 'OK', onPress: () => navigation.goBack() },
+      { text: 'Đồng ý', onPress: () => navigation.goBack() },
     ]);
   };
 
@@ -314,7 +314,7 @@ export const UploadDocumentsScreen = () => {
             ? 'Không thể xác định bộ giấy tờ bắt buộc khi thiếu nhóm đối tượng.'
             : `Bộ giấy tờ bắt buộc theo đối tượng${
                 priorityGroupLabel ? ` «${priorityGroupLabel}»` : ''
-              } (Đ76 / Đ29–30). Upload PDF, tối đa 10MB mỗi loại.`}
+              } (Đ76 / Đ29–30). Tải tệp PDF, tối đa 10MB mỗi loại.`}
         </Text>
 
         <View style={styles.progressCard}>

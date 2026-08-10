@@ -120,7 +120,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
 export function getStatusConfig(status: string): StatusConfig {
   const key = (status || '').trim().toUpperCase();
   return STATUS_CONFIG[key] || {
-    label: status || 'Không xác định',
+    label: 'Trạng thái không xác định',
     bg: '#F5F5F5',
     textColor: '#757575',
     dotColor: '#9E9E9E',

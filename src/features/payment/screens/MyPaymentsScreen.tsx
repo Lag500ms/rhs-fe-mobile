@@ -37,7 +37,7 @@ function statusMeta(status: string) {
   const ok = upper === 'SUCCESS' || upper === 'PAID';
   const bad = upper === 'FAILED' || upper === 'CANCELLED' || upper === 'CANCELED';
   return {
-    label: PAYMENT_STATUS_VI[key] ?? PAYMENT_STATUS_VI[upper] ?? (status || '—'),
+    label: PAYMENT_STATUS_VI[key] ?? PAYMENT_STATUS_VI[upper] ?? 'Không rõ',
     color: ok ? RHSColors.green700 : bad ? RHSColors.red700 : RHSColors.amber700,
     bg: ok ? RHSColors.green50 : bad ? RHSColors.red50 : RHSColors.amber50,
   };

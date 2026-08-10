@@ -50,7 +50,7 @@ export const ResetPasswordScreen = () => {
     const newErrors: { [key: string]: string } = {};
 
     if (!otpCode) {
-      newErrors.otpCode = 'Mã OTP là bắt buộc';
+      newErrors.otpCode = 'Mã xác thực là bắt buộc';
     }
 
     if (!newPassword) {
@@ -87,7 +87,7 @@ export const ResetPasswordScreen = () => {
 
       if (result.success) {
         Alert.alert('Thành công', 'Mật khẩu đã được đặt lại thành công', [
-          { text: 'OK', onPress: () => navigation.navigate('Login') },
+          { text: 'Đồng ý', onPress: () => navigation.navigate('Login') },
         ]);
       } else {
         Alert.alert('Lỗi', result.message || 'Đặt lại mật khẩu thất bại');
@@ -106,9 +106,9 @@ export const ResetPasswordScreen = () => {
       const result = await authApi.resendOtp(email);
       if (result.success) {
         setCountdown(RESEND_COUNTDOWN);
-        Alert.alert('Thành công', 'Mã OTP mới đã được gửi đến email của bạn');
+        Alert.alert('Thành công', 'Mã xác thực mới đã được gửi đến email của bạn');
       } else {
-        Alert.alert('Lỗi', result.message || 'Gửi lại OTP thất bại');
+        Alert.alert('Lỗi', result.message || 'Gửi lại mã thất bại');
       }
     } catch (error: any) {
       Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
@@ -136,14 +136,14 @@ export const ResetPasswordScreen = () => {
 
         <Text style={styles.title}>Đặt lại mật khẩu</Text>
         <Text style={styles.subtitle}>
-          Nhập mã OTP và mật khẩu mới để đặt lại mật khẩu{'\n'}
+          Nhập mã xác thực và mật khẩu mới để đặt lại mật khẩu{'\n'}
           <Text style={{ fontWeight: '700', color: RHSColors.govBlue }}>{email}</Text>
         </Text>
 
         <View style={styles.formContainer}>
           <CustomInput
             iconName="key"
-            placeholder="Nhập mã OTP"
+            placeholder="Nhập mã xác thực"
             value={otpCode}
             onChangeText={(text) => {
               setOtpCode(text);
@@ -162,7 +162,7 @@ export const ResetPasswordScreen = () => {
               <ActivityIndicator size="small" color={RHSColors.govBlue} />
             ) : (
               <Text style={[styles.resendText, countdown > 0 && styles.resendDisabled]}>
-                {countdown > 0 ? `Gửi lại OTP sau ${countdown}s` : 'Gửi lại mã OTP'}
+                {countdown > 0 ? `Gửi lại mã sau ${countdown}s` : 'Gửi lại mã xác thực'}
               </Text>
             )}
           </TouchableOpacity>

@@ -152,8 +152,8 @@ export const LoginScreen = () => {
         || error.message;
 
       if (status === 400 && String(serverMsg).toLowerCase().includes('otp')) {
-        Alert.alert('Chưa xác thực', 'Tài khoản chưa xác thực email. Vui lòng nhập mã OTP.', [
-          { text: 'Nhập OTP', onPress: () => navigation.navigate('VerifyOtp', { email: email.trim() }) },
+        Alert.alert('Chưa xác thực', 'Tài khoản chưa xác thực email. Vui lòng nhập mã xác thực.', [
+          { text: 'Nhập mã', onPress: () => navigation.navigate('VerifyOtp', { email: email.trim() }) },
           { text: 'Để sau', style: 'cancel' },
         ]);
       } else if (

@@ -57,7 +57,7 @@ export const ChangePasswordScreen = () => {
       });
       if (result.success) {
         Alert.alert('Thành công', 'Đổi mật khẩu thành công', [
-          { text: 'OK', onPress: () => navigation.goBack() },
+          { text: 'Đồng ý', onPress: () => navigation.goBack() },
         ]);
       } else {
         Alert.alert('Lỗi', result.message || 'Đổi mật khẩu thất bại');

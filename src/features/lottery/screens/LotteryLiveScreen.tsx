@@ -145,14 +145,16 @@ export const LotteryLiveScreen = () => {
     winners.length || ticker.filter((t) => /WIN|Trúng|WON|PRIORITY/i.test(t)).length;
   const units = totalUnits || Number(result?.totalUnits) || 0;
   const pct = units > 0 ? Math.min(100, Math.round((drawn / units) * 100)) : 0;
-  const phaseLabel = LOTTERY_SESSION_LABEL[sessionStatus] ?? (sessionStatus || '...');
+  const phaseLabel = LOTTERY_SESSION_LABEL[sessionStatus] ?? (sessionStatus ? 'Không rõ' : '…');
 
   if (!projectId) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <ScreenHeader title="Giám sát Live" onBack={() => navigation.goBack()} isWhite />
+        <ScreenHeader title="Theo dõi phiên trực tiếp" onBack={() => navigation.goBack()} isWhite />
         <View style={styles.center}>
-          <Text style={styles.error}>Chưa chọn dự án. Vào Bốc thăm của tôi rồi mở Live.</Text>
+          <Text style={styles.error}>
+            Chưa chọn dự án. Vào «Bốc thăm của tôi» rồi mở theo dõi phiên trực tiếp.
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -161,7 +163,7 @@ export const LotteryLiveScreen = () => {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader
-        title="Giám sát Live"
+        title="Theo dõi phiên trực tiếp"
         onBack={() => navigation.goBack()}
         isWhite
       />
@@ -190,7 +192,7 @@ export const LotteryLiveScreen = () => {
           <View style={[styles.alert, hubConnected ? styles.alertOk : styles.alertInfo]}>
             <Text style={styles.alertText}>
               {hubConnected
-                ? `Đã nối sảnh · SXD giám sát: ${sxdCount}`
+                ? `Đã nối sảnh · Sở giám sát: ${sxdCount}`
                 : 'Đang nối sảnh realtime… (hoặc chế độ REST)'}
             </Text>
           </View>
@@ -201,10 +203,10 @@ export const LotteryLiveScreen = () => {
             <Text style={styles.badgeText}>Phiên: {phaseLabel}</Text>
           </View>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>Online: {lobbyCount}</Text>
+            <Text style={styles.badgeText}>Trong sảnh: {lobbyCount}</Text>
           </View>
           <View style={[styles.badge, sxdCount > 0 ? styles.badgeOk : styles.badgeWarn]}>
-            <Text style={styles.badgeText}>SXD: {sxdCount}</Text>
+            <Text style={styles.badgeText}>Sở giám sát: {sxdCount}</Text>
           </View>
         </View>
 
@@ -222,7 +224,7 @@ export const LotteryLiveScreen = () => {
 
         {ticker.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Live log</Text>
+            <Text style={styles.sectionTitle}>Nhật ký phiên</Text>
             {ticker.map((t, i) => (
               <View key={`${t}-${i}`} style={styles.tickerItem}>
                 <Text style={styles.tickerText}>{t}</Text>

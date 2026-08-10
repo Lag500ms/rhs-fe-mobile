@@ -235,7 +235,7 @@ export const NotificationListScreen: React.FC = () => {
         Alert.alert(
           'Lỗi',
           'Không thể đánh dấu đã đọc. Vui lòng thử lại.',
-          [{ text: 'OK' }]
+          [{ text: 'Đồng ý' }]
         );
       }
     },
@@ -256,7 +256,7 @@ export const NotificationListScreen: React.FC = () => {
       Alert.alert(
         'Lỗi',
         'Không thể đánh dấu tất cả đã đọc. Vui lòng thử lại.',
-        [{ text: 'OK' }]
+        [{ text: 'Đồng ý' }]
       );
     }
   }, []);

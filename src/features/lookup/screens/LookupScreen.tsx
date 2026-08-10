@@ -18,6 +18,7 @@ import { RHSColors, borderRadius, spacing, typography } from '../../../lib/theme
 import { getToken } from '../../../lib/tokenStorage';
 import { housingApplicationApi } from '../../application/api/housingApplicationApi';
 import { getStatusConfig } from '../../application/utils/statusConfig';
+import { LOTTERY_RESULT_LABEL } from '../../lottery/types/lottery';
 import {
   publicPostCheckApi,
   type PublicPostCheckItem,
@@ -117,7 +118,9 @@ export const LookupScreen = () => {
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Tìm kiếm</Text>
-            <Text style={styles.cardHint}>Nhập mã hồ sơ (UUID) để xem trạng thái công bố.</Text>
+            <Text style={styles.cardHint}>
+              Nhập mã hồ sơ để xem trạng thái công bố.
+            </Text>
             <View style={styles.searchRow}>
               <View style={styles.inputWrap}>
                 <Feather name="search" size={16} color={RHSColors.textMuted} style={styles.searchIcon} />
@@ -198,7 +201,11 @@ export const LookupScreen = () => {
                 <Text style={styles.meta}>Mã căn: {publicItem.slotCode}</Text>
               )}
               {!!publicItem.lotteryResult && (
-                <Text style={styles.meta}>Kết quả bốc thăm: {publicItem.lotteryResult}</Text>
+                <Text style={styles.meta}>
+                  Kết quả bốc thăm:{' '}
+                  {LOTTERY_RESULT_LABEL[String(publicItem.lotteryResult)] ??
+                    publicItem.lotteryResult}
+                </Text>
               )}
             </View>
           )}
