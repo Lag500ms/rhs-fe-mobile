@@ -45,7 +45,9 @@ export const wishlistApi = {
     const response = await apiClient.get<ApiResponse<{ isInWishlist: boolean }>>(
       `/wishlist/${projectId}/status`
     );
-    return response.data.data.isInWishlist;
+    const raw = response.data as any;
+    const payload = raw?.data ?? raw;
+    return !!(payload?.isInWishlist ?? payload?.IsInWishlist);
   },
 
   /**

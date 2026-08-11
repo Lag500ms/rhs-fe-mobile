@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import {
-  Pressable,
+  TouchableOpacity,
   StyleSheet,
   Animated,
   View,
@@ -47,7 +47,6 @@ export const WishlistHeart: React.FC<Props> = ({
   const particles = useRef<BurstParticle[]>(
     Array.from({ length: BURST_COUNT }, (_, i) => ({
       progress: new Animated.Value(0),
-      // Nghiêng về góc trong ảnh để ít bị card overflow cắt
       angle: (Math.PI * 2 * i) / BURST_COUNT + Math.PI * 0.65,
       distance: 10 + (i % 3) * 3,
       size: 3 + (i % 2),
@@ -131,26 +130,11 @@ export const WishlistHeart: React.FC<Props> = ({
       : RHSColors.textMuted;
 
   return (
-    <Pressable
+    <TouchableOpacity
       onPress={onPress}
       disabled={loading}
-      onPressIn={() => {
-        Animated.spring(scale, {
-          toValue: 0.82,
-          friction: 6,
-          tension: 300,
-          useNativeDriver: true,
-        }).start();
-      }}
-      onPressOut={() => {
-        Animated.spring(scale, {
-          toValue: 1,
-          friction: 5,
-          tension: 200,
-          useNativeDriver: true,
-        }).start();
-      }}
-      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      activeOpacity={0.85}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       style={[styles.btn, onImage && styles.onImage, style]}
       accessibilityRole="button"
       accessibilityLabel={active ? 'Bỏ quan tâm' : 'Quan tâm'}
@@ -200,7 +184,7 @@ export const WishlistHeart: React.FC<Props> = ({
           />
         </Animated.View>
       </View>
-    </Pressable>
+    </TouchableOpacity>
   );
 };
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
 import { HousingProjectResponse } from '../types/housing';
@@ -34,27 +34,38 @@ export const ProjectCard: React.FC<Props> = ({ project, onPress, showWishlist = 
         // ignore
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [project.id, showWishlist]);
 
   const toggleWishlist = useCallback(async () => {
+    if (heartLoading) return;
     const token = await getToken();
-    if (!token) return;
+    if (!token) {
+      Alert.alert('Chưa đăng nhập', 'Vui lòng đăng nhập để lưu dự án quan tâm.');
+      return;
+    }
+
+    const next = !wishlisted;
+    setWishlisted(next); // optimistic
     setHeartLoading(true);
     try {
-      if (wishlisted) {
-        await wishlistApi.removeFromWishlist(project.id);
-        setWishlisted(false);
-      } else {
+      if (next) {
         await wishlistApi.addToWishlist(project.id);
-        setWishlisted(true);
+      } else {
+        await wishlistApi.removeFromWishlist(project.id);
       }
-    } catch {
-      // keep previous state
+    } catch (e: any) {
+      setWishlisted(!next); // rollback
+      Alert.alert(
+        'Lỗi',
+        e?.response?.data?.message || 'Không thể cập nhật danh sách quan tâm.',
+      );
     } finally {
       setHeartLoading(false);
     }
-  }, [wishlisted, project.id]);
+  }, [wishlisted, project.id, heartLoading]);
 
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.92} onPress={onPress}>
@@ -69,20 +80,31 @@ export const ProjectCard: React.FC<Props> = ({ project, onPress, showWishlist = 
         <View style={[styles.statusBadge, { backgroundColor: statusBadgeColor(project.status) }]}>
           <Text style={styles.statusText}>{labelProjectStatus(project.status)}</Text>
         </View>
-        {showWishlist && (
-          <WishlistHeart
-            active={wishlisted}
-            loading={heartLoading}
-            onPress={toggleWishlist}
-            onImage
-            size={18}
-            style={styles.heart}
-          />
-        )}
+        {showWishlist ? (
+          // Bắt touch tại đây để thẻ dự án không nuốt lần ấn tim (đặc biệt khi bỏ tim)
+          <View
+            style={styles.heartWrap}
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+            onResponderTerminationRequest={() => false}
+          >
+            <WishlistHeart
+              active={wishlisted}
+              loading={heartLoading}
+              onPress={() => {
+                void toggleWishlist();
+              }}
+              onImage
+              size={18}
+            />
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.body}>
-        <Text style={styles.name} numberOfLines={2}>{project.projectName}</Text>
+        <Text style={styles.name} numberOfLines={2}>
+          {project.projectName}
+        </Text>
 
         <View style={styles.metaRow}>
           <View style={styles.chip}>
@@ -155,7 +177,13 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
   },
   statusText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-  heart: { position: 'absolute', top: 8, right: 8 },
+  heartWrap: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 10,
+    elevation: 10,
+  },
   body: { padding: spacing.sm, gap: 6 },
   name: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text, minHeight: 40 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },

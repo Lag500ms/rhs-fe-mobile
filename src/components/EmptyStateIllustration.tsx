@@ -4,13 +4,15 @@ import { SvgXml } from 'react-native-svg';
 import loginSvg from '../assets/illustrations/login';
 import notificationsSvg from '../assets/illustrations/notifications';
 import wishlistSvg from '../assets/illustrations/wishlist';
+import feedbackSvg from '../assets/illustrations/feedback';
 
-export type EmptyIllustrationName = 'login' | 'notifications' | 'wishlist';
+export type EmptyIllustrationName = 'login' | 'notifications' | 'wishlist' | 'feedback';
 
 const ILLUSTRATIONS: Record<EmptyIllustrationName, string> = {
   login: loginSvg,
   notifications: notificationsSvg,
   wishlist: wishlistSvg,
+  feedback: feedbackSvg,
 };
 
 type Props = {

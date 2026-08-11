@@ -6,6 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
   ActivityIndicator,
   Alert,
   RefreshControl,
@@ -13,11 +16,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { RHSColors, shadows, borderRadius } from '../../../lib/theme';
+import { RHSColors, shadows, borderRadius, spacing, typography } from '../../../lib/theme';
 import { getToken } from '../../../lib/tokenStorage';
-import {
-  issueReportApi,
-} from '../api/issueReportApi';
+import { EmptyStateIllustration } from '../../../components/EmptyStateIllustration';
+import { issueReportApi } from '../api/issueReportApi';
 import { IssueReportListItem, CreateIssueReportRequest } from '../types/issueReport';
 
 const ISSUE_TYPES = [
@@ -41,13 +43,11 @@ export const IssueReportScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [issueType, setIssueType] = useState('Bug');
   const [submitting, setSubmitting] = useState(false);
 
-  // My reports state
   const [reports, setReports] = useState<IssueReportListItem[]>([]);
   const [loadingReports, setLoadingReports] = useState(false);
   const [pageIndex, setPageIndex] = useState(1);
@@ -56,7 +56,7 @@ export const IssueReportScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      checkAuthAndLoad();
+      void checkAuthAndLoad();
     }, []),
   );
 
@@ -67,6 +67,7 @@ export const IssueReportScreen = () => {
       if (!token) {
         setIsLoggedIn(false);
         setReports([]);
+        setShowForm(false);
         setLoading(false);
         return;
       }
@@ -97,7 +98,7 @@ export const IssueReportScreen = () => {
 
   const handleLoadMore = () => {
     if (reports.length < totalCount && !loadingReports) {
-      loadReports(pageIndex + 1);
+      void loadReports(pageIndex + 1);
     }
   };
 
@@ -109,6 +110,13 @@ export const IssueReportScreen = () => {
 
   const handleLoginPress = () => {
     navigation.navigate('Auth', { screen: 'Login', params: { returnTo: 'Account' } });
+  };
+
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setIssueType('Bug');
+    setShowForm(false);
   };
 
   const handleSubmit = async () => {
@@ -130,11 +138,8 @@ export const IssueReportScreen = () => {
       };
       await issueReportApi.create(request);
       Alert.alert('Thành công', 'Cảm ơn bạn đã gửi góp ý/báo lỗi!');
-      setTitle('');
-      setDescription('');
-      setIssueType('Bug');
-      setShowForm(false);
-      loadReports(1);
+      resetForm();
+      void loadReports(1);
     } catch (error: any) {
       const message =
         error?.response?.data?.message ||
@@ -189,9 +194,7 @@ export const IssueReportScreen = () => {
       return (
         <View style={styles.emptyContainer}>
           <View style={styles.illustrationWrap}>
-            <View style={[styles.illustrationBox, { backgroundColor: '#E3F2FD' }]}>
-              <Feather name="message-square" size={72} color={RHSColors.govBlue} />
-            </View>
+            <EmptyStateIllustration name="login" size={240} />
           </View>
           <Text style={styles.emptyTitle}>Chưa đăng nhập</Text>
           <Text style={styles.emptyDesc}>
@@ -208,9 +211,7 @@ export const IssueReportScreen = () => {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.illustrationWrap}>
-          <View style={[styles.illustrationBox, { backgroundColor: '#E3F2FD' }]}>
-            <Feather name="inbox" size={72} color={RHSColors.govBlue} />
-          </View>
+          <EmptyStateIllustration name="feedback" size={240} />
         </View>
         <Text style={styles.emptyTitle}>Chưa có góp ý / báo lỗi</Text>
         <Text style={styles.emptyDesc}>
@@ -228,15 +229,106 @@ export const IssueReportScreen = () => {
     );
   };
 
+  const renderForm = () => (
+    <KeyboardAvoidingView
+      style={styles.formFlex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={8}
+    >
+      <ScrollView
+        contentContainerStyle={styles.formScroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.formCard}>
+          <Text style={styles.formTitle}>Tạo góp ý / báo lỗi mới</Text>
+
+          <Text style={styles.label}>Loại</Text>
+          <View style={styles.issueTypeGrid}>
+            {ISSUE_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type.value}
+                style={[
+                  styles.issueTypeChip,
+                  issueType === type.value && styles.issueTypeChipActive,
+                ]}
+                onPress={() => setIssueType(type.value)}
+              >
+                <Feather
+                  name={type.icon as any}
+                  size={14}
+                  color={issueType === type.value ? RHSColors.white : RHSColors.govBlue}
+                />
+                <Text
+                  style={[
+                    styles.issueTypeChipText,
+                    issueType === type.value && styles.issueTypeChipTextActive,
+                  ]}
+                >
+                  {type.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.label}>Tiêu đề</Text>
+          <TextInput
+            style={styles.input}
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Nhập tiêu đề ngắn gọn..."
+            placeholderTextColor={RHSColors.textMuted}
+            maxLength={255}
+          />
+
+          <Text style={styles.label}>Mô tả chi tiết</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Mô tả chi tiết vấn đề hoặc góp ý của bạn..."
+            placeholderTextColor={RHSColors.textMuted}
+            multiline
+            numberOfLines={5}
+            textAlignVertical="top"
+          />
+
+          <View style={styles.formActions}>
+            <TouchableOpacity style={styles.cancelButton} onPress={resetForm}>
+              <Text style={styles.cancelButtonText}>Hủy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+              onPress={() => void handleSubmit()}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.submitButtonText}>Gửi</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* Header – same style as SavedScreen & MyApplicationsScreen */}
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (showForm) resetForm();
+            else navigation.goBack();
+          }}
+          style={styles.backBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Góp ý báo lỗi</Text>
-        {reports.length > 0 && (
+        <Text style={styles.headerTitle}>{showForm ? 'Tạo góp ý' : 'Góp ý báo lỗi'}</Text>
+        {!showForm && reports.length > 0 && (
           <View style={styles.countBadge}>
             <Text style={styles.countBadgeText}>{reports.length}</Text>
           </View>
@@ -249,120 +341,33 @@ export const IssueReportScreen = () => {
             <ActivityIndicator size="large" color={RHSColors.blue700} />
             <Text style={styles.loadingText}>Đang tải...</Text>
           </View>
+        ) : showForm && isLoggedIn ? (
+          renderForm()
         ) : (
           <FlatList
-            data={reports}
+            data={isLoggedIn ? reports : []}
             keyExtractor={(item) => item.id}
             renderItem={renderReportItem}
             ListEmptyComponent={renderEmpty}
             ListHeaderComponent={
-              isLoggedIn ? (
-                <View style={{ marginBottom: 12 }}>
-                  {!showForm && reports.length > 0 && (
-                    <TouchableOpacity
-                      style={styles.createButton}
-                      onPress={() => setShowForm(true)}
-                    >
-                      <Feather name="plus-circle" size={20} color={RHSColors.white} />
-                      <Text style={styles.createButtonText}>Tạo góp ý / báo lỗi mới</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {showForm && (
-                    <View style={styles.formCard}>
-                      <View style={styles.formHeader}>
-                        <Text style={styles.formTitle}>Tạo góp ý / báo lỗi mới</Text>
-                        <TouchableOpacity onPress={() => setShowForm(false)}>
-                          <Feather name="x" size={22} color={RHSColors.textMuted} />
-                        </TouchableOpacity>
-                      </View>
-
-                      <Text style={styles.label}>Loại</Text>
-                      <View style={styles.issueTypeGrid}>
-                        {ISSUE_TYPES.map((type) => (
-                          <TouchableOpacity
-                            key={type.value}
-                            style={[
-                              styles.issueTypeChip,
-                              issueType === type.value && styles.issueTypeChipActive,
-                            ]}
-                            onPress={() => setIssueType(type.value)}
-                          >
-                            <Feather
-                              name={type.icon as any}
-                              size={14}
-                              color={
-                                issueType === type.value
-                                  ? RHSColors.white
-                                  : RHSColors.govBlue
-                              }
-                            />
-                            <Text
-                              style={[
-                                styles.issueTypeChipText,
-                                issueType === type.value && styles.issueTypeChipTextActive,
-                              ]}
-                            >
-                              {type.label}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-
-                      <Text style={styles.label}>Tiêu đề</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={title}
-                        onChangeText={setTitle}
-                        placeholder="Nhập tiêu đề ngắn gọn..."
-                        placeholderTextColor={RHSColors.textMuted}
-                        maxLength={255}
-                      />
-
-                      <Text style={styles.label}>Mô tả chi tiết</Text>
-                      <TextInput
-                        style={[styles.input, styles.textArea]}
-                        value={description}
-                        onChangeText={setDescription}
-                        placeholder="Mô tả chi tiết vấn đề hoặc góp ý của bạn..."
-                        placeholderTextColor={RHSColors.textMuted}
-                        multiline
-                        numberOfLines={5}
-                        textAlignVertical="top"
-                      />
-
-                      <View style={styles.formActions}>
-                        <TouchableOpacity
-                          style={styles.cancelButton}
-                          onPress={() => setShowForm(false)}
-                        >
-                          <Text style={styles.cancelButtonText}>Hủy</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
-                          onPress={handleSubmit}
-                          disabled={submitting}
-                        >
-                          {submitting ? (
-                            <ActivityIndicator size="small" color="#fff" />
-                          ) : (
-                            <Text style={styles.submitButtonText}>Gửi</Text>
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-                </View>
+              isLoggedIn && reports.length > 0 ? (
+                <TouchableOpacity
+                  style={styles.createButton}
+                  onPress={() => setShowForm(true)}
+                  activeOpacity={0.85}
+                >
+                  <Feather name="plus-circle" size={20} color={RHSColors.white} />
+                  <Text style={styles.createButtonText}>Tạo góp ý / báo lỗi mới</Text>
+                </TouchableOpacity>
               ) : null
             }
             contentContainerStyle={reports.length === 0 ? styles.emptyList : styles.listContent}
             showsVerticalScrollIndicator={false}
             refreshControl={
-              // CHỈ CHO PHÉP KÉO ĐỂ REFRESH KHI ĐÃ ĐĂNG NHẬP
               isLoggedIn ? (
                 <RefreshControl
                   refreshing={refreshing}
-                  onRefresh={onRefresh}
+                  onRefresh={() => void onRefresh()}
                   colors={[RHSColors.blue700]}
                 />
               ) : undefined
@@ -388,16 +393,15 @@ export const IssueReportScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: RHSColors.white,
   },
-  // ── Header (same as SavedScreen) ──
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    backgroundColor: RHSColors.white,
     borderBottomWidth: 1,
     borderBottomColor: RHSColors.border,
   },
@@ -406,10 +410,10 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: RHSColors.text,
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
   countBadge: {
     marginLeft: 10,
@@ -425,7 +429,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: RHSColors.surface,
   },
   loadingContainer: {
     flex: 1,
@@ -444,25 +448,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
     paddingBottom: 24,
   },
-  // ── Empty / Illustration State ──
   emptyContainer: {
     alignItems: 'center',
     paddingHorizontal: 24,
   },
   illustrationWrap: {
-    marginBottom: 28,
+    marginBottom: 20,
     width: '100%',
-    alignItems: 'center',
-  },
-  illustrationBox: {
-    width: 200,
-    height: 180,
-    borderRadius: 20,
-    justifyContent: 'center',
     alignItems: 'center',
   },
   emptyTitle: {
@@ -494,15 +490,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  // ── Create Button ──
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: RHSColors.govBlue,
+    backgroundColor: RHSColors.blue700,
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
+    marginBottom: spacing.md,
     ...shadows.sm,
   },
   createButtonText: {
@@ -510,25 +506,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: RHSColors.white,
   },
-  // ── Form Card ──
+  formFlex: { flex: 1 },
+  formScroll: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
+  },
   formCard: {
     backgroundColor: RHSColors.white,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
     borderWidth: 1,
     borderColor: RHSColors.border,
     ...shadows.sm,
   },
-  formHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
   formTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+    ...typography.h3,
     color: RHSColors.text,
+    marginBottom: spacing.sm,
   },
   label: {
     fontSize: 14,
@@ -576,7 +570,7 @@ const styles = StyleSheet.create({
     backgroundColor: RHSColors.surface,
   },
   textArea: {
-    minHeight: 100,
+    minHeight: 120,
     textAlignVertical: 'top',
   },
   formActions: {
@@ -600,7 +594,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     flex: 1,
-    backgroundColor: RHSColors.govBlue,
+    backgroundColor: RHSColors.blue700,
     borderRadius: 10,
     paddingVertical: 14,
     justifyContent: 'center',
@@ -614,7 +608,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: RHSColors.white,
   },
-  // ── Report Card ──
   reportCard: {
     backgroundColor: RHSColors.white,
     borderRadius: 12,
