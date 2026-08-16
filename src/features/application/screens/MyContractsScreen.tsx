@@ -1,11 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
   Alert,
 } from 'react-native';
@@ -13,7 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
-import { RHSColors, borderRadius, spacing, typography } from '../../../lib/theme';
+import { Badge, Card, EmptyState, ProgressBar, SkeletonCardList, StatTile } from '../../../components/ui';
+import { RHSColors, spacing, typography } from '../../../lib/theme';
 import { housingApplicationApi } from '../api/housingApplicationApi';
 import type { ApplicationSummary } from '../types/application';
 import { getStatusConfig } from '../utils/statusConfig';
@@ -30,6 +29,27 @@ const CONTRACT_STATUSES = new Set([
   'FINALIZED',
   'FULLY_PAID',
 ]);
+
+/** Bốn cột mốc người dân đi qua: cọc → ký → đóng theo đợt → hoàn tất. */
+const MILESTONES = ['Đặt cọc', 'Ký hợp đồng', 'Đóng theo đợt', 'Hoàn tất'];
+
+const MILESTONE_BY_STATUS: Record<string, number> = {
+  DEPOSIT_PENDING: 0,
+  DEPOSIT_PAID: 1,
+  CONTRACT_PENDING: 1,
+  CONTRACT_SIGNED: 2,
+  CONTRACTING: 2,
+  INSTALLMENT_IN_PROGRESS: 2,
+  PARTIALLY_PAID: 2,
+  PAID: 3,
+  FULLY_PAID: 3,
+  FINALIZED: 3,
+};
+
+const milestoneIndex = (status: string) =>
+  MILESTONE_BY_STATUS[String(status || '').toUpperCase()] ?? 0;
+
+const isDone = (status: string) => milestoneIndex(status) >= 3;
 
 export const MyContractsScreen = () => {
   const navigation = useNavigation<any>();
@@ -60,43 +80,109 @@ export const MyContractsScreen = () => {
     }, [load]),
   );
 
+  const summary = useMemo(
+    () => ({
+      total: items.length,
+      inProgress: items.filter((a) => !isDone(a.applicationStatus)).length,
+      done: items.filter((a) => isDone(a.applicationStatus)).length,
+    }),
+    [items],
+  );
+
   const renderItem = ({ item }: { item: ApplicationSummary }) => {
     const st = getStatusConfig(item.applicationStatus);
+    const step = milestoneIndex(item.applicationStatus);
+    const progress = (step + 1) / MILESTONES.length;
+
     return (
-      <TouchableOpacity
+      <Card
         style={styles.card}
+        accentColor={st.dotColor}
         onPress={() =>
           navigation.navigate('ApplicationDetail', { applicationId: item.applicationId })
         }
-        activeOpacity={0.85}
       >
         <View style={styles.cardHead}>
-          <Feather name="file-text" size={18} color={RHSColors.blue700} />
-          <Text style={styles.project} numberOfLines={2}>
-            {item.projectName || 'Dự án'}
-          </Text>
+          <View style={styles.docIcon}>
+            <Feather name="file-text" size={18} color={RHSColors.blue700} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.project} numberOfLines={2}>
+              {item.projectName || 'Dự án'}
+            </Text>
+            <Text style={styles.meta}>
+              Hồ sơ #{(item.applicationId || '').slice(0, 8).toUpperCase()}
+              {item.applicantFullName ? ` · ${item.applicantFullName}` : ''}
+            </Text>
+          </View>
         </View>
-        <Text style={styles.meta}>
-          Hồ sơ #{(item.applicationId || '').slice(0, 8).toUpperCase()}
-          {item.applicantFullName ? ` · ${item.applicantFullName}` : ''}
-        </Text>
-        <View style={[styles.badge, { backgroundColor: st.bg }]}>
-          <Text style={[styles.badgeText, { color: st.textColor }]}>{st.label}</Text>
+
+        <Badge label={st.label} backgroundColor={st.bg} color={st.textColor} />
+
+        <ProgressBar
+          value={progress}
+          label={MILESTONES[step]}
+          valueLabel={`Bước ${step + 1}/${MILESTONES.length}`}
+          colors={[st.dotColor, st.textColor]}
+        />
+
+        <View style={styles.milestoneRow}>
+          {MILESTONES.map((label, i) => (
+            <View key={label} style={styles.milestone}>
+              <View
+                style={[
+                  styles.milestoneDot,
+                  i <= step && { backgroundColor: st.dotColor, borderColor: st.dotColor },
+                ]}
+              >
+                {i < step && <Feather name="check" size={9} color={RHSColors.white} />}
+              </View>
+              <Text
+                style={[styles.milestoneLabel, i <= step && { color: RHSColors.text, fontWeight: '700' }]}
+                numberOfLines={1}
+              >
+                {label}
+              </Text>
+            </View>
+          ))}
         </View>
-        <View style={styles.row}>
+
+        <View style={styles.ctaRow}>
           <Text style={styles.cta}>Xem / ký hợp đồng · thanh toán</Text>
-          <Feather name="chevron-right" size={18} color={RHSColors.textMuted} />
+          <Feather name="chevron-right" size={18} color={RHSColors.blue700} />
         </View>
-      </TouchableOpacity>
+      </Card>
     );
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Hợp đồng" onBack={() => navigation.goBack()} isWhite />
+      <ScreenHeader
+        title="Hợp đồng"
+        hero
+        subtitle="Đợt 1 (cọc) → ký hợp đồng → Đợt 2–6"
+        onBack={() => navigation.goBack()}
+      >
+        <View style={styles.statRow}>
+          <StatTile onDark icon="file-text" value={loading ? '—' : summary.total} label="Hồ sơ" />
+          <StatTile
+            onDark
+            icon="loader"
+            value={loading ? '—' : summary.inProgress}
+            label="Đang xử lý"
+          />
+          <StatTile
+            onDark
+            icon="check-circle"
+            value={loading ? '—' : summary.done}
+            label="Hoàn tất"
+          />
+        </View>
+      </ScreenHeader>
+
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={RHSColors.blue700} />
+        <View style={styles.list}>
+          <SkeletonCardList count={3} />
         </View>
       ) : (
         <FlatList
@@ -104,20 +190,13 @@ export const MyContractsScreen = () => {
           keyExtractor={(item) => item.applicationId}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
-          ListHeaderComponent={
-            <Text style={styles.hint}>
-              {items.length} hồ sơ ở bước cọc / hợp đồng / thanh toán theo đợt. Chọn hồ sơ để tiếp tục
-              (Đợt 1 → ký HĐ → Đợt 2–6).
-            </Text>
-          }
+          showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Feather name="inbox" size={48} color={RHSColors.textMuted} />
-              <Text style={styles.emptyText}>
-                Chưa có hồ sơ ở bước cọc / hợp đồng. Hồ sơ xuất hiện khi trúng hoặc được cấp suất
-                (Đợt 1 → ký → thanh toán theo tiến độ).
-              </Text>
-            </View>
+            <EmptyState
+              icon="file-text"
+              title="Chưa có hồ sơ ở bước hợp đồng"
+              description="Hồ sơ xuất hiện tại đây khi bạn trúng bốc thăm hoặc được cấp suất, bắt đầu từ Đợt 1 (cọc)."
+            />
           }
           refreshControl={
             <RefreshControl
@@ -135,40 +214,45 @@ export const MyContractsScreen = () => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  list: { padding: spacing.xl, paddingBottom: spacing.xxl },
-  hint: { ...typography.caption, color: RHSColors.textMuted, marginBottom: spacing.md },
-  card: {
+  statRow: { flexDirection: 'row', gap: spacing.sm },
+  list: { padding: spacing.lg, paddingBottom: spacing.xxxl, flexGrow: 1 },
+  card: { marginBottom: spacing.md, gap: spacing.md },
+  cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  docIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: RHSColors.blue50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  project: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text },
+  meta: { ...typography.caption, color: RHSColors.textMuted, marginTop: 2 },
+  milestoneRow: { flexDirection: 'row', gap: spacing.xs },
+  milestone: { flex: 1, alignItems: 'center', gap: spacing.xs },
+  milestoneDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: RHSColors.grey300,
     backgroundColor: RHSColors.white,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: RHSColors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  project: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text, flex: 1 },
-  meta: { ...typography.caption, color: RHSColors.textMuted, marginTop: spacing.sm },
-  badge: {
-    alignSelf: 'flex-start',
-    marginTop: spacing.sm,
-    borderRadius: borderRadius.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
+  milestoneLabel: {
+    ...typography.caption,
+    fontSize: 10,
+    color: RHSColors.textMuted,
+    textAlign: 'center',
   },
-  badgeText: { ...typography.caption, fontWeight: '700' },
-  row: {
+  ctaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: RHSColors.grey100,
   },
-  cta: { ...typography.caption, fontWeight: '600', color: RHSColors.blue700 },
-  empty: { alignItems: 'center', paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
-  emptyText: {
-    ...typography.body,
-    color: RHSColors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.md,
-  },
+  cta: { ...typography.caption, fontWeight: '700', color: RHSColors.blue700 },
 });

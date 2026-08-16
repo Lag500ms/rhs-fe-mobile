@@ -53,15 +53,6 @@ const AREA_RANGES = [
   { label: 'Tất cả', min: undefined, max: undefined },
 ];
 
-const TAB_BAR_STYLE = {
-  borderTopWidth: 1,
-  borderTopColor: RHSColors.border,
-  height: 62,
-  paddingBottom: 8,
-  paddingTop: 6,
-  backgroundColor: RHSColors.surfaceCard,
-};
-
 export const HomeScreen = () => {
   const navigation = useNavigation<Nav>();
   const [searchText, setSearchText] = useState('');
@@ -130,12 +121,10 @@ export const HomeScreen = () => {
     const tabNav = navigation.getParent();
     if (!tabNav) return;
     tabNav.setOptions({
-      tabBarStyle: activeSheet
-        ? { display: 'none', height: 0, overflow: 'hidden' }
-        : TAB_BAR_STYLE,
+      tabBarStyle: activeSheet ? { display: 'none' } : undefined,
     });
     return () => {
-      tabNav.setOptions({ tabBarStyle: TAB_BAR_STYLE });
+      tabNav.setOptions({ tabBarStyle: undefined });
     };
   }, [activeSheet, navigation]);
 

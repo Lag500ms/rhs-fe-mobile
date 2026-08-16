@@ -62,7 +62,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: '#FF9800',
   },
   CONTRACT_PENDING: {
-    label: 'Chờ ký hợp đồng',
+    label: 'Đã trúng — chờ căn / ký HĐ',
     bg: '#E8EAF6',
     textColor: '#283593',
     dotColor: '#3F51B5',
@@ -160,7 +160,7 @@ export function getActionForStatus(status: string): StatusAction | null {
     case 'DEPOSIT_PENDING':
       return { label: 'Đóng tiền cọc', icon: 'credit-card', color: RHSColors.red600 };
     case 'CONTRACT_PENDING':
-      return { label: 'Ký hợp đồng', icon: 'file-text', color: RHSColors.blue700 };
+      return { label: 'Xem hồ sơ', icon: 'file-text', color: RHSColors.blue700 };
     case 'CONTRACT_SIGNED':
     case 'INSTALLMENT_IN_PROGRESS':
     case 'DEPOSIT_PAID':

@@ -8,7 +8,6 @@ import { MainTabNavigator } from './src/features/main/MainTabNavigator';
 import { EKycNavigator } from './src/features/ekyc/EKycNavigator';
 import { IssueReportNavigator } from './src/features/issue-reports/IssueReportNavigator';
 import { FaqScreen } from './src/features/help/screens/FaqScreen';
-import { LookupScreen } from './src/features/lookup/screens/LookupScreen';
 
 export type RootStackParamList = {
   MainTabs: undefined;
@@ -17,7 +16,6 @@ export type RootStackParamList = {
   EKyc: { returnTo?: string } | undefined;
   IssueReport: undefined;
   Faq: undefined;
-  Lookup: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -35,7 +33,6 @@ export default function App() {
         <Stack.Screen name="EKyc" component={EKycNavigator} />
         <Stack.Screen name="IssueReport" component={IssueReportNavigator} />
         <Stack.Screen name="Faq" component={FaqScreen} />
-        <Stack.Screen name="Lookup" component={LookupScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

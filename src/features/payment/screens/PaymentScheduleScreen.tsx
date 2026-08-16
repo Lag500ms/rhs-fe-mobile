@@ -36,20 +36,59 @@ const formatDate = (value?: string | null) => {
   }
 };
 
+/** Đồng bộ nhãn / mô tả đợt với web + BE PaymentMilestoneConstants.GetDisplayName */
+const PHASE_COPY: Record<
+  number,
+  { short: string; title: string; description: string }
+> = {
+  1: {
+    short: 'Cọc',
+    title: 'Đợt 1 — Cọc',
+    description: '10% giá trị căn khi trúng bốc thăm / cấp nhà.',
+  },
+  2: {
+    short: 'Sau ký HĐ',
+    title: 'Đợt 2 — Sau ký hợp đồng',
+    description: '20% giá trị căn khi ký hợp đồng mua bán chính thức.',
+  },
+  3: {
+    short: 'Xây thô',
+    title: 'Đợt 3 — Xây thô',
+    description: '20% giá trị căn khi hoàn thành xây thô.',
+  },
+  4: {
+    short: 'Cất nóc',
+    title: 'Đợt 4 — Cất nóc',
+    description: '20% giá trị căn khi cất nóc tòa nhà.',
+  },
+  5: {
+    short: 'Bàn giao',
+    title: 'Đợt 5 — Bàn giao',
+    description: '25% giá trị căn + 2% phí bảo trì khi bàn giao nhà & chìa khóa.',
+  },
+  6: {
+    short: 'Sổ hồng',
+    title: 'Đợt 6 — Sổ hồng',
+    description: '5% còn lại khi nhận Giấy chứng nhận (Sổ hồng).',
+  },
+};
+
 function phaseTitle(phase: InstallmentPhase): string {
-  const order = phase.phaseOrder;
-  if (order === 1) return 'Cọc';
-  if (order === 2) return 'Sau ký HĐ';
-  if (phase.phaseName?.trim()) return phase.phaseName.trim();
-  return `Tiến độ ${order}`;
+  return PHASE_COPY[phase.phaseOrder]?.short
+    || phase.phaseName?.trim()
+    || `Đợt ${phase.phaseOrder}`;
 }
 
 function phaseTitleLong(phase: InstallmentPhase): string {
-  const order = phase.phaseOrder;
-  if (order === 1) return 'Đóng tiền cọc';
-  if (order === 2) return 'Thanh toán sau khi ký hợp đồng';
-  if (phase.phaseName?.trim()) return phase.phaseName.trim();
-  return `Theo tiến độ xây dựng (${order})`;
+  return PHASE_COPY[phase.phaseOrder]?.title
+    || phase.phaseName?.trim()
+    || `Đợt ${phase.phaseOrder}`;
+}
+
+function phaseDescription(phase: InstallmentPhase): string {
+  return PHASE_COPY[phase.phaseOrder]?.description
+    || phase.note?.trim()
+    || '';
 }
 
 function isPaid(status: string) {
@@ -120,7 +159,6 @@ export const PaymentScheduleScreen = () => {
 
   const currentIdx = useMemo(() => resolveCurrentIndex(phases), [phases]);
   const current = phases[currentIdx];
-  const journeyPhases = useMemo(() => phases.slice(0, currentIdx + 1), [phases, currentIdx]);
   const history = useMemo(() => phases.filter((p) => isPaid(p.status)), [phases]);
 
   const toggleExpand = () => {
@@ -252,18 +290,20 @@ export const PaymentScheduleScreen = () => {
                 ) : null}
 
                 <Text style={styles.tapHint}>
-                  {expanded ? 'Thu gọn chi tiết' : 'Chạm để xem các bước đến hiện tại'}
+                  {expanded ? 'Thu gọn chi tiết các đợt' : 'Chạm để xem từng đợt thanh toán'}
                 </Text>
               </TouchableOpacity>
 
-              {/* Expand: các bước đã qua → hiện tại */}
+              {/* Expand: toàn bộ đợt + mô tả (giống web) */}
               {expanded && (
                 <View style={styles.journeyCard}>
-                  <Text style={styles.sectionTitle}>Đến bước hiện tại</Text>
-                  {journeyPhases.map((phase, idx) => {
+                  <Text style={styles.sectionTitle}>Các đợt thanh toán</Text>
+                  {phases.map((phase, idx) => {
                     const paid = isPaid(phase.status);
                     const payable = isPayable(phase.status);
-                    const isCurrent = idx === journeyPhases.length - 1;
+                    const locked = isLocked(phase.status);
+                    const isCurrent = idx === currentIdx && !paid;
+                    const desc = phaseDescription(phase);
                     return (
                       <View
                         key={phase.id}
@@ -275,19 +315,21 @@ export const PaymentScheduleScreen = () => {
                               styles.journeyDot,
                               paid && styles.journeyDotPaid,
                               payable && styles.journeyDotActive,
+                              locked && styles.journeyDotLocked,
                             ]}
                           >
                             <Text style={styles.journeyDotText}>{paid ? '✓' : phase.phaseOrder}</Text>
                           </View>
-                          {idx < journeyPhases.length - 1 && <View style={styles.journeyLine} />}
+                          {idx < phases.length - 1 && <View style={styles.journeyLine} />}
                         </View>
                         <View style={styles.journeyBody}>
                           <Text style={styles.journeyName}>{phaseTitleLong(phase)}</Text>
+                          {desc ? <Text style={styles.journeyDesc}>{desc}</Text> : null}
                           <Text style={styles.journeyMeta}>
                             {formatVnd(phase.amount)}
-                            {paid && phase.paidAt ? ` · ${formatDate(phase.paidAt)}` : ''}
+                            {paid && phase.paidAt ? ` · Đã đóng ${formatDate(phase.paidAt)}` : ''}
                             {payable ? ' · Đến hạn đóng' : ''}
-                            {isLocked(phase.status) ? ' · Chưa mở' : ''}
+                            {locked ? ' · Chưa mở' : ''}
                           </Text>
                           {payable && (
                             <TouchableOpacity
@@ -470,6 +512,7 @@ const styles = StyleSheet.create({
   },
   journeyDotPaid: { backgroundColor: RHSColors.green600 },
   journeyDotActive: { backgroundColor: RHSColors.blue700 },
+  journeyDotLocked: { backgroundColor: RHSColors.grey300 },
   journeyDotText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   journeyLine: {
     flex: 1,
@@ -480,7 +523,13 @@ const styles = StyleSheet.create({
   },
   journeyBody: { flex: 1, paddingLeft: 10, paddingBottom: 14 },
   journeyName: { fontSize: 14, fontWeight: '600', color: RHSColors.text },
-  journeyMeta: { marginTop: 2, fontSize: 12, color: RHSColors.textMuted },
+  journeyDesc: {
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 17,
+    color: RHSColors.textMuted,
+  },
+  journeyMeta: { marginTop: 4, fontSize: 12, color: RHSColors.textMuted },
 
   payBtn: {
     marginTop: spacing.sm,

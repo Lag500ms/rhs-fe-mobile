@@ -1,8 +1,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
-import { RHSColors } from '../../lib/theme';
 import { NotificationTabIcon } from '../../components/NotificationTabIcon';
+import { FloatingTabBar } from '../../components/FloatingTabBar';
 
 import { HomeNavigator } from '../home/navigation/HomeNavigator';
 import { ApplicationNavigator } from '../application/navigation/ApplicationNavigator';
@@ -20,28 +20,11 @@ export type MainTabParamList = {
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const TAB_STYLE = {
-  borderTopWidth: 1,
-  borderTopColor: RHSColors.border,
-  height: 62,
-  paddingBottom: 8,
-  paddingTop: 6,
-  backgroundColor: RHSColors.surfaceCard,
-} as const;
-
 export const MainTabNavigator = () => {
   return (
     <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: RHSColors.blue700,
-        tabBarInactiveTintColor: RHSColors.textMuted,
-        tabBarStyle: TAB_STYLE,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
-      }}
+      tabBar={(props) => <FloatingTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
       <Tab.Screen
         name="Home"

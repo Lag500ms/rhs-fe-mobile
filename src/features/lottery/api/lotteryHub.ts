@@ -1,5 +1,6 @@
 import { getToken } from '../../../lib/tokenStorage';
-import type { LiveDrawResult } from '../types/lottery';
+import type { LiveDrawResult, LotteryLiveState } from '../types/lottery';
+import { mapLiveDraw, mapLiveState } from './lotteryApi';
 
 type HubConnection = {
   state: string;
@@ -26,6 +27,7 @@ export async function connectLotteryLobby(
   handlers: {
     onLobbyCount?: (count: number) => void;
     onDrawResult?: (result: LiveDrawResult) => void;
+    onLiveState?: (state: LotteryLiveState) => void;
     onStatus?: (status: string) => void;
     onSxdSupervisorCount?: (count: number) => void;
     onError?: (message: string) => void;
@@ -57,19 +59,12 @@ export async function connectLotteryLobby(
   }
   if (handlers.onDrawResult) {
     connection.on('ReceiveDrawResult', (data: unknown) => {
-      const o = (data ?? {}) as Record<string, unknown>;
-      handlers.onDrawResult?.({
-        projectId: String(o.projectId ?? o.ProjectId ?? projectId),
-        applicationId: String(o.applicationId ?? o.ApplicationId ?? ''),
-        applicantId: String(o.applicantId ?? o.ApplicantId ?? ''),
-        applicantName: String(o.applicantName ?? o.ApplicantName ?? ''),
-        citizenId: String(o.citizenId ?? o.CitizenId ?? ''),
-        result: String(o.result ?? o.Result ?? ''),
-        slotCode: (o.slotCode ?? o.SlotCode) as string | null | undefined,
-        drawnAt: String(o.drawnAt ?? o.DrawnAt ?? new Date().toISOString()),
-        remainingUnits: Number(o.remainingUnits ?? o.RemainingUnits ?? 0),
-        priorityGroup: (o.priorityGroup ?? o.PriorityGroup) as string | null | undefined,
-      });
+      handlers.onDrawResult?.(mapLiveDraw(data));
+    });
+  }
+  if (handlers.onLiveState) {
+    connection.on('ReceiveLiveState', (data: unknown) => {
+      handlers.onLiveState?.(mapLiveState(data));
     });
   }
   if (handlers.onStatus) {
@@ -87,7 +82,6 @@ export async function connectLotteryLobby(
     await connection.invoke('JoinProjectLobby', projectId, joinCode ?? null);
   };
 
-  // SignalR JS: onreconnected is a method on HubConnection
   const raw = connection as HubConnection & {
     onreconnected: (cb: (connectionId?: string) => void) => void;
   };

@@ -254,11 +254,6 @@ export const AccountScreen = () => {
         {/* Section 3: TRỢ GIÚP & PHÁP LÝ (Luôn hiện) */}
         <View style={styles.menuCard}>
           <Text style={styles.menuTitle}>TRỢ GIÚP & PHÁP LÝ</Text>
-          <MenuItem
-            icon="search"
-            label="Tra cứu hồ sơ"
-            onPress={() => navigation.navigate('Lookup')}
-          />
           <MenuItem 
             icon="file-text" 
             label="Tra cứu thủ tục hành chính" 

@@ -10,6 +10,7 @@ export function normalizeLotterySession(raw?: string | null): string {
   if (u === 'APPROVED') return 'APPROVED';
   if (u === 'WAITINGLOBBY' || s === 'WaitingLobby' || u === 'LOBBY') return 'WaitingLobby';
   if (u === 'LIVE' || u === 'RUNNING' || s === 'Live') return 'Live';
+  if (u === 'PAUSED' || s === 'Paused') return 'Paused';
   if (u === 'FINISHED' || s === 'Finished') return 'Finished';
   if (u === 'PUBLISHED' || s === 'Published') return 'Published';
   return s;
@@ -27,7 +28,7 @@ export function hasLotterySession(schedule: LotteryScheduleDetail | null | undef
 
 export function isLotteryLivePhase(schedule: LotteryScheduleDetail | null | undefined): boolean {
   const phase = normalizeLotterySession(schedule?.sessionStatus);
-  return phase === 'Live' || phase === 'WaitingLobby';
+  return phase === 'Live' || phase === 'WaitingLobby' || phase === 'Paused';
 }
 
 export function isLotteryFinishedPhase(schedule: LotteryScheduleDetail | null | undefined): boolean {

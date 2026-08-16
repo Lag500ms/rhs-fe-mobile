@@ -1,7 +1,10 @@
 import apiClient from '../../../lib/apiClient';
 import type {
+  ApartmentFundStat,
   LiveDrawResult,
   LotteryDrawResult,
+  LotteryLiveState,
+  LotteryNextCandidate,
   LotteryScheduleDetail,
   VerifyJoinCodeResult,
 } from '../types/lottery';
@@ -39,6 +42,7 @@ function mapSchedule(raw: unknown): LotteryScheduleDetail {
     joinCode: (o.joinCode ?? o.JoinCode) as string | null | undefined,
     sessionStatus: (o.sessionStatus ?? o.SessionStatus) as string | null | undefined,
     sxdOnlineCount: Number(o.sxdOnlineCount ?? o.SxdOnlineCount ?? 0),
+    lobbyCount: Number(o.lobbyCount ?? o.LobbyCount ?? 0),
     eligibleParticipants: list.map((it) => {
       const p = (it ?? {}) as Record<string, unknown>;
       return {
@@ -54,19 +58,82 @@ function mapSchedule(raw: unknown): LotteryScheduleDetail {
   };
 }
 
-function mapLiveDraw(raw: unknown): LiveDrawResult {
+export function mapLiveDraw(raw: unknown): LiveDrawResult {
   const o = pick<Record<string, unknown>>(raw);
   return {
     projectId: String(o.projectId ?? o.ProjectId ?? ''),
     applicationId: String(o.applicationId ?? o.ApplicationId ?? ''),
+    applicationCode: String(o.applicationCode ?? o.ApplicationCode ?? '') || undefined,
     applicantId: String(o.applicantId ?? o.ApplicantId ?? ''),
     applicantName: String(o.applicantName ?? o.ApplicantName ?? ''),
     citizenId: String(o.citizenId ?? o.CitizenId ?? ''),
+    maskedCitizenId: String(o.maskedCitizenId ?? o.MaskedCitizenId ?? '') || undefined,
+    stt: Number(o.stt ?? o.Stt ?? 0) || undefined,
     result: String(o.result ?? o.Result ?? ''),
     slotCode: (o.slotCode ?? o.SlotCode) as string | null | undefined,
     drawnAt: String(o.drawnAt ?? o.DrawnAt ?? new Date().toISOString()),
     remainingUnits: Number(o.remainingUnits ?? o.RemainingUnits ?? 0),
     priorityGroup: (o.priorityGroup ?? o.PriorityGroup) as string | null | undefined,
+  };
+}
+
+function mapNextCandidate(raw: unknown): LotteryNextCandidate | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const applicationId = String(o.applicationId ?? o.ApplicationId ?? '');
+  if (!applicationId) return null;
+  return {
+    applicationId,
+    applicationCode: String(o.applicationCode ?? o.ApplicationCode ?? '') || undefined,
+    applicantName: String(o.applicantName ?? o.ApplicantName ?? ''),
+    citizenId: String(o.citizenId ?? o.CitizenId ?? '') || undefined,
+    priorityGroup: (o.priorityGroup ?? o.PriorityGroup) as string | null | undefined,
+  };
+}
+
+function mapFundStat(raw: unknown): ApartmentFundStat {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  return {
+    categoryName: String(o.categoryName ?? o.CategoryName ?? 'Quỹ căn'),
+    totalUnits: Number(o.totalUnits ?? o.TotalUnits ?? 0),
+    remainingUnits: Number(o.remainingUnits ?? o.RemainingUnits ?? 0),
+    assignedUnits: Number(o.assignedUnits ?? o.AssignedUnits ?? 0),
+    remainingPercentage: Number(o.remainingPercentage ?? o.RemainingPercentage ?? 0),
+  };
+}
+
+export function mapLiveState(raw: unknown): LotteryLiveState {
+  const o = pick<Record<string, unknown>>(raw);
+  const winnersRaw = o.recentWinners ?? o.RecentWinners;
+  const winners = Array.isArray(winnersRaw) ? winnersRaw.map(mapLiveDraw) : [];
+  const statsRaw = o.apartmentFundStats ?? o.ApartmentFundStats;
+  const stats = Array.isArray(statsRaw) ? statsRaw.map(mapFundStat) : [];
+  const latestRaw = o.latestDrawResult ?? o.LatestDrawResult;
+  const projectFundRaw = o.projectApartmentFundStat ?? o.ProjectApartmentFundStat;
+  return {
+    projectId: String(o.projectId ?? o.ProjectId ?? ''),
+    projectName: String(o.projectName ?? o.ProjectName ?? ''),
+    developerName: String(o.developerName ?? o.DeveloperName ?? '') || undefined,
+    sessionStatus: String(o.sessionStatus ?? o.SessionStatus ?? ''),
+    totalUnits: Number(o.totalUnits ?? o.TotalUnits ?? 0),
+    drawnUnitsCount: Number(o.drawnUnitsCount ?? o.DrawnUnitsCount ?? 0),
+    remainingUnits: Number(o.remainingUnits ?? o.RemainingUnits ?? 0),
+    totalEligibleParticipants: Number(
+      o.totalEligibleParticipants ?? o.TotalEligibleParticipants ?? 0,
+    ),
+    sxdOnlineCount: Number(o.sxdOnlineCount ?? o.SxdOnlineCount ?? 0),
+    lobbyCount: Number(o.lobbyCount ?? o.LobbyCount ?? 0),
+    priorityWinnersCount: Number(o.priorityWinnersCount ?? o.PriorityWinnersCount ?? 0),
+    randomWinnersCount: Number(o.randomWinnersCount ?? o.RandomWinnersCount ?? 0),
+    undrawnParticipantsCount: Number(
+      o.undrawnParticipantsCount ?? o.UndrawnParticipantsCount ?? 0,
+    ),
+    winRatePercentage: Number(o.winRatePercentage ?? o.WinRatePercentage ?? 0),
+    nextCandidate: mapNextCandidate(o.nextCandidate ?? o.NextCandidate),
+    latestDrawResult: latestRaw ? mapLiveDraw(latestRaw) : null,
+    recentWinners: winners,
+    projectApartmentFundStat: projectFundRaw ? mapFundStat(projectFundRaw) : null,
+    apartmentFundStats: stats,
   };
 }
 
@@ -88,9 +155,9 @@ export const lotteryApi = {
     };
   },
 
-  async drawUnit(projectId: string): Promise<LiveDrawResult> {
-    const res = await apiClient.post(`/projects/${projectId}/lottery/draw-unit`);
-    return mapLiveDraw(res.data);
+  async getLiveState(projectId: string): Promise<LotteryLiveState> {
+    const res = await apiClient.get(`/projects/${projectId}/lottery/live-state`);
+    return mapLiveState(res.data);
   },
 
   async getResult(projectId: string): Promise<LotteryDrawResult | null> {

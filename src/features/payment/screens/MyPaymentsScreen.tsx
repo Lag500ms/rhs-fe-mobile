@@ -1,11 +1,9 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
   Alert,
 } from 'react-native';
@@ -13,7 +11,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
-import { RHSColors, borderRadius, spacing, typography } from '../../../lib/theme';
+import { Badge, Card, EmptyState, SkeletonCardList, StatTile } from '../../../components/ui';
+import type { BadgeTone } from '../../../components/ui';
+import { RHSColors, spacing, typography } from '../../../lib/theme';
 import { paymentApi } from '../api/paymentApi';
 import type { PaymentInfo } from '../types/payment';
 
@@ -31,20 +31,38 @@ const PAYMENT_STATUS_VI: Record<string, string> = {
   Canceled: 'Đã hủy',
 };
 
-function statusMeta(status: string) {
+type StatusMeta = {
+  label: string;
+  tone: BadgeTone;
+  accent: string;
+  icon: keyof typeof Feather.glyphMap;
+  settled: boolean;
+};
+
+function statusMeta(status: string): StatusMeta {
   const key = String(status || '');
   const upper = key.toUpperCase();
-  const ok = upper === 'SUCCESS' || upper === 'PAID';
-  const bad = upper === 'FAILED' || upper === 'CANCELLED' || upper === 'CANCELED';
-  return {
-    label: PAYMENT_STATUS_VI[key] ?? PAYMENT_STATUS_VI[upper] ?? 'Không rõ',
-    color: ok ? RHSColors.green700 : bad ? RHSColors.red700 : RHSColors.amber700,
-    bg: ok ? RHSColors.green50 : bad ? RHSColors.red50 : RHSColors.amber50,
-  };
+  const label = PAYMENT_STATUS_VI[key] ?? PAYMENT_STATUS_VI[upper] ?? 'Không rõ';
+
+  if (upper === 'SUCCESS' || upper === 'PAID') {
+    return { label, tone: 'success', accent: RHSColors.green600, icon: 'check-circle', settled: true };
+  }
+  if (upper === 'FAILED' || upper === 'CANCELLED' || upper === 'CANCELED') {
+    return { label, tone: 'danger', accent: RHSColors.red600, icon: 'x-circle', settled: false };
+  }
+  return { label, tone: 'warning', accent: RHSColors.amber600, icon: 'clock', settled: false };
 }
 
 const formatVnd = (amount: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
+
+const compactVnd = (amount: number) => {
+  const v = amount || 0;
+  if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1).replace('.0', '')} tỷ`;
+  if (v >= 1_000_000) return `${Math.round(v / 1_000_000)} tr`;
+  if (v >= 1_000) return `${Math.round(v / 1_000)} k`;
+  return String(v);
+};
 
 export const MyPaymentsScreen = () => {
   const navigation = useNavigation<any>();
@@ -75,6 +93,19 @@ export const MyPaymentsScreen = () => {
     }, [load]),
   );
 
+  const summary = useMemo(() => {
+    const settled = payments.filter((p) => statusMeta(p.status).settled);
+    const pending = payments.filter((p) => {
+      const upper = String(p.status || '').toUpperCase();
+      return upper === 'PENDING';
+    });
+    return {
+      total: settled.reduce((sum, p) => sum + Number(p.amount || 0), 0),
+      count: payments.length,
+      pending: pending.length,
+    };
+  }, [payments]);
+
   const openPayment = (p: PaymentInfo) => {
     if (p.applicationId) {
       navigation.navigate('ApplicationDetail', { applicationId: p.applicationId });
@@ -85,48 +116,88 @@ export const MyPaymentsScreen = () => {
     const st = statusMeta(item.status);
     const canOpen = !!item.applicationId;
     return (
-      <TouchableOpacity
+      <Card
         style={styles.card}
-        onPress={() => openPayment(item)}
-        activeOpacity={canOpen ? 0.85 : 1}
-        disabled={!canOpen}
+        accentColor={st.accent}
+        onPress={canOpen ? () => openPayment(item) : undefined}
       >
         <View style={styles.cardHead}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.orderId}>{item.orderId}</Text>
-            {!!item.orderInfo && (
-              <Text style={styles.meta} numberOfLines={2}>
-                {item.orderInfo}
-              </Text>
-            )}
+          <View style={[styles.statusIcon, { backgroundColor: `${st.accent}18` }]}>
+            <Feather name={st.icon} size={18} color={st.accent} />
           </View>
-          <View style={[styles.badge, { backgroundColor: st.bg }]}>
-            <Text style={[styles.badgeText, { color: st.color }]}>{st.label}</Text>
+          <View style={styles.cardHeadBody}>
+            <Text style={styles.amount}>{formatVnd(Number(item.amount))}</Text>
+            <Text style={styles.orderId} numberOfLines={1}>
+              {item.orderId}
+            </Text>
           </View>
+          <Badge label={st.label} tone={st.tone} />
         </View>
-        <Text style={styles.amount}>{formatVnd(Number(item.amount))}</Text>
-        <Text style={styles.meta}>
-          {item.createdAt ? new Date(item.createdAt).toLocaleString('vi-VN') : '—'}
-          {item.applicationId
-            ? ` · Hồ sơ #${item.applicationId.slice(0, 8).toUpperCase()}`
-            : ''}
-        </Text>
+
+        {!!item.orderInfo && (
+          <Text style={styles.orderInfo} numberOfLines={2}>
+            {item.orderInfo}
+          </Text>
+        )}
+
+        <View style={styles.metaRow}>
+          <Feather name="clock" size={13} color={RHSColors.textMuted} />
+          <Text style={styles.meta}>
+            {item.createdAt ? new Date(item.createdAt).toLocaleString('vi-VN') : '—'}
+          </Text>
+          {!!item.slotCode && (
+            <>
+              <View style={styles.metaDot} />
+              <Text style={styles.meta}>Suất {item.slotCode}</Text>
+            </>
+          )}
+        </View>
+
         {canOpen && (
-          <View style={styles.row}>
-            <Text style={styles.cta}>Mở hồ sơ liên quan</Text>
-            <Feather name="chevron-right" size={18} color={RHSColors.textMuted} />
+          <View style={styles.ctaRow}>
+            <Text style={styles.cta}>
+              Hồ sơ #{String(item.applicationId).slice(0, 8).toUpperCase()}
+            </Text>
+            <Feather name="chevron-right" size={18} color={RHSColors.blue700} />
           </View>
         )}
-      </TouchableOpacity>
+      </Card>
     );
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenHeader title="Thanh toán" onBack={() => navigation.goBack()} isWhite />
+      <ScreenHeader
+        title="Thanh toán"
+        hero
+        subtitle="Lịch sử giao dịch VNPay của bạn"
+        onBack={() => navigation.goBack()}
+      >
+        <View style={styles.statRow}>
+          <StatTile
+            onDark
+            icon="check-circle"
+            value={loading ? '—' : compactVnd(summary.total)}
+            label="Đã thanh toán"
+          />
+          <StatTile
+            onDark
+            icon="list"
+            value={loading ? '—' : summary.count}
+            label="Tổng giao dịch"
+          />
+          <StatTile
+            onDark
+            icon="clock"
+            value={loading ? '—' : summary.pending}
+            label="Đang chờ"
+          />
+        </View>
+      </ScreenHeader>
+
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={RHSColors.blue700} />
+        <View style={styles.list}>
+          <SkeletonCardList count={4} />
         </View>
       ) : (
         <FlatList
@@ -134,17 +205,13 @@ export const MyPaymentsScreen = () => {
           keyExtractor={(item) => item.orderId || item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
-          ListHeaderComponent={
-            <Text style={styles.hint}>Lịch sử giao dịch VNPay của bạn.</Text>
-          }
+          showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Feather name="credit-card" size={48} color={RHSColors.textMuted} />
-              <Text style={styles.emptyText}>
-                Chưa có giao dịch nào. Thanh toán Đợt 1 (cọc) và các đợt sau từ chi tiết hồ sơ hoặc
-                mục Hợp đồng.
-              </Text>
-            </View>
+            <EmptyState
+              icon="credit-card"
+              title="Chưa có giao dịch nào"
+              description="Thanh toán Đợt 1 (cọc) và các đợt sau được thực hiện từ chi tiết hồ sơ hoặc mục Hợp đồng."
+            />
           }
           refreshControl={
             <RefreshControl
@@ -162,39 +229,38 @@ export const MyPaymentsScreen = () => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  list: { padding: spacing.xl, paddingBottom: spacing.xxl },
-  hint: { ...typography.caption, color: RHSColors.textMuted, marginBottom: spacing.md },
-  card: {
-    backgroundColor: RHSColors.white,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: RHSColors.border,
+  statRow: { flexDirection: 'row', gap: spacing.sm },
+  list: { padding: spacing.lg, paddingBottom: spacing.xxxl, flexGrow: 1 },
+  card: { marginBottom: spacing.md, gap: spacing.sm },
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  statusIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  orderId: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text },
-  meta: { ...typography.caption, color: RHSColors.textMuted, marginTop: 4 },
-  amount: { ...typography.body, fontWeight: '700', color: RHSColors.text, marginTop: spacing.sm },
-  badge: {
-    borderRadius: borderRadius.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 4,
+  cardHeadBody: { flex: 1 },
+  amount: { ...typography.h3, fontWeight: '800', color: RHSColors.text },
+  orderId: { ...typography.caption, color: RHSColors.textMuted, marginTop: 2 },
+  orderInfo: { ...typography.bodySmall, color: RHSColors.textSecondary },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: RHSColors.textMuted,
+    marginHorizontal: spacing.xs,
   },
-  badgeText: { ...typography.caption, fontWeight: '700' },
-  row: {
+  meta: { ...typography.caption, color: RHSColors.textMuted },
+  ctaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: spacing.md,
+    marginTop: spacing.xs,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: RHSColors.grey100,
   },
-  cta: { ...typography.caption, fontWeight: '600', color: RHSColors.blue700 },
-  empty: { alignItems: 'center', paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
-  emptyText: {
-    ...typography.body,
-    color: RHSColors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.md,
-  },
+  cta: { ...typography.caption, fontWeight: '700', color: RHSColors.blue700 },
 });

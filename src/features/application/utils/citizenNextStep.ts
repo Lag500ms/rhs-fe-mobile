@@ -10,7 +10,7 @@ export type CitizenNextStep = {
 
 export function getCitizenNextStep(
   status: string,
-  opts?: { needMoreNote?: string | null },
+  opts?: { needMoreNote?: string | null; hasApartment?: boolean },
 ): CitizenNextStep | null {
   const s = (status || '').toUpperCase();
 
@@ -61,6 +61,13 @@ export function getCitizenNextStep(
         tone: 'action',
       };
     case 'CONTRACT_PENDING':
+      if (opts?.hasApartment === false) {
+        return {
+          title: 'Đã trúng — chờ chủ đầu tư chọn căn',
+          body: 'Bạn đã có suất. Khi chủ đầu tư gán căn cụ thể, bạn mới ký hợp đồng được.',
+          tone: 'info',
+        };
+      }
       return {
         title: 'Việc tiếp theo: ký hợp đồng',
         body: 'Đọc kỹ và ký hợp đồng mua bán. Các khoản còn lại sẽ hiện trên lịch thanh toán sau khi ký.',

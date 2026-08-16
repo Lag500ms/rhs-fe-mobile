@@ -392,7 +392,7 @@ export const ApplicationDetailScreen = () => {
         });
       } else if (live) {
         actions.push({
-          label: phase === 'Live' ? 'Vào phiên bốc thăm (Live)' : 'Vào sảnh bốc thăm',
+          label: phase === 'Live' || phase === 'Paused' ? 'Vào phiên bốc thăm (Live)' : 'Vào sảnh bốc thăm',
           icon: 'radio',
           onPress: () =>
             navigation.navigate('LotteryLobby', {
@@ -402,9 +402,9 @@ export const ApplicationDetailScreen = () => {
             }),
           variant: 'primary',
         });
-        if (phase === 'Live') {
+        if (phase === 'Live' || phase === 'Paused') {
           actions.push({
-            label: 'Xem phiên trực tiếp',
+            label: 'Xem sảnh quay số',
             icon: 'eye',
             onPress: () =>
               navigation.navigate('LotteryLive', {
@@ -670,7 +670,10 @@ export const ApplicationDetailScreen = () => {
     .map((h) => h.note)[0];
 
   const nextStep = detail
-    ? getCitizenNextStep(detail.applicationStatus, { needMoreNote: requestNote })
+    ? getCitizenNextStep(detail.applicationStatus, {
+        needMoreNote: requestNote,
+        hasApartment: !!(detail.apartmentId || detail.apartmentUnitName),
+      })
     : null;
 
   const nextToneStyle =
@@ -847,14 +850,18 @@ export const ApplicationDetailScreen = () => {
               <View style={styles.lotteryInfoCard}>
                 <View style={styles.lotteryInfoHead}>
                   <Feather name="file-text" size={18} color={RHSColors.blue700} />
-                  <Text style={styles.lotteryInfoTitle}>Sẵn sàng ký hợp đồng</Text>
+                  <Text style={styles.lotteryInfoTitle}>
+                    {detail.apartmentId || detail.apartmentUnitName
+                      ? 'Sẵn sàng ký hợp đồng'
+                      : 'Chờ chủ đầu tư chọn căn'}
+                  </Text>
                 </View>
                 <Text style={styles.lotteryInfoText}>
                   {detail.apartmentUnitName
                     ? `Bạn được cấp căn ${detail.apartmentUnitName}${
                         detail.apartmentArea ? ` (${detail.apartmentArea}m²)` : ''
                       }. Hãy đọc và ký hợp đồng mua bán. Sau khi ký, các khoản còn lại sẽ mở trên lịch thanh toán.`
-                    : 'Hãy đọc và ký hợp đồng mua bán. Nếu chưa thấy căn cụ thể, liên hệ chủ đầu tư hoặc thử lại sau.'}
+                    : 'Bạn đã trúng suất. Chủ đầu tư sẽ gán căn hộ cụ thể — khi đã có mã căn, bạn mới ký hợp đồng được.'}
                 </Text>
               </View>
             )}
