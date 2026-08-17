@@ -60,6 +60,7 @@ function resolveIndex(status: string, depositPaid?: boolean): number {
       return 2;
     case 'APPROVED':
     case 'APPROVED_BY_TIMEOUT':
+    case 'LOTTERY_WON':
     case 'LOTTERY_LOST':
       return 3;
     case 'DEPOSIT_PENDING':
@@ -90,6 +91,7 @@ export function ApplicationTimeline({ currentStatus, needMoreNote, depositPaid }
   const status = (currentStatus || '').toUpperCase();
   const currentIdx = resolveIndex(status, depositPaid);
   const isNeedMore = status === 'NEED_MORE_DOCUMENTS';
+  const isLotteryWon = status === 'LOTTERY_WON';
   const isFailed = TERMINAL_FAIL.has(status);
   const isComplete = TERMINAL_SUCCESS.has(status);
 
@@ -156,16 +158,22 @@ export function ApplicationTimeline({ currentStatus, needMoreNote, depositPaid }
                     needMoreHere && styles.labelWarn,
                   ]}
                 >
-                  {needMoreHere ? 'Cần bổ sung giấy tờ' : step.label}
+                  {needMoreHere
+                    ? 'Cần bổ sung giấy tờ'
+                    : isLotteryWon && idx === 3
+                      ? 'Đã trúng suất'
+                      : step.label}
                 </Text>
                 <Text style={styles.hint}>
                   {needMoreHere
                     ? 'Bổ sung xong rồi nộp lại để chủ đầu tư xét tiếp'
-                    : active
-                      ? step.hint
-                      : done
-                        ? 'Đã xong'
-                        : step.hint}
+                    : isLotteryWon && idx === 3 && active
+                      ? 'Chờ chủ đầu tư chọn căn hộ cụ thể'
+                      : active
+                        ? step.hint
+                        : done
+                          ? 'Đã xong'
+                          : step.hint}
                 </Text>
               </View>
             </View>

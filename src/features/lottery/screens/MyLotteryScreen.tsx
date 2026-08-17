@@ -48,6 +48,8 @@ const ELIGIBLE = new Set([
   'APPROVED',
   'APPROVED_BY_TIMEOUT',
   'PROPOSED',
+  'LOTTERY_WON',
+  'DEPOSIT_PENDING',
   'CONTRACT_PENDING',
   'LOTTERY_LOST',
 ]);
@@ -155,7 +157,7 @@ export const MyLotteryScreen = () => {
       const code = findOwnResult(row);
       const value = code?.result || code?.lotteryResult;
       const status = String(row.application.applicationStatus || '').toUpperCase();
-      if (value === 'WON' || value === 'PRIORITY_WON' || status === 'CONTRACT_PENDING') won += 1;
+      if (value === 'WON' || value === 'PRIORITY_WON' || status === 'CONTRACT_PENDING' || status === 'LOTTERY_WON' || status === 'DEPOSIT_PENDING') won += 1;
     }
     return { total: rows.length, live, won };
   }, [rows]);
@@ -182,7 +184,9 @@ export const MyLotteryScreen = () => {
     const won =
       ownCode === 'WON' ||
       ownCode === 'PRIORITY_WON' ||
-      appStatus === 'CONTRACT_PENDING';
+      appStatus === 'CONTRACT_PENDING' ||
+      appStatus === 'LOTTERY_WON' ||
+      appStatus === 'DEPOSIT_PENDING';
     const lost = ownCode === 'LOST' || appStatus === 'LOTTERY_LOST';
     const resultLabel = won
       ? LOTTERY_RESULT_LABEL[ownCode === 'PRIORITY_WON' ? 'PRIORITY_WON' : 'WON']

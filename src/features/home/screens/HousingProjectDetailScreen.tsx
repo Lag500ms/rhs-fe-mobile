@@ -104,6 +104,8 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
             'APPROVED',
             'APPROVED_BY_TIMEOUT',
             'PROPOSED',
+            'LOTTERY_WON',
+            'DEPOSIT_PENDING',
             'CONTRACT_PENDING',
             'LOTTERY_LOST',
           ].includes(s);

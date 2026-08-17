@@ -593,6 +593,22 @@ export const ApplicationDetailScreen = () => {
       ];
     }
 
+    if (status === 'LOTTERY_WON') {
+      return [
+        {
+          label: 'Xem kết quả bốc thăm',
+          icon: 'award',
+          onPress: () =>
+            navigation.navigate('LotteryResult', {
+              projectId: detail.projectId,
+              projectName: detail.projectName,
+              applicationId: detail.applicationId,
+            }),
+          variant: 'primary',
+        },
+      ];
+    }
+
     if (status === 'FULLY_PAID') {
       return [
         {
@@ -936,6 +952,33 @@ export const ApplicationDetailScreen = () => {
                 slotCodeCopied={slotCodeCopied}
                 onCopySlotCode={handleCopySlotCode}
               />
+            )}
+
+            {detail.applicationStatus === 'LOTTERY_WON' && (
+              <View style={styles.lotteryInfoCard}>
+                <View style={styles.lotteryInfoHead}>
+                  <Feather name="award" size={18} color={RHSColors.green700} />
+                  <Text style={styles.lotteryInfoTitle}>Bạn đã trúng suất</Text>
+                </View>
+                <Text style={styles.lotteryInfoText}>
+                  Chủ đầu tư sẽ chọn căn hộ cụ thể cho hồ sơ của bạn. Khi đã có căn, bạn đóng cọc
+                  Đợt 1 rồi mới ký hợp đồng.
+                </Text>
+                <TouchableOpacity
+                  style={styles.lotteryInfoBtn}
+                  onPress={() =>
+                    navigation.navigate('LotteryResult', {
+                      projectId: detail.projectId,
+                      projectName: detail.projectName,
+                      applicationId: detail.applicationId,
+                    })
+                  }
+                  activeOpacity={0.85}
+                >
+                  <Feather name="award" size={16} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.lotteryInfoBtnText}>Xem kết quả bốc thăm</Text>
+                </TouchableOpacity>
+              </View>
             )}
 
             {detail.applicationStatus === 'LOTTERY_LOST' && (

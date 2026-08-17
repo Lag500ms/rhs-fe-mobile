@@ -54,6 +54,12 @@ export function getCitizenNextStep(
         body: 'Chờ chủ đầu tư cấp nhà trực tiếp hoặc tổ chức bốc thăm rồi cấp suất. Sau khi có suất, bạn sẽ đóng cọc.',
         tone: 'info',
       };
+    case 'LOTTERY_WON':
+      return {
+        title: 'Đã trúng suất — chờ chủ đầu tư chọn căn',
+        body: 'Bạn đã có suất. Chủ đầu tư sẽ gán căn hộ cụ thể. Khi đã có căn, bạn đóng cọc Đợt 1 rồi mới ký hợp đồng.',
+        tone: 'info',
+      };
     case 'DEPOSIT_PENDING':
       return {
         title: 'Việc tiếp theo: đóng tiền cọc',

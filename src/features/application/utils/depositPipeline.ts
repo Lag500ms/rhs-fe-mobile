@@ -6,8 +6,9 @@ export function isDepositPaymentSettled(paymentStatus?: string | null): boolean 
 }
 
 /**
- * Sau cấp nhà BE thường để CONTRACT_PENDING (chưa cọc).
- * Chỉ bắt đóng cọc khi đã có căn (để có giá Đợt 1).
+ * Sau cấp nhà BE để DEPOSIT_PENDING (đã có căn).
+ * LOTTERY_WON = trúng suất chưa có căn → chưa đóng cọc.
+ * CONTRACT_PENDING còn gặp ở dữ liệu cũ khi chưa cọc.
  */
 export function needsDepositBeforeContract(opts: {
   applicationStatus: string;

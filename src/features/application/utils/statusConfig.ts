@@ -61,6 +61,12 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     textColor: '#E65100',
     dotColor: '#FF9800',
   },
+  LOTTERY_WON: {
+    label: 'Đã trúng suất — chờ cấp căn',
+    bg: '#E8F5E9',
+    textColor: '#1B5E20',
+    dotColor: '#2E7D32',
+  },
   CONTRACT_PENDING: {
     label: 'Đã cấp suất — đóng cọc / ký HĐ',
     bg: '#E8EAF6',
@@ -181,6 +187,8 @@ export function getActionForStatus(status: string): StatusAction | null {
     case 'APPROVED':
     case 'APPROVED_BY_TIMEOUT':
       return { label: 'Chờ chốt suất / lịch bốc thăm', icon: 'radio', color: RHSColors.blue700 };
+    case 'LOTTERY_WON':
+      return { label: 'Chờ chủ đầu tư chọn căn', icon: 'home', color: RHSColors.green700 };
     case 'DEPOSIT_PENDING':
       return { label: 'Đóng tiền cọc', icon: 'credit-card', color: RHSColors.red600 };
     case 'CONTRACT_PENDING':

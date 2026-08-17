@@ -99,6 +99,11 @@ const NOTIFICATION_CONFIG: Record<
     color: RHSColors.green700,
     bg: RHSColors.green50,
   },
+  LOTTERY_WON: {
+    icon: 'trophy-outline',
+    color: RHSColors.green700,
+    bg: RHSColors.green50,
+  },
 };
 
 export const NotificationListScreen: React.FC = () => {
@@ -222,7 +227,7 @@ export const NotificationListScreen: React.FC = () => {
           const match = projectId
             ? items.find((a) => a.projectId === projectId)
             : items.find((a) =>
-                ['APPROVED', 'APPROVED_BY_TIMEOUT', 'PROPOSED', 'CONTRACT_PENDING'].includes(
+                ['APPROVED', 'APPROVED_BY_TIMEOUT', 'PROPOSED', 'LOTTERY_WON', 'DEPOSIT_PENDING', 'CONTRACT_PENDING'].includes(
                   String(a.applicationStatus || '').toUpperCase(),
                 ),
               ) ?? items[0];
@@ -246,6 +251,7 @@ export const NotificationListScreen: React.FC = () => {
         type === 'APPLICATION_APPROVED' ||
         type === 'APPLICATION_REJECTED' ||
         type === 'CONTRACT_PENDING' ||
+        type === 'LOTTERY_WON' ||
         type === 'DEPOSIT_PAID' ||
         type === 'CONTRACT_SIGNED' ||
         type === 'NEED_MORE_DOCUMENTS' ||
