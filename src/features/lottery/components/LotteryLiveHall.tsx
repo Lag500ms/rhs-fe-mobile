@@ -7,7 +7,6 @@ import {
   LOTTERY_RESULT_LABEL,
   LOTTERY_SESSION_LABEL,
   isWonLotteryResult,
-  unitPendingLabel,
   type LiveDrawResult,
   type LotteryLiveState,
 } from '../types/lottery';
@@ -125,7 +124,7 @@ export const LotteryLiveHall: React.FC<Props> = ({
         <Card style={styles.mineWon} accentColor={RHSColors.green600}>
           <Text style={styles.mineTitle}>Bạn đã trúng suất</Text>
           <Text style={styles.mineBody}>
-            {unitPendingLabel(mine?.slotCode)}. Khi có mã căn, mở hồ sơ để ký hợp đồng.
+            Chủ dự án sẽ chọn căn hộ cụ thể. Khi đã có căn, mở hồ sơ để đóng cọc và ký hợp đồng.
           </Text>
         </Card>
       )}
@@ -176,14 +175,13 @@ export const LotteryLiveHall: React.FC<Props> = ({
           <Text style={[styles.th, styles.colStt]}>STT</Text>
           <Text style={[styles.th, styles.colCode]}>Mã HS</Text>
           <Text style={[styles.th, styles.colName]}>Họ tên</Text>
-          <Text style={[styles.th, styles.colUnit]}>Mã căn</Text>
+          <Text style={[styles.th, styles.colUnit]}>Kết quả</Text>
         </View>
         {winners.length === 0 ? (
           <Text style={styles.muted}>Chưa có hồ sơ trúng trong phiên này.</Text>
         ) : (
           winners.map((w, i) => {
             const isMine = !!applicationId && w.applicationId === applicationId;
-            const unit = (w.slotCode ?? '').trim();
             return (
               <View key={`${w.applicationId}-${i}`} style={[styles.tr, isMine && styles.trMine]}>
                 <Text style={[styles.td, styles.colStt]}>{w.stt || i + 1}</Text>
@@ -194,11 +192,8 @@ export const LotteryLiveHall: React.FC<Props> = ({
                   {w.applicantName}
                   {isMine ? ' (Bạn)' : ''}
                 </Text>
-                <Text
-                  style={[styles.td, styles.colUnit, !unit && styles.pending]}
-                  numberOfLines={2}
-                >
-                  {unitPendingLabel(w.slotCode)}
+                <Text style={[styles.td, styles.colUnit, styles.pending]} numberOfLines={2}>
+                  Trúng suất
                 </Text>
               </View>
             );
@@ -266,8 +261,7 @@ function LatestResultCard({ result, mine }: { result: LiveDrawResult; mine: bool
       <Text style={styles.latestName}>{result.applicantName}</Text>
       <Text style={styles.latestResult}>
         {LOTTERY_RESULT_LABEL[result.result] ?? result.result}
-        {' · '}
-        {unitPendingLabel(result.slotCode)}
+        {isWonLotteryResult(result.result) ? ' · Chờ chủ dự án chọn căn' : ''}
       </Text>
     </View>
   );

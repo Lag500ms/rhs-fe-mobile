@@ -70,6 +70,7 @@ export const LotteryLiveScreen = () => {
               otp={session.otp}
               setOtp={session.setOtp}
               joining={session.joining}
+              revealedCode={session.schedule?.joinCode}
               onJoin={() => void session.handleJoin()}
             />
           </>

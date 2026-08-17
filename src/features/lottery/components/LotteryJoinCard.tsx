@@ -2,24 +2,32 @@ import React from 'react';
 import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { GradientButton } from '../../../components/ui';
 import { RHSColors, borderRadius, spacing, typography } from '../../../lib/theme';
+import { JoinCodeReveal } from './JoinCodeReveal';
 
 export function LotteryJoinCard({
   otp,
   setOtp,
   joining,
   onJoin,
+  revealedCode,
 }: {
   otp: string;
   setOtp: (v: string) => void;
   joining: boolean;
   onJoin: () => void;
+  revealedCode?: string | null;
 }) {
   return (
     <View style={styles.joinCard}>
       <Text style={styles.joinHint}>
-        Nhập mã xác thực 6 số từ thông báo sau khi Sở duyệt lịch. Vào sảnh để theo dõi — không tự bốc
-        thăm.
+        Mã 6 số vào sảnh (OTP) được cấp khi Sở duyệt lịch / khi phiên Live mở. Vào sảnh để theo dõi —
+        không tự bốc thăm.
       </Text>
+      {!!revealedCode && (
+        <View style={{ marginBottom: 12 }}>
+          <JoinCodeReveal code={revealedCode} />
+        </View>
+      )}
       <TextInput
         style={styles.otpInput}
         value={otp}

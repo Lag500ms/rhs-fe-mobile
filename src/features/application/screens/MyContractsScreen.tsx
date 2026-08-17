@@ -148,7 +148,7 @@ export const MyContractsScreen = () => {
         </View>
 
         <View style={styles.ctaRow}>
-          <Text style={styles.cta}>Xem / ký hợp đồng · thanh toán</Text>
+          <Text style={styles.cta}>Xem chi tiết · đóng cọc / ký HĐ</Text>
           <Feather name="chevron-right" size={18} color={RHSColors.blue700} />
         </View>
       </Card>

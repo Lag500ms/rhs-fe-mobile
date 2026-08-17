@@ -19,6 +19,7 @@ import {
   type LotteryScheduleDetail,
 } from '../types/lottery';
 import { getToken } from '../../../lib/tokenStorage';
+import { JoinCodeReveal } from '../components/JoinCodeReveal';
 
 type RouteParams = {
   projectId: string;
@@ -162,13 +163,18 @@ export const LotteryScheduleScreen = () => {
                       schedule.lotteryApprovedAt ? ` · ${formatDateTime(schedule.lotteryApprovedAt)}` : ''
                     }`}
                   />
-                  <Row icon="home" label="Số căn phân bổ" value={String(schedule.availableUnits)} />
+                  <Row icon="home" label="Số suất phân bổ" value={String(schedule.availableUnits)} />
                   <Row
                     icon="users"
                     label="Hồ sơ đủ điều kiện"
                     value={String(schedule.totalEligibleParticipants)}
                   />
                 </View>
+                {!!schedule.joinCode && (
+                  <View style={{ marginBottom: spacing.md }}>
+                    <JoinCodeReveal code={schedule.joinCode} />
+                  </View>
+                )}
               </>
             ) : (
               <View style={styles.card}>
@@ -193,7 +199,7 @@ export const LotteryScheduleScreen = () => {
               <Feather name="info" size={16} color={RHSColors.blue700} />
               <Text style={styles.hintText}>
                 {schedule.isLotteryApproved
-                  ? 'Khi đến giờ, vào sảnh chờ để tham gia. Kết quả do Sở Xây dựng công bố sau khi phiên kết thúc.'
+                  ? 'Khi đến giờ, dùng mã vào sảnh bên trên để tham gia. Kết quả do Sở Xây dựng công bố sau khi phiên kết thúc.'
                   : 'Lịch do chủ đầu tư đề xuất chỉ có hiệu lực sau khi Sở Xây dựng phê duyệt.'}
               </Text>
             </View>

@@ -19,6 +19,9 @@ import { ScreenHeader } from '../../../components/ScreenHeader';
 import { RHSColors, borderRadius, spacing, typography } from '../../../lib/theme';
 import { paymentApi } from '../api/paymentApi';
 import { InstallmentPhase, InstallmentSummary } from '../types/payment';
+import { housingApplicationApi } from '../../application/api/housingApplicationApi';
+import { isPaymentSuccessStatus } from '../../../lib/depositDeadline';
+import { isContractSignedForInstallments } from '../../application/utils/depositPipeline';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -104,6 +107,25 @@ function isLocked(status: string) {
   return String(status || '').toUpperCase() === 'LOCKED';
 }
 
+/**
+ * BE từng đánh Đợt 1 = PAID khi hồ sơ CONTRACT_PENDING (chưa VNPay).
+ * Đợt 2 chỉ được trả sau khi ký HĐ.
+ */
+function pipelineStatus(
+  phase: InstallmentPhase,
+  appStatus: string | null,
+  depositPaid: boolean,
+): string {
+  const st = String(phase.status || '').toUpperCase();
+  if (phase.phaseOrder === 1 && !depositPaid && st === 'PAID') {
+    return 'PENDING';
+  }
+  if (phase.phaseOrder === 2 && (!depositPaid || !isContractSignedForInstallments(appStatus))) {
+    return 'LOCKED';
+  }
+  return st;
+}
+
 /** Chỉ số đợt “đang làm” — ưu tiên đến hạn; không thì đợt chưa trả đầu tiên. */
 function resolveCurrentIndex(phases: InstallmentPhase[]): number {
   const payableIdx = phases.findIndex((p) => isPayable(p.status));
@@ -126,13 +148,27 @@ export const PaymentScheduleScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [payingId, setPayingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [appStatus, setAppStatus] = useState<string | null>(null);
+  const [depositPaid, setDepositPaid] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     try {
-      const data = await paymentApi.getInstallments(applicationId);
+      const [data, app, payRes] = await Promise.all([
+        paymentApi.getInstallments(applicationId),
+        housingApplicationApi.getApplicationDetail(applicationId).catch(() => null),
+        paymentApi.getMyPayments().catch(() => null),
+      ]);
       setSummary(data);
+      setAppStatus(app?.applicationStatus ?? null);
+      const paid = !!(
+        payRes?.success &&
+        payRes.data?.some(
+          (p) => p.applicationId === applicationId && isPaymentSuccessStatus(p.status),
+        )
+      );
+      setDepositPaid(paid);
     } catch (e: any) {
       const status = e?.response?.status;
       if (status === 404) {
@@ -154,8 +190,18 @@ export const PaymentScheduleScreen = () => {
 
   const phases = useMemo(() => {
     if (!summary?.phases?.length) return [];
-    return summary.phases.slice().sort((a, b) => a.phaseOrder - b.phaseOrder);
-  }, [summary]);
+    return summary.phases
+      .slice()
+      .sort((a, b) => a.phaseOrder - b.phaseOrder)
+      .map((p) => {
+        const status = pipelineStatus(p, appStatus, depositPaid);
+        return {
+          ...p,
+          status,
+          paidAt: status === 'PAID' ? p.paidAt : null,
+        };
+      });
+  }, [summary, appStatus, depositPaid]);
 
   const currentIdx = useMemo(() => resolveCurrentIndex(phases), [phases]);
   const current = phases[currentIdx];
@@ -172,7 +218,7 @@ export const PaymentScheduleScreen = () => {
       Alert.alert(
         'Chưa tới lúc đóng',
         phase.phaseOrder === 2
-          ? 'Khoản này mở sau khi bạn ký hợp đồng.'
+          ? 'Khoản này mở sau khi bạn đóng cọc Đợt 1 và ký hợp đồng.'
           : 'Khoản này mở khi chủ đầu tư thông báo theo tiến độ xây dựng.',
       );
       return;
@@ -180,7 +226,9 @@ export const PaymentScheduleScreen = () => {
     if (st !== 'PENDING' && st !== 'OVERDUE') return;
     setPayingId(phase.id);
     try {
-      const result = await paymentApi.payInstallment(phase.id);
+      const result = phase.phaseOrder === 1
+        ? await paymentApi.createPaymentUrl(applicationId)
+        : await paymentApi.payInstallment(phase.id);
       if (result.success && result.data?.paymentUrl) {
         navigation.navigate('PaymentWebView', {
           paymentUrl: result.data.paymentUrl,

@@ -141,10 +141,9 @@ export const LOTTERY_RESULT_LABEL: Record<string, string> = {
   PENDING: 'Chờ bốc thăm',
 };
 
-/** Live chỉ công bố hồ sơ; mã căn trống cho đến khi CĐT gán. */
-export function unitPendingLabel(slotCode?: string | null): string {
-  const s = (slotCode ?? '').trim();
-  return s ? s : 'Chờ CĐT chọn căn';
+/** Phiên bốc chỉ công bố suất; căn hộ do chủ dự án gán sau — không hiện mã căn. */
+export function unitPendingLabel(_slotCode?: string | null): string {
+  return 'Trúng suất — chờ chủ dự án chọn căn';
 }
 
 export function isWonLotteryResult(result?: string | null): boolean {

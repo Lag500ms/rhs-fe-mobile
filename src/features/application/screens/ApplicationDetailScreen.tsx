@@ -20,6 +20,11 @@ import { getStatusConfig } from '../utils/statusConfig';
 import { formatDate, formatDateTime } from '../utils/format';
 import { ApplicationTimeline } from '../components/ApplicationTimeline';
 import { getCitizenNextStep } from '../utils/citizenNextStep';
+import {
+  canSignAfterDeposit,
+  isDepositPaymentSettled,
+  needsDepositBeforeContract,
+} from '../utils/depositPipeline';
 import { paymentApi } from '../../payment/api/paymentApi';
 import { PaymentInfo } from '../../payment/types/payment';
 import {
@@ -30,6 +35,8 @@ import {
 } from '../../../lib/depositDeadline';
 import { lotteryApi } from '../../lottery/api/lotteryApi';
 import type { LotteryScheduleDetail } from '../../lottery/types/lottery';
+import { JoinCodeReveal } from '../../lottery/components/JoinCodeReveal';
+import { rememberLotteryJoinCode } from '../../lottery/api/joinCodeCache';
 import {
   hasLotterySession,
   isLotteryFinishedPhase,
@@ -171,7 +178,11 @@ export const ApplicationDetailScreen = () => {
     (async () => {
       try {
         const schedule = await lotteryApi.getSchedule(projectId);
-        if (!cancelled) setLotterySchedule(schedule);
+        if (!cancelled) {
+          setLotterySchedule(schedule);
+          const code = schedule.joinCode?.trim();
+          if (code) rememberLotteryJoinCode(projectId, code);
+        }
       } catch {
         if (!cancelled) setLotterySchedule(null);
       } finally {
@@ -226,6 +237,25 @@ export const ApplicationDetailScreen = () => {
     }
   }, [detail, navigation]);
 
+  const hasApartment = !!(detail?.apartmentId || detail?.apartmentUnitName);
+  const depositPaid = isDepositPaymentSettled(existingPayment?.status);
+  const needsDeposit = !!(
+    detail &&
+    needsDepositBeforeContract({
+      applicationStatus: detail.applicationStatus,
+      hasApartment,
+      depositPaid,
+    })
+  );
+  const canSignNow = !!(
+    detail &&
+    canSignAfterDeposit({
+      applicationStatus: detail.applicationStatus,
+      hasApartment,
+      depositPaid,
+    })
+  );
+
   const handleViewContract = useCallback(() => {
     const appId = detail?.applicationId;
     const name = detail?.projectName;
@@ -240,16 +270,22 @@ export const ApplicationDetailScreen = () => {
       !!paymentPdfUrl ||
       !!paymentSlotCode;
     if (appId && hasContract) {
-      const hasApartment = !!(detail.apartmentId || detail.apartmentUnitName);
+      if (needsDeposit) {
+        Alert.alert(
+          'Cần đóng cọc trước',
+          'Đóng tiền cọc Đợt 1 trước khi ký hợp đồng. Đợt 2 chỉ mở sau khi ký.',
+        );
+        return;
+      }
       navigation.navigate('ContractViewer', {
         applicationId: appId,
         title: name ? `Hợp đồng - ${name}` : 'Hợp đồng mua bán NOXH',
-        canSign: status === 'CONTRACT_PENDING' && hasApartment,
+        canSign: canSignNow,
       });
     } else {
       Alert.alert('Không có hợp đồng', 'Hợp đồng chưa được tạo. Vui lòng thử lại sau.');
     }
-  }, [paymentPdfUrl, paymentSlotCode, navigation, detail]);
+  }, [paymentPdfUrl, paymentSlotCode, navigation, detail, needsDeposit, canSignNow]);
 
   const handleHousehold = useCallback(() => {
     if (!detail) return;
@@ -443,8 +479,8 @@ export const ApplicationDetailScreen = () => {
       return actions;
     }
 
-    // Trúng/cấp suất → đóng cọc trước khi ký
-    if (status === 'DEPOSIT_PENDING') {
+    // Trúng/cấp suất → đóng cọc trước khi ký (DEPOSIT_PENDING hoặc CONTRACT_PENDING chưa cọc)
+    if (status === 'DEPOSIT_PENDING' || needsDeposit) {
       const isPending = String(existingPayment?.status || '').toLowerCase() === 'pending';
       return [
         {
@@ -466,19 +502,20 @@ export const ApplicationDetailScreen = () => {
 
     // Sau cọc → ký HĐ
     if (status === 'CONTRACT_PENDING') {
-      const hasApartment = !!(detail?.apartmentId || detail?.apartmentUnitName);
       return [
         {
-          label: hasApartment ? 'Ký hợp đồng' : 'Chờ cấp căn để ký',
+          label: hasApartment ? 'Ký hợp đồng' : 'Chờ cấp căn',
           icon: 'file-text',
           onPress: hasApartment
             ? handleViewContract
             : () =>
                 Alert.alert(
                   'Chưa được cấp căn',
-                  'Chủ đầu tư chưa gán căn cụ thể. Bạn có thể thử lại sau khi đã được cấp căn.',
+                  'Chủ đầu tư chưa gán căn cụ thể. Bạn đóng cọc và ký sau khi đã được cấp căn.',
                 ),
           variant: hasApartment ? 'primary' : 'secondary',
+          disabled: checkingPayment,
+          loading: checkingPayment,
         },
         {
           label: 'Xem lịch thanh toán',
@@ -657,7 +694,9 @@ export const ApplicationDetailScreen = () => {
   };
 
   const bottomActions = getBottomActions();
-  const statusConfig = detail ? getStatusConfig(detail.applicationStatus) : null;
+  const statusConfig = detail
+    ? getStatusConfig(detail.applicationStatus, { hasApartment, depositPaid })
+    : null;
 
   const requestNote = detail?.reviewHistories
     ?.filter((h) => h.action === 'REQUEST_MORE_DOCUMENTS' && h.note)
@@ -672,7 +711,8 @@ export const ApplicationDetailScreen = () => {
   const nextStep = detail
     ? getCitizenNextStep(detail.applicationStatus, {
         needMoreNote: requestNote,
-        hasApartment: !!(detail.apartmentId || detail.apartmentUnitName),
+        hasApartment,
+        depositPaid,
       })
     : null;
 
@@ -734,6 +774,7 @@ export const ApplicationDetailScreen = () => {
               <ApplicationTimeline
                 currentStatus={detail.applicationStatus}
                 needMoreNote={requestNote}
+                depositPaid={depositPaid}
               />
             </View>
 
@@ -819,6 +860,11 @@ export const ApplicationDetailScreen = () => {
                   Hồ sơ đã được duyệt. Chủ đầu tư sẽ cấp nhà trực tiếp nếu đủ căn, hoặc tổ chức bốc
                   thăm rồi cấp suất. Khi đã có suất, bạn đóng tiền cọc rồi ký hợp đồng.
                 </Text>
+                {!!lotterySchedule?.joinCode && (
+                  <View style={{ marginTop: spacing.md }}>
+                    <JoinCodeReveal code={lotterySchedule.joinCode} />
+                  </View>
+                )}
                 <TouchableOpacity
                   style={styles.lotteryInfoBtn}
                   onPress={() =>
@@ -838,7 +884,7 @@ export const ApplicationDetailScreen = () => {
               </View>
             )}
 
-            {detail.applicationStatus === 'DEPOSIT_PENDING' && (
+            {(detail.applicationStatus === 'DEPOSIT_PENDING' || needsDeposit) && (
               <DepositPendingPaymentContent
                 existingPayment={existingPayment}
                 checkingPayment={checkingPayment}
@@ -846,13 +892,15 @@ export const ApplicationDetailScreen = () => {
               />
             )}
 
-            {detail.applicationStatus === 'CONTRACT_PENDING' && (
+            {detail.applicationStatus === 'CONTRACT_PENDING' && !needsDeposit && (
               <View style={styles.lotteryInfoCard}>
                 <View style={styles.lotteryInfoHead}>
                   <Feather name="file-text" size={18} color={RHSColors.blue700} />
                   <Text style={styles.lotteryInfoTitle}>
-                    {detail.apartmentId || detail.apartmentUnitName
-                      ? 'Sẵn sàng ký hợp đồng'
+                    {hasApartment
+                      ? depositPaid
+                        ? 'Sẵn sàng ký hợp đồng'
+                        : 'Chờ cấp căn để đóng cọc'
                       : 'Chờ chủ đầu tư chọn căn'}
                   </Text>
                 </View>
@@ -860,8 +908,8 @@ export const ApplicationDetailScreen = () => {
                   {detail.apartmentUnitName
                     ? `Bạn được cấp căn ${detail.apartmentUnitName}${
                         detail.apartmentArea ? ` (${detail.apartmentArea}m²)` : ''
-                      }. Hãy đọc và ký hợp đồng mua bán. Sau khi ký, các khoản còn lại sẽ mở trên lịch thanh toán.`
-                    : 'Bạn đã trúng suất. Chủ đầu tư sẽ gán căn hộ cụ thể — khi đã có mã căn, bạn mới ký hợp đồng được.'}
+                      }. Đã đóng cọc Đợt 1. Hãy đọc và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.`
+                    : 'Bạn đã trúng suất. Chủ đầu tư sẽ gán căn hộ cụ thể — khi đã có mã căn, bạn đóng cọc Đợt 1 rồi mới ký hợp đồng.'}
                 </Text>
               </View>
             )}

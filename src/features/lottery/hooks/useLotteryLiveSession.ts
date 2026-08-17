@@ -8,7 +8,6 @@ import {
 import {
   LOTTERY_RESULT_LABEL,
   LOTTERY_SESSION_LABEL,
-  unitPendingLabel,
   type LiveDrawResult,
   type LotteryLiveState,
   type LotteryScheduleDetail,
@@ -17,7 +16,7 @@ import {
 function logLineFromDraw(r: LiveDrawResult): string {
   const code = r.applicationCode || r.applicationId.slice(0, 8).toUpperCase();
   const result = LOTTERY_RESULT_LABEL[r.result] ?? r.result;
-  return `${code} · ${r.applicantName || 'Hồ sơ'} · ${result} · ${unitPendingLabel(r.slotCode)}`;
+  return `${code} · ${r.applicantName || 'Hồ sơ'} · ${result}`;
 }
 
 export function useLotteryLiveSession(projectId: string, applicationId?: string) {
@@ -62,15 +61,22 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
   );
 
   const loadSchedule = useCallback(async () => {
-    if (!projectId) return;
+    if (!projectId) return null;
     try {
       const data = await lotteryApi.getSchedule(projectId);
       setSchedule(data);
       if (data.sessionStatus) setSessionStatus(data.sessionStatus);
       if (typeof data.sxdOnlineCount === 'number') setSxdCount(data.sxdOnlineCount);
       if (typeof data.lobbyCount === 'number') setLobbyCount(data.lobbyCount);
+      const code = data.joinCode?.trim();
+      if (code) {
+        rememberLotteryJoinCode(projectId, code);
+        setOtp((prev) => (prev.length >= 6 ? prev : code));
+      }
+      return data;
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Không tải được lịch.');
+      return null;
     }
   }, [projectId]);
 
@@ -98,7 +104,7 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
       if (!projectId || joiningRef.current) return false;
       const trimmed = code.trim();
       if (trimmed.length < 6) {
-        setError('Nhập mã xác thực 6 số từ thông báo sau khi Sở duyệt lịch.');
+        setError('Nhập mã xác thực 6 số vào sảnh (hiện trên thông báo hoặc lịch bốc thăm).');
         return false;
       }
       joiningRef.current = true;
@@ -186,12 +192,15 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
 
   useEffect(() => {
     cancelledRef.current = false;
-    void loadSchedule();
-    const remembered = getRememberedLotteryJoinCode(projectId);
-    if (remembered) {
-      setOtp(remembered);
-      void joinWithCode(remembered);
-    }
+    void (async () => {
+      const data = await loadSchedule();
+      if (cancelledRef.current) return;
+      const code =
+        getRememberedLotteryJoinCode(projectId) || data?.joinCode?.trim() || '';
+      if (!code) return;
+      setOtp(code);
+      void joinWithCode(code);
+    })();
     return () => {
       cancelledRef.current = true;
       joiningRef.current = false;

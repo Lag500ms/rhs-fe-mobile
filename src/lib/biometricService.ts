@@ -1,6 +1,6 @@
 import * as LocalAuthentication from 'expo-local-authentication';
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storageDelete, storageGet, storageSet } from './secureStorage';
 
 const BIOMETRIC_ENABLED_KEY = 'isBiometricEnabled';
 const SECURE_REFRESH_TOKEN_KEY = 'secureRefreshToken';
@@ -103,8 +103,8 @@ export async function enableBiometric(
       return { success: false, error: 'Xác thực sinh trắc học không thành công.' };
     }
 
-    await SecureStore.setItemAsync(SECURE_REFRESH_TOKEN_KEY, refreshToken);
-    await SecureStore.setItemAsync(SECURE_EMAIL_KEY, email);
+    await storageSet(SECURE_REFRESH_TOKEN_KEY, refreshToken);
+    await storageSet(SECURE_EMAIL_KEY, email);
     await AsyncStorage.setItem(BIOMETRIC_ENABLED_KEY, 'true');
 
     return { success: true };
@@ -118,12 +118,12 @@ export async function enableBiometric(
  */
 export async function disableBiometric(): Promise<void> {
   try {
-    await SecureStore.deleteItemAsync(SECURE_REFRESH_TOKEN_KEY);
+    await storageDelete(SECURE_REFRESH_TOKEN_KEY);
   } catch {
-    // SecureStore may fail — still clear the flag
+    // storage may fail — still clear the flag
   }
   try {
-    await SecureStore.deleteItemAsync(SECURE_EMAIL_KEY);
+    await storageDelete(SECURE_EMAIL_KEY);
   } catch {
     // ignore
   }
@@ -141,8 +141,8 @@ export async function disableBiometric(): Promise<void> {
 export async function getStoredBiometricData(): Promise<BiometricStoredData | null> {
   try {
     const [token, email] = await Promise.all([
-      SecureStore.getItemAsync(SECURE_REFRESH_TOKEN_KEY),
-      SecureStore.getItemAsync(SECURE_EMAIL_KEY),
+      storageGet(SECURE_REFRESH_TOKEN_KEY),
+      storageGet(SECURE_EMAIL_KEY),
     ]);
     if (!token || !email) return null;
     return { email, refreshToken: token };
@@ -171,7 +171,7 @@ export async function updateStoredRefreshToken(newRefreshToken: string): Promise
   try {
     const enabled = await isBiometricEnabled();
     if (enabled) {
-      await SecureStore.setItemAsync(SECURE_REFRESH_TOKEN_KEY, newRefreshToken);
+      await storageSet(SECURE_REFRESH_TOKEN_KEY, newRefreshToken);
     }
   } catch {
     // ignore

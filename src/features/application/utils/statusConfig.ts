@@ -62,7 +62,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: '#FF9800',
   },
   CONTRACT_PENDING: {
-    label: 'Đã trúng — chờ căn / ký HĐ',
+    label: 'Đã cấp suất — đóng cọc / ký HĐ',
     bg: '#E8EAF6',
     textColor: '#283593',
     dotColor: '#3F51B5',
@@ -117,8 +117,32 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
   },
 };
 
-export function getStatusConfig(status: string): StatusConfig {
+export function getStatusConfig(
+  status: string,
+  opts?: { hasApartment?: boolean; depositPaid?: boolean },
+): StatusConfig {
   const key = (status || '').trim().toUpperCase();
+  if (key === 'CONTRACT_PENDING') {
+    if (opts?.hasApartment === false) {
+      return {
+        label: 'Đã trúng — chờ cấp căn',
+        bg: '#E8EAF6',
+        textColor: '#283593',
+        dotColor: '#3F51B5',
+      };
+    }
+    if (opts?.depositPaid === false) {
+      return STATUS_CONFIG.DEPOSIT_PENDING;
+    }
+    if (opts?.depositPaid === true) {
+      return {
+        label: 'Chờ ký hợp đồng',
+        bg: '#E8EAF6',
+        textColor: '#283593',
+        dotColor: '#3F51B5',
+      };
+    }
+  }
   return STATUS_CONFIG[key] || {
     label: 'Trạng thái không xác định',
     bg: '#F5F5F5',
@@ -160,7 +184,7 @@ export function getActionForStatus(status: string): StatusAction | null {
     case 'DEPOSIT_PENDING':
       return { label: 'Đóng tiền cọc', icon: 'credit-card', color: RHSColors.red600 };
     case 'CONTRACT_PENDING':
-      return { label: 'Xem hồ sơ', icon: 'file-text', color: RHSColors.blue700 };
+      return { label: 'Đóng cọc / ký hợp đồng', icon: 'credit-card', color: RHSColors.red600 };
     case 'CONTRACT_SIGNED':
     case 'INSTALLMENT_IN_PROGRESS':
     case 'DEPOSIT_PAID':

@@ -28,6 +28,12 @@ import {
 } from '../../../lib/theme';
 import { housingApplicationApi } from '../../application/api/housingApplicationApi';
 import { EmptyStateIllustration } from '../../../components/EmptyStateIllustration';
+import { JoinCodeReveal } from '../../lottery/components/JoinCodeReveal';
+import {
+  extractLotteryJoinCode,
+  stripJoinCodeFromContent,
+} from '../../lottery/utils/joinCode';
+import { rememberLotteryJoinCode } from '../../lottery/api/joinCodeCache';
 
 const NOTIFICATION_CONFIG: Record<
   string,
@@ -85,6 +91,11 @@ const NOTIFICATION_CONFIG: Record<
   },
   LOTTERY_RESULT_PUBLISHED: {
     icon: 'trophy-outline',
+    color: RHSColors.green700,
+    bg: RHSColors.green50,
+  },
+  CONTRACT_PENDING: {
+    icon: 'home-outline',
     color: RHSColors.green700,
     bg: RHSColors.green50,
   },
@@ -199,21 +210,31 @@ export const NotificationListScreen: React.FC = () => {
       }
       const type = notification.notificationType;
       if (type === 'LOTTERY_SCHEDULED' || type === 'LOTTERY_RESULT_PUBLISHED') {
+        const joinCode = extractLotteryJoinCode(notification.content);
         const projectMatch = notification.content?.match(
           /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
         );
-        if (projectMatch) {
-          const projectId = projectMatch[0];
-          let applicationId: string | undefined;
-          try {
-            const mine = await housingApplicationApi.getMyApplications();
-            const match = (mine.items || []).find((a) => a.projectId === projectId);
-            applicationId = match?.applicationId;
-          } catch {
-            /* optional */
-          }
+        let projectId = projectMatch?.[0];
+        let applicationId: string | undefined;
+        try {
+          const mine = await housingApplicationApi.getMyApplications();
+          const items = mine.items || [];
+          const match = projectId
+            ? items.find((a) => a.projectId === projectId)
+            : items.find((a) =>
+                ['APPROVED', 'APPROVED_BY_TIMEOUT', 'PROPOSED', 'CONTRACT_PENDING'].includes(
+                  String(a.applicationStatus || '').toUpperCase(),
+                ),
+              ) ?? items[0];
+          projectId = match?.projectId || projectId;
+          applicationId = match?.applicationId;
+        } catch {
+          /* optional */
+        }
+        if (projectId && joinCode) rememberLotteryJoinCode(projectId, joinCode);
+        if (projectId) {
           navigation.navigate('Applications', {
-            screen: type === 'LOTTERY_RESULT_PUBLISHED' ? 'LotteryResult' : 'LotterySchedule',
+            screen: type === 'LOTTERY_RESULT_PUBLISHED' ? 'LotteryResult' : 'LotteryLobby',
             params: { projectId, applicationId },
           });
           return;
@@ -224,6 +245,7 @@ export const NotificationListScreen: React.FC = () => {
       if (
         type === 'APPLICATION_APPROVED' ||
         type === 'APPLICATION_REJECTED' ||
+        type === 'CONTRACT_PENDING' ||
         type === 'DEPOSIT_PAID' ||
         type === 'CONTRACT_SIGNED' ||
         type === 'NEED_MORE_DOCUMENTS' ||
@@ -246,6 +268,11 @@ export const NotificationListScreen: React.FC = () => {
       const formattedDate = item.createdAt
         ? new Date(item.createdAt).toLocaleString('vi-VN')
         : '';
+      const isLotteryNotif =
+        item.notificationType === 'LOTTERY_SCHEDULED' ||
+        item.notificationType === 'LOTTERY_RESULT_PUBLISHED';
+      const joinCode = extractLotteryJoinCode(item.content);
+      const message = joinCode ? stripJoinCodeFromContent(item.content) : item.content;
 
       return (
         <TouchableOpacity
@@ -261,16 +288,24 @@ export const NotificationListScreen: React.FC = () => {
             <View style={styles.titleRow}>
               <Text
                 style={[styles.itemTitle, !item.isRead && styles.unreadTitle]}
-                numberOfLines={1}
+                numberOfLines={2}
               >
                 {item.title}
               </Text>
               {!item.isRead && <View style={styles.unreadDot} />}
             </View>
 
-            <Text style={styles.message} numberOfLines={2}>
-              {item.content}
-            </Text>
+            {!!message && (
+              <Text style={styles.message} numberOfLines={joinCode || isLotteryNotif ? 6 : 3}>
+                {message}
+              </Text>
+            )}
+
+            {!!joinCode && (
+              <View onStartShouldSetResponder={() => true}>
+                <JoinCodeReveal code={joinCode} compact />
+              </View>
+            )}
 
             <Text style={styles.timestamp}>{formattedDate}</Text>
           </View>

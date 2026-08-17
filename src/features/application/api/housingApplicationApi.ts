@@ -37,7 +37,8 @@ export const housingApplicationApi = {
 
   getMyApplications: async (): Promise<PagedResponse<ApplicationSummary>> => {
     const response = await apiClient.get<PagedResponse<ApplicationSummary>>(
-      '/housing-applications/my'
+      '/housing-applications/my',
+      { params: { pageIndex: 1, pageSize: 50 } },
     );
     return response.data;
   },

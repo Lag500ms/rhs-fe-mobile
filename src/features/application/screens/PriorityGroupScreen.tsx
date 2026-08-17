@@ -127,16 +127,86 @@ export const PriorityGroupScreen = () => {
         }
       }
 
-      navigation.replace('UploadDocuments', {
-        applicationId: result.applicationId,
-        projectName: draftPersonal.projectName,
-        applicationStatus: 'DRAFT',
-      });
+      goToUpload(result.applicationId, result.applicationStatus || 'DRAFT');
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.response?.data?.message || e?.message || 'Không tạo được hồ sơ.');
+      const status = e?.response?.status;
+      const data = e?.response?.data || {};
+      if (status === 409) {
+        await resumeExistingApplication(data);
+        return;
+      }
+      Alert.alert('Lỗi', data.message || e?.message || 'Không tạo được hồ sơ.');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const RESUMABLE = new Set(['DRAFT', 'NEED_MORE_DOCUMENTS']);
+
+  const goToUpload = (applicationId: string, applicationStatus?: string) => {
+    navigation.replace('UploadDocuments', {
+      applicationId,
+      projectName: draftPersonal.projectName,
+      applicationStatus: applicationStatus || 'DRAFT',
+    });
+  };
+
+  const resumeExistingApplication = async (data: Record<string, any>) => {
+    let appId: string | undefined;
+    let appStatus = '';
+
+    try {
+      const mine = await housingApplicationApi.getMyApplications();
+      const existing = (mine.items || []).find(
+        (a) =>
+          a.projectId === draftPersonal.projectId &&
+          a.applicationStatus !== 'REJECTED' &&
+          a.applicationStatus !== 'CANCELED' &&
+          a.applicationStatus !== 'CANCELLED',
+      );
+      appId = existing?.applicationId;
+      appStatus = String(existing?.applicationStatus || '').toUpperCase();
+    } catch {
+      /* keep empty */
+    }
+
+    if (appId && RESUMABLE.has(appStatus || 'DRAFT')) {
+      try {
+        await housingApplicationApi.updateApplication(appId, {
+          fullName: draftPersonal.fullName,
+          citizenId: draftPersonal.citizenId,
+          permanentAddress: draftPersonal.permanentAddress,
+          currentResidence: draftPersonal.currentResidence,
+          occupation: draftPersonal.occupation,
+          workPlace: draftPersonal.workPlace,
+          housingStatus: draftPersonal.housingStatus,
+          maritalStatus: draftPersonal.maritalStatus,
+          priorityGroup,
+          monthlyIncome: draftPersonal.monthlyIncome,
+          spouseMonthlyIncome: draftPersonal.spouseMonthlyIncome,
+          averageHousingAreaPerPerson: draftPersonal.averageHousingAreaPerPerson,
+        });
+      } catch {
+        /* vẫn vào bước giấy tờ với nháp cũ */
+      }
+      goToUpload(appId, appStatus || 'DRAFT');
+      return;
+    }
+
+    Alert.alert(
+      'Hồ sơ đã có',
+      data.message || 'Bạn đã có hồ sơ cho dự án này. Mở hồ sơ hiện có để tiếp tục, không tạo mới.',
+      appId
+        ? [
+            {
+              text: 'Xem hồ sơ',
+              onPress: () =>
+                navigation.replace('ApplicationDetail', { applicationId: appId }),
+            },
+            { text: 'Đóng', style: 'cancel' },
+          ]
+        : [{ text: 'Đồng ý' }],
+    );
   };
 
   if (loading) {

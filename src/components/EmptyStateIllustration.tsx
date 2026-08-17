@@ -20,9 +20,16 @@ type Props = {
   size?: number;
 };
 
+/** unDraw SVG dùng `class` (HTML). RN Web parse thành DOM React → cần bỏ / đổi className. */
+function sanitizeSvgXml(xml: string): string {
+  return xml
+    .replace(/\sclass="[^"]*"/g, '')
+    .replace(/\sclass='[^']*'/g, '');
+}
+
 /** unDraw illustrations (Katerina Limpitsouni) — accent #1565C0 */
 export function EmptyStateIllustration({ name, size = 220 }: Props) {
-  const xml = ILLUSTRATIONS[name];
+  const xml = sanitizeSvgXml(ILLUSTRATIONS[name]);
   return (
     <View style={[styles.wrap, { width: size, height: size * 0.92 }]}>
       <SvgXml xml={xml} width={size} height={size * 0.92} />

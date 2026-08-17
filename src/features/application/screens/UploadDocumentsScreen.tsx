@@ -191,6 +191,7 @@ export const UploadDocumentsScreen = () => {
         docKey,
         file.uri,
         file.name,
+        (file as { file?: File }).file,
       );
 
       setUploadedFiles((prev) => ({
@@ -203,8 +204,16 @@ export const UploadDocumentsScreen = () => {
         },
       }));
     } catch (e: any) {
+      const status = e?.response?.status;
       const msg = e?.response?.data?.message || e?.message || 'Không thể upload tài liệu.';
-      Alert.alert('Lỗi tải lên', msg);
+      if (status === 502) {
+        Alert.alert(
+          'Không lưu được file',
+          'Máy chủ chưa nhận được giấy tờ (lỗi 502). Hồ sơ nháp vẫn còn — hãy thử tải lại file. Đừng tạo hồ sơ mới.',
+        );
+      } else {
+        Alert.alert('Lỗi tải lên', msg);
+      }
     } finally {
       setUploading((prev) => ({ ...prev, [docKey]: false }));
     }
@@ -226,10 +235,20 @@ export const UploadDocumentsScreen = () => {
     }
   };
 
+  const leaveToMyApplications = () => {
+    if (isSupplementMode) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('MyApplications');
+  };
+
   const handleSaveAndBack = () => {
-    Alert.alert('Đã lưu', 'Giấy tờ của bạn đã được lưu. Bạn có thể tiếp tục chỉnh sửa sau.', [
-      { text: 'Đồng ý', onPress: () => navigation.goBack() },
-    ]);
+    Alert.alert(
+      'Đã lưu nháp',
+      'Hồ sơ vẫn còn trên hệ thống. Bạn mở lại từ «Hồ sơ của tôi» để tải giấy tờ, không tạo hồ sơ mới.',
+      [{ text: 'Đồng ý', onPress: leaveToMyApplications }],
+    );
   };
 
   const handleContinueToReview = () => {
@@ -244,7 +263,7 @@ export const UploadDocumentsScreen = () => {
       <SafeAreaView style={styles.safe}>
         <BrandBar />
         <View style={styles.whiteHeader}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <TouchableOpacity onPress={leaveToMyApplications} style={styles.backBtn}>
             <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
@@ -264,7 +283,7 @@ export const UploadDocumentsScreen = () => {
       <BrandBar />
 
       <View style={styles.whiteHeader}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={leaveToMyApplications} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>

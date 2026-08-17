@@ -48,7 +48,7 @@ const TERMINAL_SUCCESS = new Set([
   'FULLY_PAID',
 ]);
 
-function resolveIndex(status: string): number {
+function resolveIndex(status: string, depositPaid?: boolean): number {
   switch (status) {
     case 'DRAFT':
     case 'SUBMITTED':
@@ -65,6 +65,9 @@ function resolveIndex(status: string): number {
     case 'DEPOSIT_PENDING':
       return 4;
     case 'CONTRACT_PENDING':
+      // Sau cấp nhà BE để CONTRACT_PENDING trước khi cọc.
+      if (depositPaid !== true) return 4;
+      return 5;
     case 'CONTRACT_SIGNED':
     case 'INSTALLMENT_IN_PROGRESS':
     case 'DEPOSIT_PAID':
@@ -79,11 +82,13 @@ type Props = {
   currentStatus: string;
   /** Ghi chú CĐT khi yêu cầu bổ sung */
   needMoreNote?: string | null;
+  /** false = CONTRACT_PENDING nhưng chưa cọc Đợt 1 → đứng ở bước cọc */
+  depositPaid?: boolean;
 };
 
-export function ApplicationTimeline({ currentStatus, needMoreNote }: Props) {
+export function ApplicationTimeline({ currentStatus, needMoreNote, depositPaid }: Props) {
   const status = (currentStatus || '').toUpperCase();
-  const currentIdx = resolveIndex(status);
+  const currentIdx = resolveIndex(status, depositPaid);
   const isNeedMore = status === 'NEED_MORE_DOCUMENTS';
   const isFailed = TERMINAL_FAIL.has(status);
   const isComplete = TERMINAL_SUCCESS.has(status);

@@ -161,8 +161,7 @@ export const LotteryResultScreen = () => {
           {name}
           {mine ? ' (Bạn)' : ''}
         </Text>
-        {!!p.slotCode && <Text style={styles.podiumSlotCode}>{p.slotCode}</Text>}
-        {!p.slotCode && <Text style={styles.podiumSlotCode}>Chờ CĐT chọn căn</Text>}
+        <Text style={styles.podiumSlotCode}>Trúng suất</Text>
       </View>
     );
   };
@@ -266,16 +265,12 @@ export const LotteryResultScreen = () => {
                     </Text>
                   </View>
                 </View>
-                {!!own.slotCode && (
+                {ownWon && (
                   <View style={styles.slotBox}>
-                    <Text style={styles.slotLabel}>MÃ CĂN</Text>
-                    <Text style={styles.slotValue}>{own.slotCode}</Text>
-                  </View>
-                )}
-                {ownWon && !own.slotCode && (
-                  <View style={styles.slotBox}>
-                    <Text style={styles.slotLabel}>MÃ CĂN</Text>
-                    <Text style={[styles.slotValue, { fontSize: 16 }]}>Chờ CĐT chọn căn</Text>
+                    <Text style={styles.slotLabel}>SUẤT TRÚNG</Text>
+                    <Text style={[styles.slotValue, { fontSize: 16 }]}>
+                      Chờ chủ dự án chọn căn
+                    </Text>
                   </View>
                 )}
                 {!ownWon && (
@@ -339,9 +334,8 @@ export const LotteryResultScreen = () => {
                       {name}
                       {mine ? ' (Bạn)' : ''}
                     </Text>
-                    {!!p.slotCode && <Text style={styles.rowSlot}>Căn {p.slotCode}</Text>}
-                    {won && !p.slotCode && (
-                      <Text style={styles.rowSlot}>Chờ CĐT chọn căn</Text>
+                    {won && (
+                      <Text style={styles.rowSlot}>Trúng suất — chờ chủ dự án chọn căn</Text>
                     )}
                   </View>
                   <Badge
@@ -372,8 +366,8 @@ export const LotteryResultScreen = () => {
         tone="celebrate"
         title="Chúc mừng, bạn đã trúng suất!"
         message={result?.projectName || projectName || 'Dự án nhà ở xã hội'}
-        highlightValue={own?.slotCode || 'Chờ CĐT chọn căn'}
-        highlightLabel={own?.slotCode ? 'mã căn của bạn' : 'chưa gán căn'}
+        highlightValue="Trúng suất"
+        highlightLabel="chờ chủ dự án chọn căn"
         primaryLabel="Xem kết quả chi tiết"
         onPrimary={() => setCelebrating(false)}
         secondaryLabel={applicationId ? 'Tới hồ sơ' : undefined}

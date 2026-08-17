@@ -10,7 +10,7 @@ export type CitizenNextStep = {
 
 export function getCitizenNextStep(
   status: string,
-  opts?: { needMoreNote?: string | null; hasApartment?: boolean },
+  opts?: { needMoreNote?: string | null; hasApartment?: boolean; depositPaid?: boolean },
 ): CitizenNextStep | null {
   const s = (status || '').toUpperCase();
 
@@ -64,13 +64,20 @@ export function getCitizenNextStep(
       if (opts?.hasApartment === false) {
         return {
           title: 'Đã trúng — chờ chủ đầu tư chọn căn',
-          body: 'Bạn đã có suất. Khi chủ đầu tư gán căn cụ thể, bạn mới ký hợp đồng được.',
+          body: 'Bạn đã có suất. Khi chủ đầu tư gán căn cụ thể, bạn đóng cọc Đợt 1 rồi mới ký hợp đồng.',
           tone: 'info',
+        };
+      }
+      if (opts?.depositPaid !== true) {
+        return {
+          title: 'Việc tiếp theo: đóng tiền cọc (Đợt 1)',
+          body: 'Bạn đã được cấp căn. Đóng cọc trước, sau đó mới ký hợp đồng. Đợt 2 mở sau khi ký.',
+          tone: 'action',
         };
       }
       return {
         title: 'Việc tiếp theo: ký hợp đồng',
-        body: 'Đọc kỹ và ký hợp đồng mua bán. Các khoản còn lại sẽ hiện trên lịch thanh toán sau khi ký.',
+        body: 'Đã đóng cọc. Đọc kỹ và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.',
         tone: 'action',
       };
     case 'CONTRACT_SIGNED':

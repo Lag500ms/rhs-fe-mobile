@@ -33,10 +33,10 @@ import { lotteryApi } from '../api/lotteryApi';
 import {
   LOTTERY_RESULT_LABEL,
   LOTTERY_SESSION_LABEL,
-  unitPendingLabel,
   type LotteryDrawResult,
   type LotteryScheduleDetail,
 } from '../types/lottery';
+import { JoinCodeReveal } from '../components/JoinCodeReveal';
 
 type Row = {
   application: ApplicationSummary;
@@ -242,10 +242,14 @@ export const MyLotteryScreen = () => {
                 ]}
               >
                 {resultLabel}
-                {won ? ` · ${unitPendingLabel(own?.slotCode)}` : ''}
+                {won ? ' · Chờ chủ dự án chọn căn' : ''}
               </Text>
             </View>
           </View>
+        )}
+
+        {!!item.schedule.joinCode && !finished && (
+          <JoinCodeReveal code={item.schedule.joinCode} compact />
         )}
 
         <View style={styles.actions}>
