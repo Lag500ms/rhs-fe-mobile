@@ -7,11 +7,6 @@ export const formatPrice = (min: number, max: number) => {
   return `${min.toLocaleString()}đ`;
 };
 
-export const formatArea = (min: number, max: number) => {
-  if (min === 0 && max === 0) return '';
-  return min === max ? `${min} m²` : `${min} - ${max} m²`;
-};
-
 export const getThumb = (p: HousingProjectResponse) => {
   if (p.images?.length) {
     const sorted = [...p.images].sort((a, b) => a.displayOrder - b.displayOrder);

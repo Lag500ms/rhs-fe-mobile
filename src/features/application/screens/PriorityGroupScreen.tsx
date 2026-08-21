@@ -6,10 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Switch,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -58,7 +58,7 @@ export const PriorityGroupScreen = () => {
         const groups = await lookupApi.getPriorityGroups();
         setObjectOptions(groups);
       } catch {
-        Alert.alert('Lỗi', 'Không tải được danh sách đối tượng thụ hưởng.');
+        appAlert('Lỗi', 'Không tải được danh sách đối tượng thụ hưởng.');
       } finally {
         setLoading(false);
       }
@@ -75,7 +75,7 @@ export const PriorityGroupScreen = () => {
       return;
     }
     if (objectOptions.length === 0) {
-      Alert.alert('Lỗi', 'Chưa có danh sách đối tượng. Vui lòng thử lại.');
+      appAlert('Lỗi', 'Chưa có danh sách đối tượng. Vui lòng thử lại.');
       return;
     }
 
@@ -135,7 +135,7 @@ export const PriorityGroupScreen = () => {
         await resumeExistingApplication(data);
         return;
       }
-      Alert.alert('Lỗi', data.message || e?.message || 'Không tạo được hồ sơ.');
+      appAlert('Lỗi', data.message || e?.message || 'Không tạo được hồ sơ.');
     } finally {
       setSubmitting(false);
     }
@@ -193,7 +193,7 @@ export const PriorityGroupScreen = () => {
       return;
     }
 
-    Alert.alert(
+    appAlert(
       'Hồ sơ đã có',
       data.message || 'Bạn đã có hồ sơ cho dự án này. Mở hồ sơ hiện có để tiếp tục, không tạo mới.',
       appId

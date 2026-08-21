@@ -7,8 +7,4 @@ export {
   HCM_PROVINCE_SHORT,
   HCM_PROVINCE_CODE,
   fetchHcmWards,
-  getCachedHcmWards,
 } from '../../../lib/vnProvincesV2';
-
-/** @deprecated Dùng fetchHcmWards() — giữ alias tạm cho import cũ. */
-export const HCM_DISTRICTS: string[] = [];

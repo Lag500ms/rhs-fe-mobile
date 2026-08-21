@@ -6,3 +6,4 @@ export { Skeleton, SkeletonCardList } from './Skeleton';
 export { EmptyState } from './EmptyState';
 export { StatTile } from './StatTile';
 export { CelebrationModal, type CelebrationTone } from './CelebrationModal';
+export { AppDialogHost } from './AppDialogHost';

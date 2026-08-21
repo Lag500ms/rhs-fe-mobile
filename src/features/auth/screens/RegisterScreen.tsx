@@ -8,9 +8,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  ScrollView,
-  Alert,
+  ScrollView
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -59,20 +59,20 @@ export const RegisterScreen = () => {
       const result = await authApi.register(registerData);
 
       if (result.success) {
-        Alert.alert(
+        appAlert(
           'Đăng ký thành công!',
           'Vui lòng kiểm tra email để nhận mã xác thực.',
           [{ text: 'Nhập mã', onPress: () => navigation.navigate('VerifyOtp', { email: email.trim() }) }]
         );
       } else {
-        Alert.alert('Đăng ký thất bại', result.message || 'Vui lòng thử lại sau.');
+        appAlert('Đăng ký thất bại', result.message || 'Vui lòng thử lại sau.');
       }
     } catch (error: any) {
       const status = error.response?.status;
       const serverMsg = error.response?.data?.message || error.response?.data?.title;
       const networkMsg = error.message;
       const msg = serverMsg || (status ? `Lỗi kết nối (${status})` : networkMsg) || 'Không thể kết nối đến máy chủ';
-      Alert.alert('Đăng ký thất bại', msg);
+      appAlert('Đăng ký thất bại', msg);
     } finally {
       setLoading(false);
     }

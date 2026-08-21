@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  RefreshControl,
-  Alert,
+  RefreshControl
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -77,7 +77,7 @@ export const MyPaymentsScreen = () => {
       const result = await paymentApi.getMyPayments();
       setPayments(Array.isArray(result?.data) ? result.data : []);
     } catch (err: any) {
-      Alert.alert(
+      appAlert(
         'Lỗi',
         err?.response?.data?.message || err?.message || 'Không tải được lịch sử thanh toán.',
       );

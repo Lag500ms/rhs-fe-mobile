@@ -6,11 +6,11 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
@@ -120,7 +120,7 @@ export const BasicInformationScreen = () => {
         }
       } catch {
         setEkycReady(false);
-        Alert.alert('Lỗi', 'Không thể tải thông tin hồ sơ. Kiểm tra kết nối và thử lại.');
+        appAlert('Lỗi', 'Không thể tải thông tin hồ sơ. Kiểm tra kết nối và thử lại.');
       } finally {
         setLoading(false);
       }
@@ -204,7 +204,7 @@ export const BasicInformationScreen = () => {
 
   const handleSaveAndContinue = () => {
     if (activeBlock) {
-      Alert.alert('Không thể tạo hồ sơ', activeBlock);
+      appAlert('Không thể tạo hồ sơ', activeBlock);
       return;
     }
     if (!validate()) return;

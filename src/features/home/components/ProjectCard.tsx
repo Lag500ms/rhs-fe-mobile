@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { Feather } from '@expo/vector-icons';
 import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
 import { HousingProjectResponse } from '../types/housing';
@@ -43,7 +44,7 @@ export const ProjectCard: React.FC<Props> = ({ project, onPress, showWishlist = 
     if (heartLoading) return;
     const token = await getToken();
     if (!token) {
-      Alert.alert('Chưa đăng nhập', 'Vui lòng đăng nhập để lưu dự án quan tâm.');
+      appAlert('Chưa đăng nhập', 'Vui lòng đăng nhập để lưu dự án quan tâm.');
       return;
     }
 
@@ -58,7 +59,7 @@ export const ProjectCard: React.FC<Props> = ({ project, onPress, showWishlist = 
       }
     } catch (e: any) {
       setWishlisted(!next); // rollback
-      Alert.alert(
+      appAlert(
         'Lỗi',
         e?.response?.data?.message || 'Không thể cập nhật danh sách quan tâm.',
       );

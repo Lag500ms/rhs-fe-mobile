@@ -6,9 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -49,14 +49,14 @@ export const WithdrawApplicationScreen = () => {
     setSubmitting(true);
     try {
       await housingApplicationApi.cancelApplication(applicationId, finalReason);
-      Alert.alert(
+      appAlert(
         'Đã hủy hồ sơ',
         'Hồ sơ của bạn đã được hủy thành công.',
         [{ text: 'Đồng ý', onPress: () => navigation.goBack() }],
       );
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Không thể hủy hồ sơ. Vui lòng thử lại.';
-      Alert.alert('Lỗi', msg);
+      appAlert('Lỗi', msg);
     } finally {
       setSubmitting(false);
     }
@@ -64,7 +64,7 @@ export const WithdrawApplicationScreen = () => {
 
   const handleConfirm = () => {
     if (!canSubmit) return;
-    Alert.alert(
+    appAlert(
       'Xác nhận hủy hồ sơ',
       'Sau khi hủy, hồ sơ sẽ chuyển sang trạng thái "Đã hủy" và không thể tiếp tục. Nếu đang giữ suất/căn, hệ thống sẽ hoàn lại. Bạn có chắc chắn?',
       [

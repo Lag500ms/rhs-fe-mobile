@@ -264,6 +264,14 @@ export const HomeScreen = () => {
           </View>
           <TouchableOpacity
             style={styles.announceBtn}
+            onPress={() => navigation.getParent()?.getParent()?.navigate('Lookup')}
+            activeOpacity={0.85}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name="file-text" size={18} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.announceBtn}
             onPress={() => navigation.navigate('Announcements')}
             activeOpacity={0.85}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

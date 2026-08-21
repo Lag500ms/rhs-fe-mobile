@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TextInput } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { GradientButton } from '../../../components/ui';
+import { OtpInput } from '../../../components/OtpInput';
 import { RHSColors, borderRadius, spacing, typography } from '../../../lib/theme';
 import { JoinCodeReveal } from './JoinCodeReveal';
 
@@ -28,16 +29,13 @@ export function LotteryJoinCard({
           <JoinCodeReveal code={revealedCode} />
         </View>
       )}
-      <TextInput
-        style={styles.otpInput}
-        value={otp}
-        onChangeText={(t) => setOtp(t.replace(/\D/g, '').slice(0, 6))}
-        placeholder="000000"
-        placeholderTextColor={RHSColors.textMuted}
-        keyboardType="number-pad"
-        maxLength={6}
-        editable={!joining}
-      />
+      <View style={styles.otpWrap}>
+        <OtpInput
+          value={otp}
+          onChange={setOtp}
+          editable={!joining}
+        />
+      </View>
       <GradientButton
         label={joining ? 'Đang vào…' : 'Vào sảnh'}
         icon="log-in"
@@ -59,18 +57,5 @@ const styles = StyleSheet.create({
     borderColor: RHSColors.border,
   },
   joinHint: { ...typography.body, color: RHSColors.textMuted, marginBottom: 12 },
-  otpInput: {
-    borderWidth: 1,
-    borderColor: RHSColors.border,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 22,
-    letterSpacing: 8,
-    fontWeight: '700',
-    textAlign: 'center',
-    color: RHSColors.text,
-    marginBottom: 12,
-    backgroundColor: RHSColors.surface,
-  },
+  otpWrap: { marginBottom: 12 },
 });

@@ -4,11 +4,11 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   ScrollView,
   Image,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -56,7 +56,7 @@ export const EKycScreen = () => {
       if (o.id) {
         const check = await eKycApi.checkCitizenId(o.id);
         if (!check.available) {
-          Alert.alert('CCCD không khả dụng', check.message, [
+          appAlert('CCCD không khả dụng', check.message, [
             { text: 'Quay lại', style: 'cancel' },
             {
               text: 'Chụp lại',
@@ -72,7 +72,7 @@ export const EKycScreen = () => {
 
       setStep('facematch');
     } catch (e: any) {
-      Alert.alert('Lỗi đọc giấy tờ', e?.message ?? 'Vui lòng thử lại.');
+      appAlert('Lỗi đọc giấy tờ', e?.message ?? 'Vui lòng thử lại.');
     } finally {
       setBusy(false);
     }
@@ -92,11 +92,11 @@ export const EKycScreen = () => {
 
   const verifyFaceMatch = async () => {
     if (!selfieUri) {
-      Alert.alert('Thiếu ảnh', 'Vui lòng chụp ảnh khuôn mặt trước.');
+      appAlert('Thiếu ảnh', 'Vui lòng chụp ảnh khuôn mặt trước.');
       return;
     }
     if (!cccdUri) {
-      Alert.alert('Thiếu ảnh CCCD', 'Vui lòng quay lại bước chụp CCCD.');
+      appAlert('Thiếu ảnh CCCD', 'Vui lòng quay lại bước chụp CCCD.');
       return;
     }
 
@@ -104,7 +104,7 @@ export const EKycScreen = () => {
     try {
       const m = await eKycApi.faceMatch(selfieUri, cccdUri);
       if (!m.isMatch) {
-        Alert.alert(
+        appAlert(
           'Khuôn mặt không khớp',
           `Độ tương đồng: ${m.similarity ?? '—'}%. Chụp lại ảnh rõ, đủ ánh sáng.`,
           [{ text: 'Chụp lại', onPress: () => setSelfieUri(null) }],
@@ -116,7 +116,7 @@ export const EKycScreen = () => {
       await AsyncStorage.setItem(VERIFIED_KEY, 'true');
       setStep('complete');
     } catch (e: any) {
-      Alert.alert('Lỗi xác minh', e?.message ?? 'Vui lòng thử lại.');
+      appAlert('Lỗi xác minh', e?.message ?? 'Vui lòng thử lại.');
     } finally {
       setBusy(false);
     }
@@ -124,7 +124,7 @@ export const EKycScreen = () => {
 
   const close = () => {
     if (started.current && step !== 'complete') {
-      Alert.alert('Dừng xác minh?', 'Tiến trình hiện tại sẽ không được lưu.', [
+      appAlert('Dừng xác minh?', 'Tiến trình hiện tại sẽ không được lưu.', [
         { text: 'Tiếp tục', style: 'cancel' },
         {
           text: 'Thoát',

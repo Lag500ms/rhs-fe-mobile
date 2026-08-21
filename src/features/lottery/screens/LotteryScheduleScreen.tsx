@@ -6,9 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Linking,
-  Alert,
+  Linking
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -82,17 +82,17 @@ export const LotteryScheduleScreen = () => {
       await Linking.openURL(loc);
       return;
     }
-    Alert.alert('Địa điểm bốc thăm', loc);
+    appAlert('Địa điểm bốc thăm', loc);
   };
 
   const goLobby = async () => {
     const token = await getToken();
     if (!token) {
-      Alert.alert('Đăng nhập', 'Vui lòng đăng nhập để vào sảnh bốc thăm.');
+      appAlert('Đăng nhập', 'Vui lòng đăng nhập để vào sảnh bốc thăm.');
       return;
     }
     if (!schedule?.isLotteryApproved) {
-      Alert.alert(
+      appAlert(
         'Chưa sẵn sàng',
         'Lịch bốc thăm chưa được Sở Xây dựng phê duyệt. Vui lòng chờ lịch chính thức.',
       );

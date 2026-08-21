@@ -9,9 +9,9 @@ import {
   Platform,
   ActivityIndicator,
   ScrollView,
-  Alert,
   Image,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -48,7 +48,7 @@ export const LoginScreen = () => {
 
       const storedData = await getStoredBiometricData();
       if (!storedData) {
-        Alert.alert(
+        appAlert(
           'Sinh trắc học',
           'Dữ liệu xác thực không còn hợp lệ. Vui lòng đăng nhập bằng mật khẩu.',
         );
@@ -65,14 +65,14 @@ export const LoginScreen = () => {
         }
         navigateToMainTabs();
       } else {
-        Alert.alert(
+        appAlert(
           'Phiên hết hạn',
           'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập bằng mật khẩu.',
         );
       }
     } catch (error: any) {
       if (!isAuto) {
-        Alert.alert('Lỗi', 'Không thể xác thực sinh trắc học. Vui lòng thử lại.');
+        appAlert('Lỗi', 'Không thể xác thực sinh trắc học. Vui lòng thử lại.');
       }
     } finally {
       setBiometricLoading(false);
@@ -138,6 +138,11 @@ export const LoginScreen = () => {
             navigation.navigate('MainTabs', { screen: returnTo });
           }, 100);
         }
+      } else if (result.requiresOtpVerification) {
+        appAlert('Chưa xác thực', 'Tài khoản chưa xác thực email. Vui lòng nhập mã xác thực.', [
+          { text: 'Nhập mã', onPress: () => navigation.navigate('VerifyOtp', { email: email.trim() }) },
+          { text: 'Để sau', style: 'cancel' },
+        ]);
       } else {
         setErrors({
           email: ' ',
@@ -146,13 +151,18 @@ export const LoginScreen = () => {
       }
     } catch (error: any) {
       const status = error.response?.status;
+      const data = error.response?.data ?? {};
       const serverMsg =
-        error.response?.data?.message
-        || error.response?.data?.title
+        data.message
+        || data.title
         || error.message;
+      const needsOtp =
+        data.requiresOtpVerification === true
+        || data.RequiresOtpVerification === true
+        || /xác thực email|requiresotp|\botp\b/i.test(String(serverMsg));
 
-      if (status === 400 && String(serverMsg).toLowerCase().includes('otp')) {
-        Alert.alert('Chưa xác thực', 'Tài khoản chưa xác thực email. Vui lòng nhập mã xác thực.', [
+      if (needsOtp) {
+        appAlert('Chưa xác thực', 'Tài khoản chưa xác thực email. Vui lòng nhập mã xác thực.', [
           { text: 'Nhập mã', onPress: () => navigation.navigate('VerifyOtp', { email: email.trim() }) },
           { text: 'Để sau', style: 'cancel' },
         ]);

@@ -6,10 +6,10 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -56,14 +56,14 @@ export const ChangePasswordScreen = () => {
         currentPassword, newPassword, confirmPassword,
       });
       if (result.success) {
-        Alert.alert('Thành công', 'Đổi mật khẩu thành công', [
+        appAlert('Thành công', 'Đổi mật khẩu thành công', [
           { text: 'Đồng ý', onPress: () => navigation.goBack() },
         ]);
       } else {
-        Alert.alert('Lỗi', result.message || 'Đổi mật khẩu thất bại');
+        appAlert('Lỗi', result.message || 'Đổi mật khẩu thất bại');
       }
     } catch (error: any) {
-      Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
     } finally {
       setLoading(false);
     }

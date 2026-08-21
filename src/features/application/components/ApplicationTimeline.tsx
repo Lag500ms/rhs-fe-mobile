@@ -91,7 +91,6 @@ export function ApplicationTimeline({ currentStatus, needMoreNote, depositPaid }
   const status = (currentStatus || '').toUpperCase();
   const currentIdx = resolveIndex(status, depositPaid);
   const isNeedMore = status === 'NEED_MORE_DOCUMENTS';
-  const isLotteryWon = status === 'LOTTERY_WON';
   const isFailed = TERMINAL_FAIL.has(status);
   const isComplete = TERMINAL_SUCCESS.has(status);
 
@@ -158,17 +157,13 @@ export function ApplicationTimeline({ currentStatus, needMoreNote, depositPaid }
                     needMoreHere && styles.labelWarn,
                   ]}
                 >
-                  {needMoreHere
-                    ? 'Cần bổ sung giấy tờ'
-                    : isLotteryWon && idx === 3
-                      ? 'Đã trúng suất'
-                      : step.label}
+                  {needMoreHere ? 'Cần bổ sung giấy tờ' : step.label}
                 </Text>
                 <Text style={styles.hint}>
                   {needMoreHere
                     ? 'Bổ sung xong rồi nộp lại để chủ đầu tư xét tiếp'
-                    : isLotteryWon && idx === 3 && active
-                      ? 'Chờ chủ đầu tư chọn căn hộ cụ thể'
+                    : status === 'LOTTERY_WON' && idx === 3 && active
+                      ? 'Đã trúng suất — chờ chủ đầu tư chọn căn'
                       : active
                         ? step.hint
                         : done

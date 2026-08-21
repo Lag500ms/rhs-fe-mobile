@@ -1,5 +1,3 @@
-import { StyleSheet } from 'react-native';
-
 // ─── Color System ──────────────────────────────────────────────
 // Government-branded warm palette – professional, accessible, trustworthy
 export const RHSColors = {
@@ -132,71 +130,3 @@ export const shadows = {
     elevation: 10,
   },
 };
-
-// ─── Common Component Styles ────────────────────────────────────
-export const commonStyles = StyleSheet.create({
-  // Cards
-  card: {
-    backgroundColor: RHSColors.surfaceCard,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    ...shadows.sm,
-    borderWidth: 1,
-    borderColor: RHSColors.border,
-  },
-  cardFlat: {
-    backgroundColor: RHSColors.surfaceCard,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: RHSColors.border,
-  },
-
-  // Buttons
-  buttonPrimary: {
-    backgroundColor: RHSColors.blue700,
-    borderRadius: borderRadius.md,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    ...shadows.md,
-  },
-  buttonDestructive: {
-    backgroundColor: RHSColors.red600,
-    borderRadius: borderRadius.md,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    ...shadows.md,
-  },
-  buttonOutline: {
-    borderWidth: 2,
-    borderColor: RHSColors.blue700,
-    borderRadius: borderRadius.md,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-
-  // Input
-  input: {
-    backgroundColor: RHSColors.white,
-    borderWidth: 1.5,
-    borderColor: RHSColors.border,
-    borderRadius: borderRadius.xs,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: RHSColors.text,
-  },
-
-  // Section
-  sectionTitle: {
-    ...typography.h3,
-    color: RHSColors.text,
-    marginBottom: spacing.md,
-  },
-});

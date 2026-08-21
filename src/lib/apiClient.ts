@@ -8,8 +8,6 @@ if (!API_BASE_URL) {
     '[apiClient] EXPO_PUBLIC_API_BASE_URL chưa được set. ' +
       'Android emulator dùng http://10.0.2.2:5112/api — sửa .env rồi restart Metro (npx expo start -c).'
   );
-} else if (__DEV__) {
-  console.log('[apiClient] baseURL =', API_BASE_URL);
 }
 
 interface FailedQueueItem {

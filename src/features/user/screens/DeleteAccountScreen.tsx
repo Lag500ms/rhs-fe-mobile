@@ -6,10 +6,10 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -42,7 +42,7 @@ export const DeleteAccountScreen = () => {
     setHasInteracted({ password: true });
     if (!validateForm()) return;
 
-    Alert.alert(
+    appAlert(
       'Xác nhận xóa tài khoản',
       'Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác.',
       [
@@ -55,14 +55,14 @@ export const DeleteAccountScreen = () => {
             try {
               const result = await userApi.deleteAccount({ password, reason });
               if (result.success) {
-                Alert.alert('Thành công', 'Tài khoản đã được xóa thành công', [
+                appAlert('Thành công', 'Tài khoản đã được xóa thành công', [
                   { text: 'Đồng ý', onPress: () => navigation.navigate('Auth') },
                 ]);
               } else {
-                Alert.alert('Lỗi', result.message || 'Xóa tài khoản thất bại');
+                appAlert('Lỗi', result.message || 'Xóa tài khoản thất bại');
               }
             } catch (error: any) {
-              Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+              appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
             } finally {
               setLoading(false);
             }

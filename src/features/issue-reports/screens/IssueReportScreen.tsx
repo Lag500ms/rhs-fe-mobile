@@ -10,9 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
   RefreshControl,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -121,11 +121,11 @@ export const IssueReportScreen = () => {
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập tiêu đề.');
+      appAlert('Lỗi', 'Vui lòng nhập tiêu đề.');
       return;
     }
     if (!description.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập mô tả chi tiết.');
+      appAlert('Lỗi', 'Vui lòng nhập mô tả chi tiết.');
       return;
     }
 
@@ -137,7 +137,7 @@ export const IssueReportScreen = () => {
         issueType,
       };
       await issueReportApi.create(request);
-      Alert.alert('Thành công', 'Cảm ơn bạn đã gửi góp ý/báo lỗi!');
+      appAlert('Thành công', 'Cảm ơn bạn đã gửi góp ý/báo lỗi!');
       resetForm();
       void loadReports(1);
     } catch (error: any) {
@@ -145,7 +145,7 @@ export const IssueReportScreen = () => {
         error?.response?.data?.message ||
         error?.message ||
         'Không thể gửi báo cáo. Vui lòng thử lại.';
-      Alert.alert('Lỗi', message);
+      appAlert('Lỗi', message);
     } finally {
       setSubmitting(false);
     }

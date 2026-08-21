@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Alert,
   Image,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -46,7 +46,7 @@ export const SavedScreen = () => {
       setHasNextPage(result.hasNextPage);
       setPageIndex(page);
     } catch {
-      Alert.alert('Lỗi', 'Không thể tải danh sách yêu thích.');
+      appAlert('Lỗi', 'Không thể tải danh sách yêu thích.');
     }
   }, []);
 
@@ -66,7 +66,7 @@ export const SavedScreen = () => {
     try {
       await fetchWishlist(1, false);
     } catch {
-      Alert.alert('Lỗi', 'Không thể tải danh sách yêu thích.');
+      appAlert('Lỗi', 'Không thể tải danh sách yêu thích.');
     } finally {
       setLoading(false);
     }
@@ -103,7 +103,7 @@ export const SavedScreen = () => {
       await wishlistApi.removeFromWishlist(projectId);
       setItems((prev) => prev.filter((item) => item.projectId !== projectId));
     } catch {
-      Alert.alert('Lỗi', 'Không thể bỏ quan tâm dự án.');
+      appAlert('Lỗi', 'Không thể bỏ quan tâm dự án.');
     } finally {
       setRemovingId(null);
     }
@@ -117,7 +117,7 @@ export const SavedScreen = () => {
         params: { project },
       });
     } catch {
-      Alert.alert('Lỗi', 'Không thể tải thông tin dự án');
+      appAlert('Lỗi', 'Không thể tải thông tin dự án');
     }
   };
 

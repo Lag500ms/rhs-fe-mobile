@@ -5,12 +5,6 @@
 export const DEPOSIT_PAYMENT_HOURS = 168;
 export const DEPOSIT_PAYMENT_DAYS = 7;
 
-const DEPOSIT_DEADLINE_STATUSES = new Set(['DEPOSIT_PENDING']);
-
-export function isDepositDeadlineStatus(status: string | null | undefined): boolean {
-  return !!status && DEPOSIT_DEADLINE_STATUSES.has(status);
-}
-
 /** @param startedAt Mốc vào DEPOSIT_PENDING (updatedAt / created installment). */
 export function getDepositDeadline(startedAt: string | Date): Date {
   const d =

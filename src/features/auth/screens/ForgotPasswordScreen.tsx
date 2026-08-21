@@ -6,9 +6,9 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -51,14 +51,14 @@ export const ForgotPasswordScreen = () => {
       const result = await authApi.forgotPassword({ email });
 
       if (result.success) {
-        Alert.alert('Thành công', 'Mã xác thực đã được gửi đến email của bạn', [
+        appAlert('Thành công', 'Mã xác thực đã được gửi đến email của bạn', [
           { text: 'Đồng ý', onPress: () => navigation.navigate('ResetPassword', { email }) },
         ]);
       } else {
-        Alert.alert('Lỗi', result.message || 'Gửi yêu cầu thất bại');
+        appAlert('Lỗi', result.message || 'Gửi yêu cầu thất bại');
       }
     } catch (error: any) {
-      Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
     } finally {
       setLoading(false);
     }

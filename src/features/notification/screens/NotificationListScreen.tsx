@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   RefreshControl,
   StyleSheet,
-  ActivityIndicator,
-  Alert,
+  ActivityIndicator
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -193,7 +193,7 @@ export const NotificationListScreen: React.FC = () => {
             : item
         )
       );
-      Alert.alert('Lỗi', 'Không thể đánh dấu đã đọc. Vui lòng thử lại.', [{ text: 'Đồng ý' }]);
+      appAlert('Lỗi', 'Không thể đánh dấu đã đọc. Vui lòng thử lại.', [{ text: 'Đồng ý' }]);
     }
   }, []);
 
@@ -202,7 +202,7 @@ export const NotificationListScreen: React.FC = () => {
       await markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch {
-      Alert.alert('Lỗi', 'Không thể đánh dấu tất cả đã đọc. Vui lòng thử lại.', [
+      appAlert('Lỗi', 'Không thể đánh dấu tất cả đã đọc. Vui lòng thử lại.', [
         { text: 'Đồng ý' },
       ]);
     }

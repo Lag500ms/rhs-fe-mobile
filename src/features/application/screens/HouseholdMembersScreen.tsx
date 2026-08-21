@@ -6,10 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -78,7 +78,7 @@ export const HouseholdMembersScreen = () => {
       const data = await householdMemberApi.getMembers(applicationId);
       setMembers(data);
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.response?.data?.message || e?.message || 'Không tải được danh sách thành viên.');
+      appAlert('Lỗi', e?.response?.data?.message || e?.message || 'Không tải được danh sách thành viên.');
     } finally {
       setLoading(false);
     }
@@ -126,11 +126,11 @@ export const HouseholdMembersScreen = () => {
 
   const handleSave = async () => {
     if (!fullName.trim()) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập họ tên.');
+      appAlert('Thiếu thông tin', 'Vui lòng nhập họ tên.');
       return;
     }
     if (!relationship) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng chọn mối quan hệ.');
+      appAlert('Thiếu thông tin', 'Vui lòng chọn mối quan hệ.');
       return;
     }
 
@@ -170,7 +170,7 @@ export const HouseholdMembersScreen = () => {
       resetForm();
       await loadMembers();
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.response?.data?.message || e?.message || 'Không lưu được thành viên.');
+      appAlert('Lỗi', e?.response?.data?.message || e?.message || 'Không lưu được thành viên.');
     } finally {
       setSaving(false);
     }
@@ -178,7 +178,7 @@ export const HouseholdMembersScreen = () => {
 
   const handleDelete = (member: HouseholdMember) => {
     if (!applicationId) return;
-    Alert.alert('Xóa thành viên', `Xóa "${member.fullName}" khỏi hộ gia đình?`, [
+    appAlert('Xóa thành viên', `Xóa "${member.fullName}" khỏi hộ gia đình?`, [
       { text: 'Hủy', style: 'cancel' },
       {
         text: 'Xóa',
@@ -188,7 +188,7 @@ export const HouseholdMembersScreen = () => {
             await householdMemberApi.removeMember(applicationId, member.memberId);
             await loadMembers();
           } catch (e: any) {
-            Alert.alert('Lỗi', e?.response?.data?.message || e?.message || 'Không xóa được.');
+            appAlert('Lỗi', e?.response?.data?.message || e?.message || 'Không xóa được.');
           }
         },
       },
@@ -196,7 +196,7 @@ export const HouseholdMembersScreen = () => {
   };
 
   const handleDeleteDraft = (member: ApplicationDraftMember) => {
-    Alert.alert('Xóa thành viên', `Xóa "${member.fullName}" khỏi hộ gia đình?`, [
+    appAlert('Xóa thành viên', `Xóa "${member.fullName}" khỏi hộ gia đình?`, [
       { text: 'Hủy', style: 'cancel' },
       {
         text: 'Xóa',

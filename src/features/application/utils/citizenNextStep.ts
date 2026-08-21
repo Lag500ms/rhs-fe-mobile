@@ -56,8 +56,8 @@ export function getCitizenNextStep(
       };
     case 'LOTTERY_WON':
       return {
-        title: 'Đã trúng suất — chờ chủ đầu tư chọn căn',
-        body: 'Bạn đã có suất. Chủ đầu tư sẽ gán căn hộ cụ thể. Khi đã có căn, bạn đóng cọc Đợt 1 rồi mới ký hợp đồng.',
+        title: 'Đã trúng — chờ chốt suất',
+        body: 'Bạn đã trúng suất. Chủ đầu tư sẽ chọn căn hộ cụ thể. Khi đã có căn, bạn đóng cọc Đợt 1 rồi mới ký hợp đồng.',
         tone: 'info',
       };
     case 'DEPOSIT_PENDING':

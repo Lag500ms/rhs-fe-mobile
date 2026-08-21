@@ -5,10 +5,10 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -49,7 +49,7 @@ export const MyApplicationsScreen = () => {
       setApplications(result.items || []);
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Không thể tải danh sách hồ sơ.';
-      Alert.alert('Lỗi', msg);
+      appAlert('Lỗi', msg);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -72,7 +72,7 @@ export const MyApplicationsScreen = () => {
       await fetchData(false);
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Không thể tải danh sách hồ sơ.';
-      Alert.alert('Lỗi', msg);
+      appAlert('Lỗi', msg);
       setLoading(false);
     }
   }, [fetchData]);

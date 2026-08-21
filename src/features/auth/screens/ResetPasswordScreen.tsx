@@ -6,15 +6,16 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { RHSColors } from '../../../lib/theme';
 
 import { CustomInput } from '../components/CustomInput';
+import { OtpInput } from '../../../components/OtpInput';
 import { authApi } from '../api/authApi';
 import { AuthStackParamList } from '../AuthNavigator';
 
@@ -44,13 +45,13 @@ export const ResetPasswordScreen = () => {
     return () => clearInterval(timer);
   }, [countdown]);
 
-  const isSubmitEnabled = otpCode.length > 0 && newPassword.length >= 6 && confirmPassword.length >= 6;
+  const isSubmitEnabled = otpCode.length === 6 && newPassword.length >= 6 && confirmPassword.length >= 6;
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
 
-    if (!otpCode) {
-      newErrors.otpCode = 'Mã xác thực là bắt buộc';
+    if (otpCode.length !== 6) {
+      newErrors.otpCode = 'Vui lòng nhập đầy đủ mã xác thực 6 chữ số';
     }
 
     if (!newPassword) {
@@ -86,14 +87,14 @@ export const ResetPasswordScreen = () => {
       });
 
       if (result.success) {
-        Alert.alert('Thành công', 'Mật khẩu đã được đặt lại thành công', [
+        appAlert('Thành công', 'Mật khẩu đã được đặt lại thành công', [
           { text: 'Đồng ý', onPress: () => navigation.navigate('Login') },
         ]);
       } else {
-        Alert.alert('Lỗi', result.message || 'Đặt lại mật khẩu thất bại');
+        appAlert('Lỗi', result.message || 'Đặt lại mật khẩu thất bại');
       }
     } catch (error: any) {
-      Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
     } finally {
       setLoading(false);
     }
@@ -105,13 +106,14 @@ export const ResetPasswordScreen = () => {
     try {
       const result = await authApi.resendOtp(email);
       if (result.success) {
+        setOtpCode('');
         setCountdown(RESEND_COUNTDOWN);
-        Alert.alert('Thành công', 'Mã xác thực mới đã được gửi đến email của bạn');
+        appAlert('Thành công', 'Mã xác thực mới đã được gửi đến email của bạn');
       } else {
-        Alert.alert('Lỗi', result.message || 'Gửi lại mã thất bại');
+        appAlert('Lỗi', result.message || 'Gửi lại mã thất bại');
       }
     } catch (error: any) {
-      Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
     } finally {
       setResending(false);
     }
@@ -141,17 +143,19 @@ export const ResetPasswordScreen = () => {
         </Text>
 
         <View style={styles.formContainer}>
-          <CustomInput
-            iconName="key"
-            placeholder="Nhập mã xác thực"
+          <Text style={styles.otpLabel}>Mã xác thực</Text>
+          <OtpInput
             value={otpCode}
-            onChangeText={(text) => {
-              setOtpCode(text);
+            onChange={(code) => {
+              setOtpCode(code);
               setHasInteracted({ ...hasInteracted, otpCode: false });
             }}
-            errorMessage={hasInteracted.otpCode ? errors.otpCode : undefined}
-            keyboardType="number-pad"
+            error={!!(hasInteracted.otpCode && errors.otpCode)}
+            autoFocus
           />
+          {hasInteracted.otpCode && errors.otpCode ? (
+            <Text style={styles.otpError}>{errors.otpCode}</Text>
+          ) : null}
 
           <TouchableOpacity
             style={styles.resendBtn}
@@ -241,6 +245,18 @@ const styles = StyleSheet.create({
     fontSize: 14, color: RHSColors.textMuted, textAlign: 'center', marginBottom: 40, lineHeight: 20,
   },
   formContainer: { marginBottom: 30 },
+  otpLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: RHSColors.textSecondary,
+    marginBottom: 10,
+  },
+  otpError: {
+    color: RHSColors.error,
+    fontSize: 12,
+    marginTop: 8,
+    marginBottom: 4,
+  },
   resendBtn: {
     alignItems: 'center',
     marginBottom: 12,

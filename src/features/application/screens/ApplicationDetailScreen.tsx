@@ -5,9 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -104,7 +104,7 @@ export const ApplicationDetailScreen = () => {
       setDetail(data);
     } catch (e: any) {
       const msg = e?.response?.data?.message || 'Không thể tải chi tiết hồ sơ.';
-      Alert.alert('Lỗi', msg, [{ text: 'Đồng ý', onPress: () => navigation.goBack() }]);
+      appAlert('Lỗi', msg, [{ text: 'Đồng ý', onPress: () => navigation.goBack() }]);
     } finally {
       setLoading(false);
     }
@@ -211,11 +211,11 @@ export const ApplicationDetailScreen = () => {
           phaseLabel: 'Tiền cọc',
         });
       } else {
-        Alert.alert('Lỗi', result.message || 'Không thể tạo URL thanh toán');
+        appAlert('Lỗi', result.message || 'Không thể tạo URL thanh toán');
       }
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Không thể tạo thanh toán';
-      Alert.alert('Lỗi', msg);
+      appAlert('Lỗi', msg);
     } finally {
       setProcessingPayment(false);
     }
@@ -233,7 +233,7 @@ export const ApplicationDetailScreen = () => {
         });
       }, 100);
     } else {
-      Alert.alert('Không có biên nhận', 'Biên nhận chưa được tạo. Vui lòng thử lại sau.');
+      appAlert('Không có biên nhận', 'Biên nhận chưa được tạo. Vui lòng thử lại sau.');
     }
   }, [detail, navigation]);
 
@@ -271,7 +271,7 @@ export const ApplicationDetailScreen = () => {
       !!paymentSlotCode;
     if (appId && hasContract) {
       if (needsDeposit) {
-        Alert.alert(
+        appAlert(
           'Cần đóng cọc trước',
           'Đóng tiền cọc Đợt 1 trước khi ký hợp đồng. Đợt 2 chỉ mở sau khi ký.',
         );
@@ -283,7 +283,7 @@ export const ApplicationDetailScreen = () => {
         canSign: canSignNow,
       });
     } else {
-      Alert.alert('Không có hợp đồng', 'Hợp đồng chưa được tạo. Vui lòng thử lại sau.');
+      appAlert('Không có hợp đồng', 'Hợp đồng chưa được tạo. Vui lòng thử lại sau.');
     }
   }, [paymentPdfUrl, paymentSlotCode, navigation, detail, needsDeposit, canSignNow]);
 
@@ -315,7 +315,7 @@ export const ApplicationDetailScreen = () => {
   }, []);
 
   const handleReApply = () => {
-    Alert.alert(
+    appAlert(
       'Tạo lại hồ sơ',
       'Bạn có muốn tạo hồ sơ mới dựa trên thông tin của hồ sơ bị từ chối?',
       [
@@ -336,7 +336,7 @@ export const ApplicationDetailScreen = () => {
   const handleReApplyFromExpired = async () => {
     if (!detail || reapplying) return;
     if (!detail.priorityGroup?.trim()) {
-      Alert.alert(
+      appAlert(
         'Thiếu đối tượng',
         'Hồ sơ cũ không có nhóm đối tượng thụ hưởng. Vui lòng tạo hồ sơ mới và chọn đối tượng.',
       );
@@ -361,7 +361,7 @@ export const ApplicationDetailScreen = () => {
       });
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Không thể tạo lại hồ sơ.';
-      Alert.alert('Lỗi', msg);
+      appAlert('Lỗi', msg);
     } finally {
       setReapplying(false);
     }
@@ -509,7 +509,7 @@ export const ApplicationDetailScreen = () => {
           onPress: hasApartment
             ? handleViewContract
             : () =>
-                Alert.alert(
+                appAlert(
                   'Chưa được cấp căn',
                   'Chủ đầu tư chưa gán căn cụ thể. Bạn đóng cọc và ký sau khi đã được cấp căn.',
                 ),
@@ -958,7 +958,7 @@ export const ApplicationDetailScreen = () => {
               <View style={styles.lotteryInfoCard}>
                 <View style={styles.lotteryInfoHead}>
                   <Feather name="award" size={18} color={RHSColors.green700} />
-                  <Text style={styles.lotteryInfoTitle}>Bạn đã trúng suất</Text>
+                  <Text style={styles.lotteryInfoTitle}>Đã trúng — chờ chốt suất</Text>
                 </View>
                 <Text style={styles.lotteryInfoText}>
                   Chủ đầu tư sẽ chọn căn hộ cụ thể cho hồ sơ của bạn. Khi đã có căn, bạn đóng cọc

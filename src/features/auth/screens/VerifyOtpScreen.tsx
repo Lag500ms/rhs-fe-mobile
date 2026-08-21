@@ -1,21 +1,22 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
+import { OtpInput } from '../../../components/OtpInput';
 import { authApi } from '../api/authApi';
 import { setTokens } from '../../../lib/tokenStorage';
 import { AuthStackParamList } from '../AuthNavigator';
@@ -30,75 +31,17 @@ export const VerifyOtpScreen = () => {
   const route = useRoute<VerifyOtpRouteProp>();
   const email = route.params?.email || '';
 
-  const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
+  const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(RESEND_COUNTDOWN);
-  const inputRefs = useRef<Array<TextInput | null>>(Array(OTP_LENGTH).fill(null));
 
-  const otpCode = digits.join('');
-
-  // Bộ đếm ngược cho nút gửi lại mã
   useEffect(() => {
     if (countdown <= 0) return;
-    const timer = setInterval(() => {
-      setCountdown((prev) => (prev <= 1 ? 0 : prev - 1));
-    }, 1000);
-    return () => clearInterval(timer);
+    const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
+    return () => clearTimeout(timer);
   }, [countdown]);
-
-  const focusDigit = (index: number) => {
-    if (index >= 0 && index < OTP_LENGTH) {
-      inputRefs.current[index]?.focus();
-    }
-  };
-
-  const handleDigitChange = (text: string, index: number) => {
-    setError('');
-    const cleaned = text.replace(/\D/g, '');
-
-    // Xóa ô
-    if (!cleaned) {
-      const next = [...digits];
-      next[index] = '';
-      setDigits(next);
-      return;
-    }
-
-    // Paste / autofill: maxLength phải > 1 thì mới nhận đủ chuỗi
-    if (cleaned.length > 1) {
-      const chars = cleaned.slice(0, OTP_LENGTH).split('');
-      // Dán đủ 6 số → ghi đè toàn bộ; dán một phần → điền từ ô hiện tại
-      if (chars.length >= OTP_LENGTH) {
-        setDigits(chars.slice(0, OTP_LENGTH));
-        focusDigit(OTP_LENGTH - 1);
-      } else {
-        const next = [...digits];
-        chars.forEach((ch, i) => {
-          if (index + i < OTP_LENGTH) next[index + i] = ch;
-        });
-        setDigits(next);
-        focusDigit(Math.min(index + chars.length, OTP_LENGTH - 1));
-      }
-      return;
-    }
-
-    // Nhập từng số
-    const next = [...digits];
-    next[index] = cleaned;
-    setDigits(next);
-    if (index < OTP_LENGTH - 1) focusDigit(index + 1);
-  };
-
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !digits[index] && index > 0) {
-      const newDigits = [...digits];
-      newDigits[index - 1] = '';
-      setDigits(newDigits);
-      focusDigit(index - 1);
-    }
-  };
 
   const handleVerifyOtp = async () => {
     if (otpCode.length < OTP_LENGTH) {
@@ -112,16 +55,13 @@ export const VerifyOtpScreen = () => {
       const result = await authApi.verifyOtp({ email, otpCode });
 
       if (result.success) {
-        // Lưu token nếu backend trả về để đăng nhập luôn sau khi kích hoạt
         if (result.accessToken) {
           await setTokens(result.accessToken, result.refreshToken);
         }
-        Alert.alert('Thành công', 'Kích hoạt tài khoản thành công!', [
+        appAlert('Thành công', 'Kích hoạt tài khoản thành công!', [
           {
             text: 'Đồng ý',
             onPress: () => {
-              // Giống Login: giữ MainTabs dưới stack để Profile có đường back,
-              // tránh kẹt hồ sơ cá nhân không còn tab bar.
               navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
               setTimeout(() => {
                 navigation.navigate('UserProfile');
@@ -146,11 +86,9 @@ export const VerifyOtpScreen = () => {
     try {
       const result = await authApi.resendOtp(email);
       if (result.success) {
-        Alert.alert('Thành công', 'Mã xác thực mới đã được gửi đến email của bạn');
-        // Xóa ô cũ và bắt đầu lại bộ đếm 60 giây
-        setDigits(Array(OTP_LENGTH).fill(''));
+        appAlert('Thành công', 'Mã xác thực mới đã được gửi đến email của bạn');
+        setOtpCode('');
         setCountdown(RESEND_COUNTDOWN);
-        focusDigit(0);
       } else {
         setError(result.message || 'Gửi lại mã thất bại');
       }
@@ -163,7 +101,6 @@ export const VerifyOtpScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Split Screen: gradient top with logo */}
       <LinearGradient
         colors={['#0A3A85', '#1565C0', '#1E88E5']}
         start={{ x: 0, y: 0 }}
@@ -179,13 +116,15 @@ export const VerifyOtpScreen = () => {
       </LinearGradient>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}
       >
-        <View style={styles.content}>
-          {/* White card overlapping */}
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.card}>
-            {/* Icon */}
             <View style={styles.iconCircle}>
               <Feather name="mail" size={40} color={RHSColors.blue700} />
             </View>
@@ -196,34 +135,16 @@ export const VerifyOtpScreen = () => {
               <Text style={{ fontWeight: '700', color: RHSColors.blue700 }}>{email}</Text>
             </Text>
 
-            {/* OTP digit boxes */}
-            <View style={styles.otpRow}>
-              {digits.map((digit, index) => (
-                <TextInput
-                  key={index}
-                  ref={(ref) => { inputRefs.current[index] = ref; }}
-                  style={[
-                    styles.otpBox,
-                    digit ? styles.otpBoxFilled : null,
-                    error ? styles.otpBoxError : null,
-                  ]}
-                  value={digit}
-                  onChangeText={(text) => handleDigitChange(text, index)}
-                  onKeyPress={(e) => handleKeyPress(e, index)}
-                  keyboardType="number-pad"
-                  // maxLength=1 chặn paste — để OTP_LENGTH để nhận đủ chuỗi khi copy/paste
-                  maxLength={OTP_LENGTH}
-                  selectTextOnFocus
-                  caretHidden
-                  textContentType="oneTimeCode"
-                  autoComplete="sms-otp"
-                  importantForAutofill="yes"
-                  placeholderTextColor={RHSColors.textMuted}
-                />
-              ))}
-            </View>
+            <OtpInput
+              value={otpCode}
+              onChange={(code) => {
+                setError('');
+                setOtpCode(code);
+              }}
+              error={!!error}
+              autoFocus
+            />
 
-            {/* Error message */}
             {error ? (
               <View style={styles.errorWrap}>
                 <Feather name="alert-circle" size={14} color={RHSColors.red600} />
@@ -231,7 +152,6 @@ export const VerifyOtpScreen = () => {
               </View>
             ) : null}
 
-            {/* Verify button - BLUE */}
             <TouchableOpacity
               style={[styles.verifyBtn, otpCode.length === OTP_LENGTH && styles.verifyBtnActive]}
               disabled={otpCode.length < OTP_LENGTH || loading}
@@ -249,7 +169,6 @@ export const VerifyOtpScreen = () => {
               )}
             </TouchableOpacity>
 
-            {/* Resend button */}
             <TouchableOpacity
               style={styles.resendBtn}
               onPress={handleResendOtp}
@@ -266,7 +185,7 @@ export const VerifyOtpScreen = () => {
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -275,7 +194,6 @@ export const VerifyOtpScreen = () => {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
 
-  // Split screen gradient top
   topGradient: {
     paddingTop: 20,
     paddingBottom: 40,
@@ -298,9 +216,8 @@ const styles = StyleSheet.create({
   brandSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
 
   container: { flex: 1 },
-  content: { flex: 1, paddingHorizontal: 20, paddingTop: 4 },
+  content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 },
 
-  // White card
   card: {
     backgroundColor: '#fff',
     marginTop: -24,
@@ -331,39 +248,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: RHSColors.textMuted,
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
     lineHeight: 20,
-  },
-
-  otpRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 8,
-  },
-  otpBox: {
-    width: 48,
-    height: 56,
-    borderRadius: borderRadius.md,
-    borderWidth: 2,
-    borderColor: '#EEEEEE',
-    backgroundColor: '#FAFAFA',
-    fontSize: 24,
-    fontWeight: '800',
-    color: RHSColors.text,
-    textAlign: 'center',
-  },
-  otpBoxFilled: {
-    borderColor: RHSColors.blue700,
-    backgroundColor: '#E3F2FD',
-    shadowColor: RHSColors.blue700,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  otpBoxError: {
-    borderColor: RHSColors.red600,
-    backgroundColor: '#FFF5F5',
   },
 
   errorWrap: {
@@ -375,7 +261,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 10,
     marginBottom: 12,
-    marginTop: 4,
+    marginTop: 12,
   },
   errorText: {
     fontSize: 13,

@@ -6,10 +6,10 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -37,7 +37,7 @@ export const EditProfileScreen = () => {
 
   const handleSave = async () => {
     if (!phoneNumber.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
+      appAlert('Lỗi', 'Vui lòng nhập số điện thoại');
       return;
     }
     setLoading(true);
@@ -50,14 +50,14 @@ export const EditProfileScreen = () => {
       };
       const result = await userApi.updateProfile(updateData);
       if (result.success) {
-        Alert.alert('Thành công', 'Cập nhật số điện thoại thành công', [
+        appAlert('Thành công', 'Cập nhật số điện thoại thành công', [
           { text: 'Đồng ý', onPress: () => navigation.goBack() },
         ]);
       } else {
-        Alert.alert('Lỗi', result.message || 'Cập nhật thất bại');
+        appAlert('Lỗi', result.message || 'Cập nhật thất bại');
       }
     } catch (error: any) {
-      Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
     } finally {
       setLoading(false);
     }

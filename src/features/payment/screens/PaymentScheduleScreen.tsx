@@ -6,12 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   RefreshControl,
   LayoutAnimation,
   Platform,
   UIManager,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -174,7 +174,7 @@ export const PaymentScheduleScreen = () => {
       if (status === 404) {
         setSummary(null);
       } else {
-        Alert.alert('Lỗi', e?.response?.data?.message || e?.message || 'Không tải được lịch thanh toán.');
+        appAlert('Lỗi', e?.response?.data?.message || e?.message || 'Không tải được lịch thanh toán.');
       }
     } finally {
       setLoading(false);
@@ -215,7 +215,7 @@ export const PaymentScheduleScreen = () => {
   const handlePay = async (phase: InstallmentPhase) => {
     const st = String(phase.status || '').toUpperCase();
     if (st === 'LOCKED') {
-      Alert.alert(
+      appAlert(
         'Chưa tới lúc đóng',
         phase.phaseOrder === 2
           ? 'Khoản này mở sau khi bạn đóng cọc Đợt 1 và ký hợp đồng.'
@@ -239,10 +239,10 @@ export const PaymentScheduleScreen = () => {
           phaseLabel: phaseTitleLong(phase),
         });
       } else {
-        Alert.alert('Lỗi', result.message || 'Không tạo được URL thanh toán.');
+        appAlert('Lỗi', result.message || 'Không tạo được URL thanh toán.');
       }
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.response?.data?.message || e?.message || 'Không thanh toán được khoản này.');
+      appAlert('Lỗi', e?.response?.data?.message || e?.message || 'Không thanh toán được khoản này.');
     } finally {
       setPayingId(null);
     }

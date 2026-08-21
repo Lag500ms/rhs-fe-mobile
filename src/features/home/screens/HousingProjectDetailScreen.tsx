@@ -8,11 +8,11 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
@@ -21,7 +21,7 @@ import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme
 import { HousingProjectResponse } from '../types/housing';
 import { housingApi } from '../api/housingApi';
 import { formatPrice, getThumb } from '../utils/format';
-import { geocode, LatLng, VIETNAM_FALLBACK, MAPBOX_TOKEN } from '../services/geocodeService';
+import { geocode, LatLng, MAPBOX_TOKEN } from '../services/geocodeService';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { getToken } from '../../../lib/tokenStorage';
 import { wishlistApi } from '../../saved/api/wishlistApi';
@@ -171,7 +171,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
     const token = await getToken();
     if (!token) {
       const rootNav = navigation.getParent()?.getParent();
-      Alert.alert('Chưa đăng nhập', 'Vui lòng đăng nhập để lưu dự án yêu thích.', [
+      appAlert('Chưa đăng nhập', 'Vui lòng đăng nhập để lưu dự án yêu thích.', [
         { text: 'Huỷ', style: 'cancel' },
         { text: 'Đăng nhập', onPress: () => rootNav?.navigate('Auth', { screen: 'Login' }) },
       ]);
@@ -188,7 +188,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
         setIsWishlisted(true);
       }
     } catch (e: any) {
-      Alert.alert('Lỗi', e?.response?.data?.message || 'Không thể cập nhật danh sách yêu thích.');
+      appAlert('Lỗi', e?.response?.data?.message || 'Không thể cập nhật danh sách yêu thích.');
     } finally {
       setWishlistLoading(false);
     }
@@ -197,13 +197,13 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
   const handleRegister = async () => {
     if (!isOpenForRegistration(project.status)) {
       if (isUpcoming(project.status)) {
-        Alert.alert(
+        appAlert(
           'Dự án sắp mở bán',
           'Chưa tới thời điểm đăng ký. Bạn vẫn có thể nhấn trái tim để lưu vào danh sách quan tâm và nhận thông tin khi mở.',
         );
         return;
       }
-      Alert.alert(
+      appAlert(
         'Không thể đăng ký',
         `Dự án đang ở trạng thái “${labelProjectStatus(project.status)}”, chưa nhận hồ sơ mới.`,
       );
@@ -216,7 +216,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
       // 1. Check login
       const accessToken = await getToken();
       if (!accessToken) {
-        Alert.alert('Chưa đăng nhập', 'Vui lòng đăng nhập để đăng ký nhà ở xã hội.', [
+        appAlert('Chưa đăng nhập', 'Vui lòng đăng nhập để đăng ký nhà ở xã hội.', [
           { text: 'Huỷ', style: 'cancel' },
           { text: 'Đăng nhập', onPress: () => rootNav?.navigate('Auth', { screen: 'Login' }) },
         ]);
@@ -226,7 +226,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
       // 2. Check identity verified (đồng bộ web: hard gate lúc đăng ký)
       const user = await ensureEkycForApplication();
       if (!user) {
-        Alert.alert(
+        appAlert(
           'Chưa xác minh danh tính',
           'Bạn cần xác thực danh tính (eKYC) trước khi đăng ký hồ sơ. Vẫn xem dự án và lưu quan tâm được.',
           [
@@ -241,7 +241,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
       try {
         const check = await housingApplicationApi.activeCheck();
         if (check.hasActiveApplication) {
-          Alert.alert(
+          appAlert(
             'Đã có hồ sơ đang xử lý',
             check.message ||
               'Bạn đang có hồ sơ khác ở trạng thái đã nộp hoặc đã được duyệt. Mỗi người chỉ được một hồ sơ hoạt động tại một thời điểm.',
@@ -282,7 +282,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
         })
       );
     } catch {
-      Alert.alert('Lỗi', 'Không thể kiểm tra trạng thái tài khoản. Vui lòng thử lại.');
+      appAlert('Lỗi', 'Không thể kiểm tra trạng thái tài khoản. Vui lòng thử lại.');
     }
   };
 

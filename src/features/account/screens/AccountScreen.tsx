@@ -7,9 +7,9 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
-  Switch,
-  Alert,
+  Switch
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,9 +26,6 @@ export const AccountScreen = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profile, setProfile] = useState<UserProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // States cho các công tắc cài đặt
-  const [pushEnabled, setPushEnabled] = useState(true);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
 
   useFocusEffect(
@@ -73,14 +70,14 @@ export const AccountScreen = () => {
     if (enabled) {
       const refreshToken = await getRefreshToken();
       if (!refreshToken || !profile?.email) {
-        Alert.alert('Lỗi', 'Không tìm thấy dữ liệu xác thực. Vui lòng đăng nhập lại.');
+        appAlert('Lỗi', 'Không tìm thấy dữ liệu xác thực. Vui lòng đăng nhập lại.');
         return;
       }
       const result = await enableBiometric(profile.email, refreshToken);
       if (result.success) {
         setBiometricEnabled(true);
       } else {
-        Alert.alert('Không thể bật', result.error || 'Thiết bị không hỗ trợ sinh trắc học.');
+        appAlert('Không thể bật', result.error || 'Thiết bị không hỗ trợ sinh trắc học.');
       }
     } else {
       await disableBiometric();
@@ -91,7 +88,7 @@ export const AccountScreen = () => {
   const handleLogin = () => navigation.navigate('Auth', { screen: 'Login' });
   
   const confirmLogout = () => {
-    Alert.alert(
+    appAlert(
       'Đăng xuất',
       'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?',
       [
@@ -224,17 +221,6 @@ export const AccountScreen = () => {
                 onPress={() => navigation.getParent()?.navigate('UserProfile', { screen: 'ChangePassword' })} 
               />
               <MenuItem 
-                icon="bell" 
-                label="Nhận thông báo dịch vụ" 
-                rightComponent={
-                  <Switch 
-                    value={pushEnabled} 
-                    onValueChange={setPushEnabled}
-                    trackColor={{ false: '#D1D5DB', true: RHSColors.blue700 }}
-                  />
-                }
-              />
-              <MenuItem 
                 iconSource={require('../../../../assets/fingerprint.png')}
                 icon=""
                 label="Xác thực sinh trắc học" 
@@ -254,6 +240,11 @@ export const AccountScreen = () => {
         {/* Section 3: TRỢ GIÚP & PHÁP LÝ (Luôn hiện) */}
         <View style={styles.menuCard}>
           <Text style={styles.menuTitle}>TRỢ GIÚP & PHÁP LÝ</Text>
+          <MenuItem
+            icon="search"
+            label="Tra cứu hồ sơ công khai"
+            onPress={() => navigation.navigate('Lookup')}
+          />
           <MenuItem 
             icon="file-text" 
             label="Tra cứu thủ tục hành chính" 

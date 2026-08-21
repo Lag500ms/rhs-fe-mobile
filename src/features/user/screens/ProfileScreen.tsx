@@ -4,12 +4,12 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   Image,
   ScrollView,
   Platform,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
@@ -51,10 +51,10 @@ export const ProfileScreen = () => {
       if (result.success && result.user) {
         setProfile(result.user);
       } else {
-        Alert.alert('Lỗi', result.message || 'Không thể tải thông tin người dùng');
+        appAlert('Lỗi', result.message || 'Không thể tải thông tin người dùng');
       }
     } catch (error: any) {
-      Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
     } finally {
       setLoading(false);
     }
@@ -83,7 +83,7 @@ export const ProfileScreen = () => {
     if (Platform.OS === 'android') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Cần quyền truy cập', 'Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh đại diện.');
+        appAlert('Cần quyền truy cập', 'Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh đại diện.');
         return false;
       }
     }
@@ -94,7 +94,7 @@ export const ProfileScreen = () => {
     if (Platform.OS === 'android') {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Cần quyền truy cập', 'Ứng dụng cần quyền truy cập camera để chụp ảnh đại diện.');
+        appAlert('Cần quyền truy cập', 'Ứng dụng cần quyền truy cập camera để chụp ảnh đại diện.');
         return false;
       }
     }
@@ -133,24 +133,24 @@ export const ProfileScreen = () => {
     try {
       const result = await userApi.uploadProfileImage(asset);
       if (result.success) {
-        Alert.alert('Thành công', 'Tải ảnh đại diện thành công');
+        appAlert('Thành công', 'Tải ảnh đại diện thành công');
         checkAuthAndLoad();
       } else {
-        Alert.alert('Lỗi', result.message || 'Tải ảnh thất bại');
+        appAlert('Lỗi', result.message || 'Tải ảnh thất bại');
       }
     } catch (error: any) {
       const status = error.response?.status;
       const serverMsg = error.response?.data?.message || error.response?.data?.title;
       const detailMsg = error.message;
       const finalMsg = serverMsg || detailMsg || 'Không thể kết nối đến máy chủ';
-      Alert.alert(`Lỗi${status ? ` (${status})` : ''}`, finalMsg);
+      appAlert(`Lỗi${status ? ` (${status})` : ''}`, finalMsg);
     } finally {
       setUploading(false);
     }
   };
 
   const handleUploadImage = () => {
-    Alert.alert('Chọn ảnh đại diện', 'Vui lòng chọn nguồn ảnh', [
+    appAlert('Chọn ảnh đại diện', 'Vui lòng chọn nguồn ảnh', [
       { text: 'Chụp ảnh', onPress: async () => {
         if (!(await requestCameraPermission())) return;
         const asset = await pickImage(true);
@@ -169,7 +169,7 @@ export const ProfileScreen = () => {
 
   const handleVerifyIdentity = () => {
     if (isVerified) {
-      Alert.alert('Thông báo', 'Bạn đã xác minh danh tính thành công rồi.');
+      appAlert('Thông báo', 'Bạn đã xác minh danh tính thành công rồi.');
       return;
     }
     navigation.getParent()?.navigate('EKyc');

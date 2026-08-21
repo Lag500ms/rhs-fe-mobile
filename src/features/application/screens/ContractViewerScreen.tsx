@@ -5,9 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Platform,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -174,7 +174,7 @@ export const ContractViewerScreen = () => {
 
   const handleDownload = useCallback(async () => {
     if (!localUri) {
-      Alert.alert('Lỗi', 'Chưa có file để lưu');
+      appAlert('Lỗi', 'Chưa có file để lưu');
       return;
     }
 
@@ -186,10 +186,10 @@ export const ContractViewerScreen = () => {
           dialogTitle: 'Lưu hợp đồng',
         });
       } else {
-        Alert.alert('Tải xuống thành công', `File đã lưu tại: ${localUri}`);
+        appAlert('Tải xuống thành công', `File đã lưu tại: ${localUri}`);
       }
     } catch (e: any) {
-      Alert.alert('Tải xuống thất bại', e?.message || 'Không thể lưu file');
+      appAlert('Tải xuống thất bại', e?.message || 'Không thể lưu file');
     } finally {
       setDownloadProgress(false);
     }
@@ -205,13 +205,13 @@ export const ContractViewerScreen = () => {
         });
       }
     } catch (e: any) {
-      Alert.alert('Thông báo', e?.message || 'Không mở được file. Hãy dùng nút Tải xuống.');
+      appAlert('Thông báo', e?.message || 'Không mở được file. Hãy dùng nút Tải xuống.');
     }
   }, [localUri]);
 
   const handleSign = () => {
     if (!applicationId || !agreed) return;
-    Alert.alert(
+    appAlert(
       'Xác nhận ký hợp đồng',
       'Bạn đồng ý với toàn bộ điều khoản hợp đồng mua bán nhà ở xã hội? Hệ thống sẽ ghi nhận chữ ký điện tử (không cần mã xác thực).',
       [
@@ -225,17 +225,17 @@ export const ContractViewerScreen = () => {
               if (result.success) {
                 setIsSigned(true);
                 setSignedAt(result.data?.signedAt || new Date().toISOString());
-                Alert.alert(
+                appAlert(
                   'Thành công',
                   result.message?.includes('nguyên tắc')
                     ? 'Đã ký hợp đồng mua bán nhà ở xã hội.'
                     : result.message || 'Đã ký hợp đồng mua bán nhà ở xã hội.',
                 );
               } else {
-                Alert.alert('Không ký được', result.message || 'Vui lòng thử lại.');
+                appAlert('Không ký được', result.message || 'Vui lòng thử lại.');
               }
             } catch (e: any) {
-              Alert.alert('Lỗi', e?.response?.data?.message || e?.message || 'Không ký được hợp đồng.');
+              appAlert('Lỗi', e?.response?.data?.message || e?.message || 'Không ký được hợp đồng.');
             } finally {
               setSigning(false);
             }

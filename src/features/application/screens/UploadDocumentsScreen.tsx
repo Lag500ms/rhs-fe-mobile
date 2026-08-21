@@ -5,9 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
+import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -140,7 +140,7 @@ export const UploadDocumentsScreen = () => {
           setRequiredItems([]);
         } else {
           const msg = e?.response?.data?.message || 'Không thể tải danh sách giấy tờ bắt buộc.';
-          Alert.alert('Lỗi', msg);
+          appAlert('Lỗi', msg);
         }
       } finally {
         setLoading(false);
@@ -177,7 +177,7 @@ export const UploadDocumentsScreen = () => {
       const file = result.assets[0];
       const bytes = await resolveFileBytes(file.uri, file.size);
       if (bytes > MAX_PDF_BYTES) {
-        Alert.alert(
+        appAlert(
           'File quá lớn',
           `Chỉ chấp nhận PDF tối đa 10MB (file hiện tại ~${formatFileSize(bytes)}).`,
         );
@@ -207,12 +207,12 @@ export const UploadDocumentsScreen = () => {
       const status = e?.response?.status;
       const msg = e?.response?.data?.message || e?.message || 'Không thể upload tài liệu.';
       if (status === 502) {
-        Alert.alert(
+        appAlert(
           'Không lưu được file',
           'Máy chủ chưa nhận được giấy tờ (lỗi 502). Hồ sơ nháp vẫn còn — hãy thử tải lại file. Đừng tạo hồ sơ mới.',
         );
       } else {
-        Alert.alert('Lỗi tải lên', msg);
+        appAlert('Lỗi tải lên', msg);
       }
     } finally {
       setUploading((prev) => ({ ...prev, [docKey]: false }));
@@ -229,7 +229,7 @@ export const UploadDocumentsScreen = () => {
       setUploadedFiles((prev) => ({ ...prev, [docKey]: null }));
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Không thể xóa tài liệu.';
-      Alert.alert('Lỗi', msg);
+      appAlert('Lỗi', msg);
     } finally {
       setDeleting((prev) => ({ ...prev, [docKey]: false }));
     }
@@ -244,7 +244,7 @@ export const UploadDocumentsScreen = () => {
   };
 
   const handleSaveAndBack = () => {
-    Alert.alert(
+    appAlert(
       'Đã lưu nháp',
       'Hồ sơ vẫn còn trên hệ thống. Bạn mở lại từ «Hồ sơ của tôi» để tải giấy tờ, không tạo hồ sơ mới.',
       [{ text: 'Đồng ý', onPress: leaveToMyApplications }],
@@ -406,7 +406,7 @@ export const UploadDocumentsScreen = () => {
                     <TouchableOpacity
                       style={styles.deleteBtn}
                       onPress={() => {
-                        Alert.alert('Xóa tài liệu', 'Bạn có chắc muốn xóa tài liệu này?', [
+                        appAlert('Xóa tài liệu', 'Bạn có chắc muốn xóa tài liệu này?', [
                           { text: 'Hủy', style: 'cancel' },
                           {
                             text: 'Xóa',
