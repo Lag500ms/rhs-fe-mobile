@@ -32,8 +32,9 @@ export type ApplicationStackParamList = {
   ApplicationDetail: { applicationId: string };
   BasicInformation: { projectId: string; projectName: string };
   PriorityGroup: {
-    draftPersonal: import('../types/applicationDraft').ApplicationDraftPersonal;
-    draftMembers?: import('../types/applicationDraft').ApplicationDraftMember[];
+    projectId: string;
+    projectName?: string;
+    suggestedPriorityGroup?: string;
   };
   UploadDocuments: { applicationId: string; projectName?: string; applicationStatus?: string };
   ReviewSubmit: { applicationId: string; applicationStatus?: string };
@@ -45,11 +46,10 @@ export type ApplicationStackParamList = {
   };
   WithdrawApplication: { applicationId: string; projectName?: string };
   HouseholdMembers: {
-    applicationId?: string;
+    applicationId: string;
     projectName?: string;
     applicationStatus?: string;
-    next?: 'UploadDocuments' | 'PriorityGroup';
-    draftPersonal?: import('../types/applicationDraft').ApplicationDraftPersonal;
+    next?: 'UploadDocuments';
   };
   PaymentSchedule: { applicationId: string; projectName?: string };
   LotterySchedule: { projectId: string; projectName?: string; applicationId?: string };

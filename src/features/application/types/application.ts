@@ -1,23 +1,31 @@
 export interface CreateApplicationRequest {
   projectId: string;
-  fullName: string;
-  citizenId: string;
+  /** Mặc định true: BE lấy nhân thân, hộ, giấy tờ từ hồ sơ công dân */
+  autoFillFromProfile?: boolean;
+  inheritDocumentsFromVault?: boolean;
+  fullName?: string;
+  citizenId?: string;
   occupation?: string;
   workPlace?: string;
-  currentResidence: string;
-  permanentAddress: string;
-  housingStatus: string;
-  maritalStatus: string;
-  priorityGroup: string;
+  currentResidence?: string;
+  permanentAddress?: string;
+  housingStatus?: string;
+  maritalStatus?: string;
+  priorityGroup?: string;
   monthlyIncome?: number;
   spouseMonthlyIncome?: number;
   averageHousingAreaPerPerson?: number;
-  /** Gửi kèm khi tạo (BE CreateApplicationRequestDto.HouseholdMembers) */
+  desiredApartmentTypeId?: string;
+  desiredApartmentType?: string;
   householdMembers?: Array<{
     fullName: string;
     citizenId?: string;
     dateOfBirth?: string;
     relationship: string;
+    occupation?: string;
+    monthlyIncome?: number | null;
+    isDependent?: boolean;
+    dependentReason?: string;
     note?: string;
   }>;
 }
@@ -114,6 +122,14 @@ export interface EligibilityResult {
   applicationId?: string | null;
   eligible: boolean;
   estimatedScore: number;
+  priorityGroupCheckPassed?: boolean;
+  incomeCheckPassed?: boolean;
+  housingAreaCheckPassed?: boolean;
+  totalHouseholdIncome?: number | null;
+  maxAllowedIncome?: number | null;
+  calculatedAverageArea?: number | null;
+  maxAllowedAreaPerPerson?: number | null;
+  summaryMessage?: string;
   reasons: string[];
   assessmentDate: string;
 }

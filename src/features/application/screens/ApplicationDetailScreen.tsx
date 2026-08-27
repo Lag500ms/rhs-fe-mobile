@@ -346,14 +346,9 @@ export const ApplicationDetailScreen = () => {
     try {
       const result = await housingApplicationApi.createApplication({
         projectId: detail.projectId,
-        fullName: detail.fullName,
-        citizenId: detail.citizenId,
-        currentResidence: detail.currentResidence,
-        permanentAddress: detail.permanentAddress,
-        housingStatus: detail.housingStatus,
-        maritalStatus: detail.maritalStatus || 'SINGLE',
         priorityGroup: detail.priorityGroup,
-        averageHousingAreaPerPerson: detail.averageHousingAreaPerPerson ?? undefined,
+        autoFillFromProfile: true,
+        inheritDocumentsFromVault: true,
       });
       navigation.replace('UploadDocuments', {
         applicationId: result.applicationId,

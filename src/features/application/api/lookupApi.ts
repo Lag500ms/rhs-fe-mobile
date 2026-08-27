@@ -20,7 +20,7 @@ function parseDocItems(data: unknown): RequiredDocumentItem[] {
     return {
       documentType: code,
       label: String(x.label ?? x.Label ?? code),
-      subtitle: 'PDF, tối đa 10MB',
+      subtitle: 'Tệp PDF, tối đa 10 MB',
     };
   });
 }

@@ -12,6 +12,10 @@ export interface HouseholdMemberRequest {
   citizenId?: string;
   dateOfBirth?: string;
   relationship: HouseholdRelationship | string;
+  occupation?: string;
+  monthlyIncome?: number | null;
+  isDependent?: boolean;
+  dependentReason?: string;
   note?: string;
 }
 
@@ -21,6 +25,10 @@ export interface HouseholdMember {
   citizenId?: string | null;
   dateOfBirth?: string | null;
   relationship: string;
+  occupation?: string | null;
+  monthlyIncome?: number | null;
+  isDependent?: boolean;
+  dependentReason?: string | null;
   note?: string | null;
   createdAt: string;
 }

@@ -18,8 +18,9 @@ import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { housingApplicationApi } from '../api/housingApplicationApi';
 import { lookupApi } from '../api/lookupApi';
 import { ApplicationDetail, ApplicationDocument, RequiredDocumentItem } from '../types/application';
-import { getHousingStatusLabel } from '../utils/statusConfig';
+import { getHousingStatusLabel, getMaritalStatusLabel } from '../utils/statusConfig';
 import { ApplicationStepper } from '../components/ApplicationStepper';
+import { formatVnd } from '../../user/types/citizenProfile';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -136,7 +137,8 @@ export const ReviewSubmitScreen = () => {
   const missingRequired = requiredItems.filter((r) => !uploadedTypes.has(r.documentType));
   const hasRequiredDocs =
     !missingPriorityGroup && requiredItems.length > 0 && missingRequired.length === 0;
-  const isDisabled = !hasRequiredDocs || submitting || !commitment;
+  const ineligible = !!detail?.eligibility && detail.eligibility.eligible === false;
+  const isDisabled = !hasRequiredDocs || submitting || !commitment || ineligible;
 
   const handleSubmit = async () => {
     if (!commitment) {
@@ -197,13 +199,13 @@ export const ReviewSubmitScreen = () => {
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {isSupplementMode ? 'Nộp lại hồ sơ' : 'Bước 5/5 — Rà soát'}
+          {isSupplementMode ? 'Nộp lại hồ sơ' : 'Bước 4/4 — Rà soát'}
         </Text>
         <View style={{ width: 36 }} />
       </View>
 
       {/* Stepper - chỉ hiện khi tạo mới */}
-      {!isSupplementMode && <ApplicationStepper current={5} />}
+      {!isSupplementMode && <ApplicationStepper current={4} />}
 
       <ScrollView
         style={styles.scroll}
@@ -223,6 +225,16 @@ export const ReviewSubmitScreen = () => {
           <InfoRow icon="credit-card" label="Số CCCD" value={detail.citizenId} />
           {detail.occupation ? <InfoRow icon="briefcase" label="Nghề nghiệp" value={detail.occupation} /> : null}
           {detail.workPlace ? <InfoRow icon="map-pin" label="Nơi làm việc" value={detail.workPlace} /> : null}
+          {detail.monthlyIncome != null ? (
+            <InfoRow icon="dollar-sign" label="Thu nhập tháng" value={formatVnd(detail.monthlyIncome)} />
+          ) : null}
+          {detail.maritalStatus?.toUpperCase() === 'MARRIED' && detail.spouseMonthlyIncome != null ? (
+            <InfoRow
+              icon="dollar-sign"
+              label="Thu nhập vợ/chồng"
+              value={formatVnd(detail.spouseMonthlyIncome)}
+            />
+          ) : null}
         </View>
 
         {/* Address Section */}
@@ -243,8 +255,16 @@ export const ReviewSubmitScreen = () => {
           <InfoRow
             icon="heart"
             label="Tình trạng hôn nhân"
-            value={detail.maritalStatus || '—'}
+            value={getMaritalStatusLabel(detail.maritalStatus)}
           />
+          {detail.housingStatus?.toUpperCase() === 'SMALL_HOUSE' &&
+          detail.averageHousingAreaPerPerson != null ? (
+            <InfoRow
+              icon="maximize"
+              label="Diện tích bình quân"
+              value={`${detail.averageHousingAreaPerPerson} m²/người`}
+            />
+          ) : null}
           <InfoRow
             icon="users"
             label="Số thành viên"
@@ -257,6 +277,33 @@ export const ReviewSubmitScreen = () => {
           />
         </View>
 
+        {detail.eligibility ? (
+          <View
+            style={[
+              styles.sectionCard,
+              {
+                backgroundColor: detail.eligibility.eligible
+                  ? RHSColors.green50
+                  : RHSColors.amber50,
+              },
+            ]}
+          >
+            <Text style={styles.cardTitle}>
+              {detail.eligibility.eligible
+                ? 'Đủ điều kiện (ước lượng)'
+                : 'Chưa đủ điều kiện — không nộp được'}
+            </Text>
+            {!!detail.eligibility.summaryMessage && (
+              <Text style={styles.eligSummary}>{detail.eligibility.summaryMessage}</Text>
+            )}
+            {(detail.eligibility.reasons || []).map((r) => (
+              <Text key={r} style={styles.eligReason}>
+                • {r}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+
         {/* Documents */}
         <View style={styles.sectionCard}>
           <Text style={styles.cardTitle}>Giấy tờ đính kèm</Text>
@@ -264,7 +311,7 @@ export const ReviewSubmitScreen = () => {
             <View style={styles.noDocs}>
               <Feather name="alert-triangle" size={16} color={RHSColors.amber600} />
               <Text style={styles.noDocsText}>
-                Thiếu nhóm đối tượng — chưa xác định được giấy tờ bắt buộc (2 hoặc 3 file).
+                Thiếu nhóm đối tượng — chưa xác định được giấy tờ bắt buộc (2 hoặc 3 tệp).
               </Text>
             </View>
           ) : detail.documents.length === 0 ? (
@@ -331,7 +378,12 @@ export const ReviewSubmitScreen = () => {
               : `Còn thiếu ${missingRequired.length} giấy tờ bắt buộc theo nhóm đối tượng. Quay lại bước giấy tờ để bổ sung.`}
           </Text>
         )}
-        {hasRequiredDocs && !commitment && (
+        {hasRequiredDocs && ineligible && (
+          <Text style={styles.disabledHint}>
+            Hồ sơ chưa đủ điều kiện theo quy định. Bổ sung hồ sơ công dân rồi tạo lại nháp, hoặc chỉnh hộ/thu nhập/nhà ở.
+          </Text>
+        )}
+        {hasRequiredDocs && !ineligible && !commitment && (
           <Text style={styles.disabledHint}>Vui lòng tích cam kết thông tin chính xác để nộp hồ sơ.</Text>
         )}
         <View style={{ height: 40 }} />
@@ -461,6 +513,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: RHSColors.text,
     marginBottom: 12,
+  },
+  eligSummary: {
+    fontSize: 13,
+    color: RHSColors.text,
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  eligReason: {
+    fontSize: 12,
+    color: RHSColors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 2,
   },
 
   // Info Rows

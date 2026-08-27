@@ -44,6 +44,9 @@ export const housingDocumentApi = {
 
     if (Platform.OS === 'web') {
       const blob = webFile ?? (await fetch(fileUri).then((r) => r.blob()));
+      if (!blob) {
+        throw new Error('Không đọc được tệp PDF.');
+      }
       formData.append('File', new File([blob], name, { type: 'application/pdf' }));
     } else {
       formData.append('File', {
@@ -75,7 +78,7 @@ export const housingDocumentApi = {
     } catch (e: any) {
       const msg = aspNetErrorMessage(
         e?.response?.data,
-        e?.message || 'Không thể upload tài liệu.',
+        e?.message || 'Không thể tải lên giấy tờ.',
       );
       const err = new Error(msg) as Error & { response?: any };
       err.response = e?.response;

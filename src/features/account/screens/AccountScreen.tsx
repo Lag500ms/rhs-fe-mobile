@@ -189,6 +189,15 @@ export const AccountScreen = () => {
                 onPress={() => navigation.navigate('UserProfile')} 
               />
               <MenuItem
+                icon="clipboard"
+                label="Hồ sơ công dân (định danh, hộ, giấy tờ)"
+                onPress={() =>
+                  navigation.getParent()?.navigate('UserProfile', {
+                    screen: 'CitizenProfileHub',
+                  })
+                }
+              />
+              <MenuItem
                 icon="shuffle"
                 label="Bốc thăm của tôi"
                 onPress={() =>

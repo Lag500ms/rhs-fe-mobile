@@ -23,7 +23,7 @@ export const DraftActionSheet: React.FC<DraftActionSheetProps> = ({
         <View style={styles.sheetHandle} />
         <Text style={styles.sheetTitle}>Quản lý hồ sơ nháp</Text>
         <Text style={styles.sheetDesc}>
-          Thông tin định danh lấy từ eKYC — chỉ quản lý giấy tờ và nộp hồ sơ.
+          Thông tin định danh lấy từ hồ sơ công dân — quản lý giấy tờ PDF và nộp hồ sơ.
         </Text>
 
         <TouchableOpacity style={styles.sheetOption} onPress={onManageDocs} activeOpacity={0.8}>

@@ -205,7 +205,7 @@ export const UploadDocumentsScreen = () => {
       }));
     } catch (e: any) {
       const status = e?.response?.status;
-      const msg = e?.response?.data?.message || e?.message || 'Không thể upload tài liệu.';
+      const msg = e?.response?.data?.message || e?.message || 'Không thể tải lên giấy tờ.';
       if (status === 502) {
         appAlert(
           'Không lưu được file',
@@ -228,7 +228,7 @@ export const UploadDocumentsScreen = () => {
       await housingDocumentApi.deleteDocument(applicationId, file.documentId);
       setUploadedFiles((prev) => ({ ...prev, [docKey]: null }));
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Không thể xóa tài liệu.';
+      const msg = e?.response?.data?.message || e?.message || 'Không thể xóa giấy tờ.';
       appAlert('Lỗi', msg);
     } finally {
       setDeleting((prev) => ({ ...prev, [docKey]: false }));
@@ -267,7 +267,7 @@ export const UploadDocumentsScreen = () => {
             <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
-            {isSupplementMode ? 'Bổ sung giấy tờ' : 'Bước 4/5 — Tài liệu'}
+            {isSupplementMode ? 'Bổ sung giấy tờ' : 'Bước 3/4 — Giấy tờ'}
           </Text>
           <View style={{ width: 36 }} />
         </View>
@@ -287,12 +287,12 @@ export const UploadDocumentsScreen = () => {
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {isSupplementMode ? 'Bổ sung giấy tờ' : 'Bước 4/5 — Tài liệu'}
+          {isSupplementMode ? 'Bổ sung giấy tờ' : 'Bước 3/4 — Giấy tờ'}
         </Text>
         <View style={{ width: 36 }} />
       </View>
 
-      {!isSupplementMode && <ApplicationStepper current={4} />}
+      {!isSupplementMode && <ApplicationStepper current={3} />}
 
       <ScrollView
         style={styles.scroll}
@@ -333,7 +333,7 @@ export const UploadDocumentsScreen = () => {
             ? 'Không thể xác định bộ giấy tờ bắt buộc khi thiếu nhóm đối tượng.'
             : `Bộ giấy tờ bắt buộc theo đối tượng${
                 priorityGroupLabel ? ` «${priorityGroupLabel}»` : ''
-              } (Đ76 / Đ29–30). Tải tệp PDF, tối đa 10MB mỗi loại.`}
+              } (Điều 76 / Điều 29–30). Giấy đã kế thừa từ kho sẽ hiện sẵn. Tải tệp PDF, tối đa 10 MB mỗi loại.`}
         </Text>
 
         <View style={styles.progressCard}>
@@ -406,7 +406,7 @@ export const UploadDocumentsScreen = () => {
                     <TouchableOpacity
                       style={styles.deleteBtn}
                       onPress={() => {
-                        appAlert('Xóa tài liệu', 'Bạn có chắc muốn xóa tài liệu này?', [
+                        appAlert('Xóa giấy tờ', 'Bạn có chắc muốn xóa giấy tờ này?', [
                           { text: 'Hủy', style: 'cancel' },
                           {
                             text: 'Xóa',
@@ -436,7 +436,7 @@ export const UploadDocumentsScreen = () => {
                   ) : (
                     <View style={styles.uploadingContent}>
                       <Feather name="upload" size={24} color="#B0BEC5" />
-                      <Text style={styles.dashedZoneText}>Chạm để chọn file PDF</Text>
+                      <Text style={styles.dashedZoneText}>Chạm để chọn tệp PDF</Text>
                       <Text style={styles.dashedZoneHint}>Chỉ PDF, tối đa 10MB</Text>
                     </View>
                   )}
@@ -470,7 +470,7 @@ export const UploadDocumentsScreen = () => {
           <Text style={styles.gateHint}>
             {missingPriorityGroup
               ? 'Cần chọn nhóm đối tượng trước khi tải giấy tờ.'
-              : `Vui lòng upload đủ ${requiredCount || '—'} loại giấy tờ bắt buộc`}
+              : `Vui lòng tải đủ ${requiredCount || '—'} loại giấy tờ bắt buộc`}
           </Text>
         )}
         <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAndBack} activeOpacity={0.9}>

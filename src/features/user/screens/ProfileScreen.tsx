@@ -165,7 +165,7 @@ export const ProfileScreen = () => {
     ]);
   };
 
-  const isVerified = !!profile?.citizenId;
+  const isVerified = !!(profile?.isEkycVerified || profile?.citizenId);
 
   const handleVerifyIdentity = () => {
     if (isVerified) {
@@ -173,6 +173,10 @@ export const ProfileScreen = () => {
       return;
     }
     navigation.getParent()?.navigate('EKyc');
+  };
+
+  const openCitizenProfile = () => {
+    navigation.navigate('CitizenProfileHub');
   };
 
   const renderNotLoggedIn = () => (
@@ -274,6 +278,11 @@ export const ProfileScreen = () => {
         </View>
 
         {/* Actions */}
+        <ActionButton
+          icon="clipboard"
+          text="Hồ sơ công dân"
+          onPress={openCitizenProfile}
+        />
         <ActionButton
           icon="home"
           text="Khám phá dự án NOXH"

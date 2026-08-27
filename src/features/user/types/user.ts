@@ -8,6 +8,12 @@ export interface UserProfileDto {
   address?: string;
   role: string;
   isEmailVerified: boolean;
+  isEkycVerified?: boolean;
+  ekycVerifiedAt?: string;
+  maritalStatus?: string;
+  monthlyIncome?: number;
+  housingStatus?: string;
+  priorityGroup?: string;
   profileImageUrl?: string;
   createdAt: string;
   lastLoginAt?: string;

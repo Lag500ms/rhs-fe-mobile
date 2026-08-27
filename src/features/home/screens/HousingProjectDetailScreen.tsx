@@ -25,8 +25,12 @@ import { geocode, LatLng, MAPBOX_TOKEN } from '../services/geocodeService';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { getToken } from '../../../lib/tokenStorage';
 import { wishlistApi } from '../../saved/api/wishlistApi';
-import { ensureEkycForApplication } from '../../user/utils/ekycGate';
+import {
+  ensureEkycForApplication,
+  getCitizenProfileReadyGaps,
+} from '../../user/utils/ekycGate';
 import { housingApplicationApi } from '../../application/api/housingApplicationApi';
+import { citizenProfileApi } from '../../user/api/citizenProfileApi';
 import { WishlistHeart } from '../../../components/WishlistHeart';
 import { lotteryApi } from '../../lottery/api/lotteryApi';
 import type { LotteryScheduleDetail } from '../../lottery/types/lottery';
@@ -265,7 +269,34 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
         /* BE vẫn chặn khi tạo — tiếp tục */
       }
 
-      // 4. OK → chuyển sang Application tab
+      // 4. Hồ sơ công dân phải đủ nhân thân (không yêu cầu đủ kho giấy — giấy phụ thuộc đối tượng)
+      try {
+        const full = await citizenProfileApi.getFullProfile();
+        const gaps = getCitizenProfileReadyGaps(full);
+        if (gaps.length > 0) {
+          appAlert(
+            'Hồ sơ công dân chưa đủ',
+            gaps.join('\n'),
+            [
+              { text: 'Đóng', style: 'cancel' },
+              {
+                text: 'Hoàn thiện hồ sơ',
+                onPress: () =>
+                  rootNav?.navigate('UserProfile', { screen: 'CitizenProfileHub' }),
+              },
+            ],
+          );
+          return;
+        }
+      } catch {
+        appAlert(
+          'Không tải được hồ sơ',
+          'Không kiểm tra được hồ sơ công dân. Vui lòng thử lại.',
+        );
+        return;
+      }
+
+      // 5. Đủ điều kiện → bước xác nhận hồ sơ
       navigation.dispatch(
         CommonActions.navigate({
           name: 'MainTabs',

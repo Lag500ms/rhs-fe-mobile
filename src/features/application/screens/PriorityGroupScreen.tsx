@@ -1,13 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
-  Switch,
 } from 'react-native';
 import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,14 +14,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, spacing, typography } from '../../../lib/theme';
 import { housingApplicationApi } from '../api/housingApplicationApi';
-import { householdMemberApi } from '../api/householdMemberApi';
 import { lookupApi } from '../api/lookupApi';
 import { CreateApplicationRequest, PriorityGroupItem } from '../types/application';
 import { ApplicationStepper } from '../components/ApplicationStepper';
-import type {
-  ApplicationDraftMember,
-  ApplicationDraftPersonal,
-} from '../types/applicationDraft';
 
 function requiredDocCount(group: PriorityGroupItem | undefined): number {
   if (!group) return 0;
@@ -31,23 +24,33 @@ function requiredDocCount(group: PriorityGroupItem | undefined): number {
 }
 
 /**
- * Bước 3/5 — Đối tượng (khớp web).
- * Tạo nháp hồ sơ BE tại đây (cần priorityGroup), rồi sang tải giấy tờ.
+ * Bước 2/4 — Chọn đối tượng thụ hưởng, tạo nháp bằng cách kế thừa hồ sơ công dân.
  */
 export const PriorityGroupScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { draftPersonal, draftMembers } = route.params as {
-    draftPersonal: ApplicationDraftPersonal;
-    draftMembers?: ApplicationDraftMember[];
+  const { projectId, projectName, suggestedPriorityGroup } = route.params as {
+    projectId: string;
+    projectName?: string;
+    suggestedPriorityGroup?: string;
   };
+
+  useLayoutEffect(() => {
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.setOptions({ tabBarStyle: { display: 'none' } });
+    }
+    return () => {
+      if (parent) {
+        parent.setOptions({ tabBarStyle: undefined });
+      }
+    };
+  }, [navigation]);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [objectOptions, setObjectOptions] = useState<PriorityGroupItem[]>([]);
   const [priorityGroup, setPriorityGroup] = useState('');
-  const [hasPriorContract, setHasPriorContract] = useState(false);
-  const [priorContractNote, setPriorContractNote] = useState('');
   const [error, setError] = useState('');
 
   const selectedGroup = objectOptions.find((g) => g.code === priorityGroup);
@@ -57,21 +60,29 @@ export const PriorityGroupScreen = () => {
       try {
         const groups = await lookupApi.getPriorityGroups();
         setObjectOptions(groups);
+        const suggested = (suggestedPriorityGroup || '').trim().toUpperCase();
+        if (suggested && groups.some((g) => g.code === suggested)) {
+          setPriorityGroup(suggested);
+        }
       } catch {
         appAlert('Lỗi', 'Không tải được danh sách đối tượng thụ hưởng.');
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [suggestedPriorityGroup]);
+
+  const goToUpload = (applicationId: string, applicationStatus?: string) => {
+    navigation.replace('UploadDocuments', {
+      applicationId,
+      projectName,
+      applicationStatus: applicationStatus || 'DRAFT',
+    });
+  };
 
   const handleContinue = async () => {
     if (!priorityGroup) {
       setError('Vui lòng chọn nhóm đối tượng thụ hưởng theo Điều 76.');
-      return;
-    }
-    if (hasPriorContract && !priorContractNote.trim()) {
-      setError('Vui lòng ghi chú lịch sử hợp đồng nhà ở xã hội.');
       return;
     }
     if (objectOptions.length === 0) {
@@ -83,50 +94,13 @@ export const PriorityGroupScreen = () => {
     setSubmitting(true);
     try {
       const payload: CreateApplicationRequest = {
-        projectId: draftPersonal.projectId,
-        fullName: draftPersonal.fullName,
-        citizenId: draftPersonal.citizenId,
-        permanentAddress: draftPersonal.permanentAddress,
-        currentResidence: draftPersonal.currentResidence,
-        occupation: draftPersonal.occupation,
-        workPlace: draftPersonal.workPlace,
-        housingStatus: draftPersonal.housingStatus,
-        maritalStatus: draftPersonal.maritalStatus,
+        projectId,
         priorityGroup,
-        monthlyIncome: draftPersonal.monthlyIncome,
-        spouseMonthlyIncome: draftPersonal.spouseMonthlyIncome,
-        averageHousingAreaPerPerson: draftPersonal.averageHousingAreaPerPerson,
-        householdMembers: (draftMembers || []).map((m) => ({
-          fullName: m.fullName,
-          citizenId: m.citizenId,
-          dateOfBirth: m.dateOfBirth,
-          relationship: m.relationship,
-          note: m.note,
-        })),
+        autoFillFromProfile: true,
+        inheritDocumentsFromVault: true,
       };
 
       const result = await housingApplicationApi.createApplication(payload);
-
-      // Fallback: nếu BE bỏ qua householdMembers trong create → thêm từng người
-      if ((draftMembers?.length || 0) > 0) {
-        try {
-          const existing = await householdMemberApi.getMembers(result.applicationId);
-          if (!existing.length) {
-            for (const m of draftMembers!) {
-              await householdMemberApi.addMember(result.applicationId, {
-                fullName: m.fullName,
-                citizenId: m.citizenId,
-                dateOfBirth: m.dateOfBirth,
-                relationship: m.relationship,
-                note: m.note,
-              });
-            }
-          }
-        } catch {
-          /* create đã gửi members — bỏ qua nếu API members lỗi */
-        }
-      }
-
       goToUpload(result.applicationId, result.applicationStatus || 'DRAFT');
     } catch (e: any) {
       const status = e?.response?.status;
@@ -143,14 +117,6 @@ export const PriorityGroupScreen = () => {
 
   const RESUMABLE = new Set(['DRAFT', 'NEED_MORE_DOCUMENTS']);
 
-  const goToUpload = (applicationId: string, applicationStatus?: string) => {
-    navigation.replace('UploadDocuments', {
-      applicationId,
-      projectName: draftPersonal.projectName,
-      applicationStatus: applicationStatus || 'DRAFT',
-    });
-  };
-
   const resumeExistingApplication = async (data: Record<string, any>) => {
     let appId: string | undefined;
     let appStatus = '';
@@ -159,7 +125,7 @@ export const PriorityGroupScreen = () => {
       const mine = await housingApplicationApi.getMyApplications();
       const existing = (mine.items || []).find(
         (a) =>
-          a.projectId === draftPersonal.projectId &&
+          a.projectId === projectId &&
           a.applicationStatus !== 'REJECTED' &&
           a.applicationStatus !== 'CANCELED' &&
           a.applicationStatus !== 'CANCELLED',
@@ -172,19 +138,20 @@ export const PriorityGroupScreen = () => {
 
     if (appId && RESUMABLE.has(appStatus || 'DRAFT')) {
       try {
+        const detail = await housingApplicationApi.getApplicationDetail(appId);
         await housingApplicationApi.updateApplication(appId, {
-          fullName: draftPersonal.fullName,
-          citizenId: draftPersonal.citizenId,
-          permanentAddress: draftPersonal.permanentAddress,
-          currentResidence: draftPersonal.currentResidence,
-          occupation: draftPersonal.occupation,
-          workPlace: draftPersonal.workPlace,
-          housingStatus: draftPersonal.housingStatus,
-          maritalStatus: draftPersonal.maritalStatus,
+          fullName: detail.fullName,
+          citizenId: detail.citizenId,
+          occupation: detail.occupation || undefined,
+          workPlace: detail.workPlace || undefined,
+          currentResidence: detail.currentResidence,
+          permanentAddress: detail.permanentAddress,
+          housingStatus: detail.housingStatus,
+          maritalStatus: detail.maritalStatus || 'SINGLE',
           priorityGroup,
-          monthlyIncome: draftPersonal.monthlyIncome,
-          spouseMonthlyIncome: draftPersonal.spouseMonthlyIncome,
-          averageHousingAreaPerPerson: draftPersonal.averageHousingAreaPerPerson,
+          monthlyIncome: detail.monthlyIncome ?? undefined,
+          spouseMonthlyIncome: detail.spouseMonthlyIncome ?? undefined,
+          averageHousingAreaPerPerson: detail.averageHousingAreaPerPerson ?? undefined,
         });
       } catch {
         /* vẫn vào bước giấy tờ với nháp cũ */
@@ -226,15 +193,16 @@ export const PriorityGroupScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bước 3/5 — Đối tượng</Text>
+        <Text style={styles.headerTitle}>Bước 2/4 — Đối tượng</Text>
         <View style={{ width: 36 }} />
       </View>
-      <ApplicationStepper current={3} />
+      <ApplicationStepper current={2} />
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Text style={styles.hint}>
-          Kiểm tra lại nhóm đối tượng và lịch sử hợp đồng nhà ở xã hội (khớp bước 3 trên web).
-          {draftPersonal.projectName ? ` Dự án: ${draftPersonal.projectName}` : ''}
+          Chọn nhóm đối tượng thụ hưởng. Hệ thống sẽ tạo hồ sơ nháp, sao chép nhân thân, hộ gia đình
+          và giấy tờ hợp lệ từ hồ sơ công dân.
+          {projectName ? ` Dự án: ${projectName}` : ''}
         </Text>
 
         <Text style={styles.label}>Nhóm đối tượng ưu tiên *</Text>
@@ -272,36 +240,10 @@ export const PriorityGroupScreen = () => {
 
         {selectedGroup && (
           <Text style={[styles.meta, { marginTop: 8 }]}>
-            Bước giấy tờ sẽ yêu cầu đúng {requiredDocCount(selectedGroup)} file PDF theo đối tượng
-            này.
+            Bước giấy tờ sẽ yêu cầu đúng {requiredDocCount(selectedGroup)} tệp PDF theo đối tượng này.
+            Giấy đã có trong kho sẽ được kế thừa nếu khớp loại.
           </Text>
         )}
-
-        <View style={styles.priorCard}>
-          <View style={styles.priorRow}>
-            <Text style={[styles.label, { flex: 1, marginTop: 0 }]}>
-              Đã từng ký hợp đồng mua nhà ở xã hội trước đây?
-            </Text>
-            <Switch
-              value={hasPriorContract}
-              onValueChange={setHasPriorContract}
-              trackColor={{ false: '#D1D5DB', true: RHSColors.blue700 }}
-            />
-          </View>
-          <Text style={styles.label}>
-            {hasPriorContract ? 'Ghi chú lịch sử *' : 'Ghi chú lịch sử'}
-          </Text>
-          <TextInput
-            style={[styles.input, !hasPriorContract && styles.inputDisabled]}
-            value={priorContractNote}
-            onChangeText={setPriorContractNote}
-            placeholder="Ví dụ: chưa từng / đã ký năm …"
-            placeholderTextColor={RHSColors.textMuted}
-            editable={hasPriorContract}
-            maxLength={500}
-            multiline
-          />
-        </View>
 
         {!!error && <Text style={styles.error}>{error}</Text>}
       </ScrollView>
@@ -317,7 +259,7 @@ export const PriorityGroupScreen = () => {
             <ActivityIndicator color="#fff" />
           ) : (
             <>
-              <Text style={styles.continueBtnText}>Lưu nháp & tải giấy tờ</Text>
+              <Text style={styles.continueBtnText}>Tạo nháp & tải giấy tờ</Text>
               <Feather name="arrow-right" size={18} color="#fff" />
             </>
           )}
@@ -371,26 +313,6 @@ const styles = StyleSheet.create({
   radioDotFill: { width: 10, height: 10, borderRadius: 5, backgroundColor: RHSColors.blue700 },
   radioLabel: { ...typography.bodySmall, color: RHSColors.text },
   radioLabelActive: { fontWeight: '700', color: RHSColors.blue700 },
-  priorCard: {
-    marginTop: spacing.lg,
-    backgroundColor: '#fff',
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: RHSColors.border,
-    padding: spacing.lg,
-  },
-  priorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
-  input: {
-    borderWidth: 1,
-    borderColor: RHSColors.border,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    minHeight: 44,
-    color: RHSColors.text,
-    backgroundColor: RHSColors.surface,
-  },
-  inputDisabled: { opacity: 0.5 },
   error: { ...typography.caption, color: RHSColors.red600, marginTop: spacing.md },
   bottomBar: {
     backgroundColor: '#fff',

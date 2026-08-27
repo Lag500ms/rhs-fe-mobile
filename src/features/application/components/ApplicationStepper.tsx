@@ -3,16 +3,15 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { RHSColors } from '../../../lib/theme';
 
-/** Khớp web: Cá nhân → Hộ → Đối tượng → Tài liệu → Rà soát */
+/** Khớp luồng nộp hồ sơ: Hồ sơ → Đối tượng → Giấy tờ → Rà soát */
 export const APPLICATION_STEPS = [
-  { key: 'info', label: 'Cá nhân' },
-  { key: 'members', label: 'Hộ' },
+  { key: 'info', label: 'Hồ sơ' },
   { key: 'priority', label: 'Đối tượng' },
-  { key: 'docs', label: 'Tài liệu' },
+  { key: 'docs', label: 'Giấy tờ' },
   { key: 'submit', label: 'Rà soát' },
 ] as const;
 
-export type ApplicationStepIndex = 1 | 2 | 3 | 4 | 5;
+export type ApplicationStepIndex = 1 | 2 | 3 | 4;
 
 type Props = {
   current: ApplicationStepIndex;
