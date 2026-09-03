@@ -26,6 +26,8 @@ export interface CreateApplicationRequest {
     monthlyIncome?: number | null;
     isDependent?: boolean;
     dependentReason?: string;
+    hasMeritService?: boolean;
+    meritDetails?: string;
     note?: string;
   }>;
 }
@@ -104,6 +106,13 @@ export interface ApplicationSummary {
   priorityGroup: string | null;
   documentCount: number;
   receiptUrl: string | null;
+  isViolation?: boolean;
+  violationReason?: string | null;
+  desiredApartmentType?: string | null;
+  desiredApartmentTypeLabel?: string | null;
+  waitlistNumber?: number | null;
+  waitlistPromotedAt?: string | null;
+  depositDeadline?: string | null;
 }
 
 export interface ReviewHistory {
@@ -162,12 +171,22 @@ export interface ApplicationDetail {
   lotteryResult?: string | null;
   apartmentId?: string | null;
   apartmentUnitName?: string | null;
+  apartmentType?: string | null;
+  apartmentTypeLabel?: string | null;
   apartmentArea?: number | null;
   apartmentPrice?: number | null;
   apartmentStatus?: string | null;
   monthlyIncome?: number | null;
   spouseMonthlyIncome?: number | null;
   averageHousingAreaPerPerson?: number | null;
+  isViolation?: boolean;
+  violationReason?: string | null;
+  desiredApartmentTypeId?: string | null;
+  desiredApartmentType?: string | null;
+  desiredApartmentTypeLabel?: string | null;
+  waitlistNumber?: number | null;
+  waitlistPromotedAt?: string | null;
+  depositDeadline?: string | null;
   eligibility?: EligibilityResult | null;
 
   officerId: string | null;
@@ -175,6 +194,20 @@ export interface ApplicationDetail {
 
   documents: ApplicationDocument[];
   reviewHistories: ReviewHistory[];
+  householdMembers?: Array<{
+    memberId: string;
+    fullName: string;
+    citizenId?: string | null;
+    dateOfBirth?: string | null;
+    relationship: string;
+    occupation?: string | null;
+    monthlyIncome?: number | null;
+    isDependent?: boolean;
+    dependentReason?: string | null;
+    hasMeritService?: boolean;
+    meritDetails?: string | null;
+    note?: string | null;
+  }>;
 }
 
 export interface PagedResponse<T> {

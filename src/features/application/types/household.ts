@@ -16,6 +16,8 @@ export interface HouseholdMemberRequest {
   monthlyIncome?: number | null;
   isDependent?: boolean;
   dependentReason?: string;
+  hasMeritService?: boolean;
+  meritDetails?: string;
   note?: string;
 }
 
@@ -29,6 +31,8 @@ export interface HouseholdMember {
   monthlyIncome?: number | null;
   isDependent?: boolean;
   dependentReason?: string | null;
+  hasMeritService?: boolean;
+  meritDetails?: string | null;
   note?: string | null;
   createdAt: string;
 }

@@ -9,6 +9,9 @@ import {
   InstallmentSummary,
   InstallmentSummaryResponse,
   InstallmentPayResponse,
+  ContractCancellationPreview,
+  CancelContractRequest,
+  ContractCancellationResult,
 } from '../types/payment';
 
 export const paymentApi = {
@@ -144,5 +147,48 @@ export const paymentApi = {
       `/Payment/installments/${installmentId}/pay`,
     );
     return response.data;
+  },
+
+  /**
+   * Xem trước phạt cọc / hoàn tiền khi xin ngừng thanh toán.
+   * GET /api/Payment/applications/{applicationId}/cancellation-preview
+   */
+  getCancellationPreview: async (applicationId: string): Promise<ContractCancellationPreview> => {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: ContractCancellationPreview;
+      message?: string;
+    }>(`/Payment/applications/${applicationId}/cancellation-preview`);
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.message || 'Không tính được bảng hoàn tiền.');
+    }
+    return response.data.data;
+  },
+
+  /**
+   * Người dân nộp đơn xin ngừng thanh toán (chờ CĐT duyệt).
+   * POST /api/Payment/applications/{applicationId}/request-cancellation
+   */
+  requestCancellation: async (
+    applicationId: string,
+    payload: CancelContractRequest,
+  ): Promise<ContractCancellationResult> => {
+    const response = await apiClient.post<{
+      success: boolean;
+      data?: ContractCancellationResult;
+      message?: string;
+    }>(`/Payment/applications/${applicationId}/request-cancellation`, payload);
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Không nộp được đơn xin ngừng thanh toán.');
+    }
+    return (
+      response.data.data || {
+        success: true,
+        message: response.data.message || 'Đã gửi đơn xin ngừng thanh toán.',
+        applicationId,
+        depositForfeited: 0,
+        refundAmount: 0,
+      }
+    );
   },
 };

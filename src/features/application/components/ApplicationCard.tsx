@@ -47,6 +47,14 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({ item, onPress 
           <Feather name="file-text" size={14} color={RHSColors.textMuted} />
           <Text style={styles.cardRowText}>{item.documentCount} giấy tờ</Text>
         </View>
+        {item.waitlistNumber ? (
+          <View style={styles.cardRow}>
+            <Feather name="clock" size={14} color={RHSColors.amber700} />
+            <Text style={[styles.cardRowText, { color: RHSColors.amber700, fontWeight: '700' }]}>
+              Danh sách chờ — thứ hạng {item.waitlistNumber}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       {action && (

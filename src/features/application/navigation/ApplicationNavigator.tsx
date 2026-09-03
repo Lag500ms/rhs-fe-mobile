@@ -44,7 +44,11 @@ export type ApplicationStackParamList = {
     title: string;
     canSign?: boolean;
   };
-  WithdrawApplication: { applicationId: string; projectName?: string };
+  WithdrawApplication: {
+    applicationId: string;
+    projectName?: string;
+    mode?: 'application' | 'contract';
+  };
   HouseholdMembers: {
     applicationId: string;
     projectName?: string;

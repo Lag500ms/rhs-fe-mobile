@@ -42,6 +42,8 @@ const emptyForm = () => ({
   monthlyIncome: '',
   isDependent: false,
   dependentReason: 'UNDER_18',
+  hasMeritService: false,
+  meritDetails: '',
   note: '',
 });
 
@@ -114,6 +116,8 @@ export const HouseholdMembersScreen = () => {
       monthlyIncome: member.monthlyIncome != null ? String(member.monthlyIncome) : '',
       isDependent: !!member.isDependent,
       dependentReason: member.dependentReason || 'UNDER_18',
+      hasMeritService: !!member.hasMeritService,
+      meritDetails: member.meritDetails || '',
       note: member.note || '',
     });
     setModalVisible(true);
@@ -200,6 +204,8 @@ export const HouseholdMembersScreen = () => {
       monthlyIncome: isDependent ? null : income,
       isDependent,
       dependentReason: isDependent ? form.dependentReason : undefined,
+      hasMeritService: form.hasMeritService,
+      meritDetails: form.hasMeritService ? form.meritDetails.trim() || undefined : undefined,
       note: form.note.trim() || undefined,
     };
 
@@ -292,6 +298,12 @@ export const HouseholdMembersScreen = () => {
                       {m.dependentReason
                         ? ` · ${getDependentReasonLabel(m.dependentReason)}`
                         : ''}
+                    </Text>
+                  ) : null}
+                  {m.hasMeritService ? (
+                    <Text style={styles.meta}>
+                      Người có công / thân nhân liệt sĩ
+                      {m.meritDetails ? ` · ${m.meritDetails}` : ''}
                     </Text>
                   ) : null}
                 </View>
@@ -434,6 +446,39 @@ export const HouseholdMembersScreen = () => {
                   />
                 </>
               )}
+
+              <TouchableOpacity
+                style={styles.checkRow}
+                onPress={() =>
+                  setForm((f) => ({
+                    ...f,
+                    hasMeritService: !f.hasMeritService,
+                    meritDetails: !f.hasMeritService ? f.meritDetails : '',
+                  }))
+                }
+              >
+                <Feather
+                  name={form.hasMeritService ? 'check-square' : 'square'}
+                  size={20}
+                  color={RHSColors.blue700}
+                />
+                <Text style={styles.checkLabel}>
+                  Người có công với cách mạng / thân nhân liệt sĩ
+                </Text>
+              </TouchableOpacity>
+
+              {form.hasMeritService ? (
+                <>
+                  <Text style={styles.label}>Chi tiết người có công</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={form.meritDetails}
+                    onChangeText={(v) => setForm((f) => ({ ...f, meritDetails: v }))}
+                    placeholder="Ví dụ: thân nhân liệt sĩ"
+                    maxLength={500}
+                  />
+                </>
+              ) : null}
 
               <Text style={styles.label}>Ghi chú</Text>
               <TextInput

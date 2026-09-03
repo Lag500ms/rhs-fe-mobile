@@ -32,7 +32,7 @@ const FAQS = [
   },
   {
     q: 'Thanh toán diễn ra theo thứ tự nào?',
-    a: 'Theo hệ thống hiện tại (6 khoản): (1) Sở duyệt → (2) chủ đầu tư chốt / bốc thăm → (3) cấp căn → (4) đóng tiền cọc khoảng 10% → (5) ký hợp đồng mua bán nhà ở xã hội → (6) khoản sau ký; các khoản theo tiến độ mở khi chủ đầu tư kích hoạt (xây thô, cất nóc, bàn giao, sổ hồng).',
+    a: 'Sau khi được cấp căn: đóng tiền cọc (đợt 1 do chủ đầu tư cấu hình, tối đa 30% giá căn) → ký hợp đồng mua bán → các đợt còn lại theo lịch chủ đầu tư công bố trên từng dự án (số đợt không cố định).',
   },
 ];
 

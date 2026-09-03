@@ -114,6 +114,20 @@ export interface LotteryDrawParticipant {
   lotteryResult?: string | null;
   slotCode?: string | null;
   priorityGroup?: string | null;
+  waitlistNumber?: number | null;
+}
+
+export interface LotteryWaitlistItem {
+  applicationId: string;
+  projectId: string;
+  projectName: string;
+  applicantFullName: string;
+  citizenId: string;
+  applicationStatus: string;
+  waitlistNumber?: number | null;
+  waitlistPromotedAt?: string | null;
+  depositDeadline?: string | null;
+  desiredApartmentTypeLabel?: string | null;
 }
 
 export interface LotteryDrawResult {
@@ -138,6 +152,7 @@ export const LOTTERY_RESULT_LABEL: Record<string, string> = {
   WON: 'Trúng tuyển',
   PRIORITY_WON: 'Trúng (ưu tiên)',
   LOST: 'Không trúng',
+  WAITLIST: 'Danh sách chờ',
   PENDING: 'Chờ bốc thăm',
 };
 

@@ -375,6 +375,16 @@ export const ApplicationDetailScreen = () => {
     navigation.navigate('WithdrawApplication', {
       applicationId: detail.applicationId,
       projectName: detail.projectName,
+      mode: 'application',
+    });
+  };
+
+  const handleRequestStopPayment = () => {
+    if (!detail) return;
+    navigation.navigate('WithdrawApplication', {
+      applicationId: detail.applicationId,
+      projectName: detail.projectName,
+      mode: 'contract',
     });
   };
 
@@ -536,6 +546,12 @@ export const ApplicationDetailScreen = () => {
           onPress: handleViewContract,
           variant: 'secondary',
         },
+        {
+          label: 'Xin ngừng thanh toán',
+          icon: 'slash',
+          onPress: handleRequestStopPayment,
+          variant: 'destructive',
+        },
       ];
     }
 
@@ -572,11 +588,11 @@ export const ApplicationDetailScreen = () => {
       return actions;
     }
 
-    if (status === 'LOTTERY_LOST') {
+    if (status === 'LOTTERY_LOST' || status === 'WAITLIST') {
       return [
         {
-          label: 'Xem kết quả bốc thăm',
-          icon: 'award',
+          label: status === 'WAITLIST' ? 'Xem danh sách chờ' : 'Xem kết quả bốc thăm',
+          icon: status === 'WAITLIST' ? 'clock' : 'award',
           onPress: () =>
             navigation.navigate('LotteryResult', {
               projectId: detail.projectId,
@@ -679,6 +695,7 @@ export const ApplicationDetailScreen = () => {
     'FULLY_PAID',
     'CONTRACT_SIGNED',
     'INSTALLMENT_IN_PROGRESS',
+    'CANCELLATION_REQUESTED',
     'REJECTED',
     'CANCELED',
     'EXPIRED',
@@ -724,6 +741,8 @@ export const ApplicationDetailScreen = () => {
         needMoreNote: requestNote,
         hasApartment,
         depositPaid,
+        waitlistNumber: detail.waitlistNumber,
+        depositDeadline: detail.depositDeadline,
       })
     : null;
 
@@ -811,7 +830,89 @@ export const ApplicationDetailScreen = () => {
             <DetailSection title="Thông tin cá nhân">
               <DetailRow label="Họ tên" value={detail.fullName} />
               <DetailRow label="CCCD" value={detail.citizenId} />
+              {detail.priorityGroup ? (
+                <DetailRow label="Đối tượng ưu tiên" value={detail.priorityGroup} />
+              ) : null}
+              {detail.priorityScore != null ? (
+                <DetailRow label="Điểm ưu tiên" value={String(detail.priorityScore)} />
+              ) : null}
             </DetailSection>
+
+            {(detail.applicationStatus === 'WAITLIST' ||
+              (detail.applicationStatus === 'LOTTERY_LOST' && !!detail.waitlistNumber)) && (
+              <View style={styles.lotteryInfoCard}>
+                <View style={styles.lotteryInfoHead}>
+                  <Feather name="clock" size={18} color={RHSColors.amber700} />
+                  <Text style={styles.lotteryInfoTitle}>
+                    Danh sách chờ
+                    {detail.waitlistNumber ? ` — thứ hạng ${detail.waitlistNumber}` : ''}
+                  </Text>
+                </View>
+                <Text style={styles.lotteryInfoText}>
+                  Hồ sơ không bị hủy. Khi có căn trả lại do hủy hợp đồng hoặc không nộp cọc, hệ thống
+                  chuyển quyền mua cho người đứng đầu danh sách (thời hạn xác nhận thường 48–72 giờ).
+                </Text>
+              </View>
+            )}
+
+            {!!detail.waitlistPromotedAt &&
+              (detail.applicationStatus === 'DEPOSIT_PENDING' ||
+                detail.applicationStatus === 'APPROVED' ||
+                detail.applicationStatus === 'APPROVED_BY_TIMEOUT') && (
+              <View style={styles.lotteryInfoCard}>
+                <View style={styles.lotteryInfoHead}>
+                  <Feather name="alert-circle" size={18} color={RHSColors.red600} />
+                  <Text style={styles.lotteryInfoTitle}>Được đôn từ danh sách chờ</Text>
+                </View>
+                <Text style={styles.lotteryInfoText}>
+                  {detail.depositDeadline
+                    ? `Vui lòng xác nhận và nộp cọc trước ${new Date(detail.depositDeadline).toLocaleString('vi-VN')}.`
+                    : 'Vui lòng xác nhận và nộp cọc trong thời hạn hệ thống thông báo.'}
+                </Text>
+              </View>
+            )}
+
+            {detail.apartmentUnitName ? (
+              <DetailSection title="Căn hộ được cấp">
+                <DetailRow label="Mã căn" value={detail.apartmentUnitName} />
+                {detail.apartmentTypeLabel ? (
+                  <DetailRow label="Loại căn" value={detail.apartmentTypeLabel} />
+                ) : null}
+                {detail.apartmentArea != null ? (
+                  <DetailRow label="Diện tích" value={`${detail.apartmentArea} m²`} />
+                ) : null}
+                {detail.apartmentPrice != null ? (
+                  <DetailRow
+                    label="Giá"
+                    value={`${Number(detail.apartmentPrice).toLocaleString('vi-VN')} VNĐ`}
+                  />
+                ) : null}
+              </DetailSection>
+            ) : null}
+
+            {detail.eligibility ? (
+              <DetailSection title="Điều kiện luật định">
+                <DetailRow
+                  label="Kết luận"
+                  value={detail.eligibility.eligible ? 'Đủ điều kiện' : 'Chưa đủ điều kiện'}
+                />
+                {detail.eligibility.maxAllowedIncome != null ? (
+                  <DetailRow
+                    label="Trần thu nhập"
+                    value={`${Number(detail.eligibility.maxAllowedIncome).toLocaleString('vi-VN')} VNĐ/người/tháng`}
+                  />
+                ) : null}
+                {detail.eligibility.maxAllowedAreaPerPerson != null ? (
+                  <DetailRow
+                    label="Nhà chật hẹp"
+                    value={`Diện tích bình quân hiện tại dưới ${detail.eligibility.maxAllowedAreaPerPerson} m²/người`}
+                  />
+                ) : null}
+                {!!detail.eligibility.summaryMessage && (
+                  <Text style={styles.noteText}>{detail.eligibility.summaryMessage}</Text>
+                )}
+              </DetailSection>
+            ) : null}
 
             <DetailSection title="Địa chỉ">
               <DetailRow label="Nơi ở" value={detail.currentResidence} />

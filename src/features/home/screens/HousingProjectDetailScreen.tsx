@@ -18,7 +18,15 @@ import { Feather } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography, spacing } from '../../../lib/theme';
-import { HousingProjectResponse } from '../types/housing';
+import {
+  HousingProjectResponse,
+  isCoOwnership,
+  isPriorityUnit,
+  saleTypeLabel,
+  sortedMilestones,
+  unitGroupLabel,
+  formatPaymentScheduleHint,
+} from '../types/housing';
 import { housingApi } from '../api/housingApi';
 import { formatPrice, getThumb } from '../utils/format';
 import { geocode, LatLng, MAPBOX_TOKEN } from '../services/geocodeService';
@@ -400,20 +408,44 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
           <View style={styles.detailRow}>
             <Feather name="credit-card" size={15} color={RHSColors.textMuted}/>
             <Text style={styles.detailText}>
-              {project.phase1Percentage != null && project.phase1Percentage > 0 ? (
-                <>
-                  Lịch thanh toán 6 đợt (mẫu): Đợt 1 ~10% khi cấp suất, Đợt 2 sau ký HĐ, Đợt 3–6 theo
-                  tiến độ CĐT. Tỉ lệ công bố Đợt 1 dự án:{' '}
-                  <Text style={{ color: RHSColors.blue700, fontWeight: '700' }}>
-                    {Number(project.phase1Percentage)}%
-                  </Text>
-                </>
-              ) : (
-                'Lịch thanh toán: 6 đợt (Đợt 1 cọc khi cấp suất → ký HĐ → Đợt 2–6 theo tiến độ)'
-              )}
+              {formatPaymentScheduleHint(project)}
             </Text>
           </View>
         </View>
+
+        {(project.milestones?.length ?? 0) > 0 && (
+          <View style={styles.card}>
+            <View style={styles.sectionHead}>
+              <Feather name="percent" size={16} color={RHSColors.blue700}/>
+              <Text style={styles.sectionTitle}>Chính sách thanh toán</Text>
+            </View>
+            {[...sortedMilestones(project)].map((m) => (
+                <View key={m.id} style={styles.milestoneRow}>
+                  <View style={styles.milestoneDot}>
+                    <Text style={styles.milestoneDotText}>{m.phaseOrder}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.aptTitleRow}>
+                      <Text style={styles.aptName}>{m.phaseName}</Text>
+                      {m.phaseOrder === 1 && (
+                        <View style={styles.aptChipPriority}>
+                          <Text style={styles.aptChipPriorityText}>Cọc ≤30%</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.aptMeta}>
+                      {m.percentage != null ? `${Number(m.percentage)}% giá căn` : ''}
+                      {m.triggerEventLabel ? ` · ${m.triggerEventLabel}` : ''}
+                      {m.dueDays ? ` · hạn ${m.dueDays} ngày` : ''}
+                    </Text>
+                    {!!m.description && (
+                      <Text style={[styles.aptMeta, { marginTop: 2 }]}>{m.description}</Text>
+                    )}
+                  </View>
+                </View>
+              ))}
+          </View>
+        )}
 
         {(project.apartments?.length ?? 0) > 0 && (
           <View style={styles.card}>
@@ -421,29 +453,77 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
               <Feather name="home" size={16} color={RHSColors.blue700}/>
               <Text style={styles.sectionTitle}>Danh sách căn</Text>
             </View>
-            {project.apartments!.map((apt) => (
-              <View key={apt.id} style={styles.aptRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.aptName}>{apt.unitName}</Text>
-                  <Text style={styles.aptMeta}>
-                    {apt.area} m² · {Number(apt.price).toLocaleString('vi-VN')} VNĐ
+            {project.apartments!.map((apt) => {
+              const assigned = String(apt.status).toUpperCase() === 'ASSIGNED';
+              const parts = [
+                apt.buildingBlock ? `Tòa ${apt.buildingBlock}` : null,
+                apt.floorNumber ? `Tầng ${apt.floorNumber}` : null,
+                apt.numberOfBedrooms ? `${apt.numberOfBedrooms} PN` : null,
+              ].filter(Boolean);
+              const areaLine = [
+                apt.area ? `TT ${apt.area} m²` : null,
+                apt.grossArea ? `tim tường ${apt.grossArea} m²` : null,
+              ].filter(Boolean).join(' · ');
+              const dir = apt.mainDoorDirectionLabel || apt.balconyDirectionLabel;
+              const income =
+                apt.minSuitableIncome != null || apt.maxSuitableIncome != null
+                  ? `Thu nhập phù hợp: ${
+                      apt.minSuitableIncome != null
+                        ? `${Math.round(apt.minSuitableIncome / 1e6)}`
+                        : '—'
+                    }–${
+                      apt.maxSuitableIncome != null
+                        ? `${Math.round(apt.maxSuitableIncome / 1e6)}`
+                        : '—'
+                    } tr/tháng`
+                  : null;
+              return (
+                <View key={apt.id} style={styles.aptRow}>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.aptTitleRow}>
+                      <Text style={styles.aptName}>{apt.unitName}</Text>
+                      {isPriorityUnit(apt) && (
+                        <View style={styles.aptChipPriority}>
+                          <Text style={styles.aptChipPriorityText}>Ưu tiên</Text>
+                        </View>
+                      )}
+                    </View>
+                    {parts.length > 0 && (
+                      <Text style={styles.aptMeta}>{parts.join(' · ')}</Text>
+                    )}
+                    <Text style={styles.aptMeta}>
+                      {areaLine || `${apt.area} m²`} · {Number(apt.price).toLocaleString('vi-VN')} VNĐ
+                    </Text>
+                    <Text style={styles.aptMeta}>
+                      {unitGroupLabel(apt)} · {saleTypeLabel(apt)}
+                      {isCoOwnership(apt) && apt.coOwnershipRatio != null
+                        ? ` ${apt.coOwnershipRatio}%`
+                        : ''}
+                    </Text>
+                    {(dir || apt.viewDescription || apt.maxOccupants) && (
+                      <Text style={styles.aptMeta}>
+                        {[
+                          dir ? `Hướng ${dir}` : null,
+                          apt.viewDescription,
+                          apt.maxOccupants ? `Sức chứa ~${apt.maxOccupants} người` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </Text>
+                    )}
+                    {income ? <Text style={styles.aptMeta}>{income}</Text> : null}
+                  </View>
+                  <Text
+                    style={[
+                      styles.aptStatus,
+                      { color: assigned ? RHSColors.red600 : RHSColors.green600 },
+                    ]}
+                  >
+                    {assigned ? 'Đã cấp' : 'Còn trống'}
                   </Text>
                 </View>
-                <Text
-                  style={[
-                    styles.aptStatus,
-                    {
-                      color:
-                        String(apt.status).toUpperCase() === 'ASSIGNED'
-                          ? RHSColors.red600
-                          : RHSColors.green600,
-                    },
-                  ]}
-                >
-                  {String(apt.status).toUpperCase() === 'ASSIGNED' ? 'Đã cấp' : 'Còn trống'}
-                </Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
         )}
 
@@ -652,9 +732,35 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: RHSColors.grey200,
   },
-  aptName: { ...typography.body, fontWeight: '700', color: RHSColors.text },
+  aptName: { ...typography.body, fontWeight: '700', color: RHSColors.text, flex: 1 },
+  aptTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  aptChipPriority: {
+    backgroundColor: RHSColors.amber50,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  aptChipPriorityText: { fontSize: 10, fontWeight: '700', color: RHSColors.amber700 },
   aptMeta: { ...typography.caption, color: RHSColors.textMuted, marginTop: 2 },
   aptStatus: { ...typography.caption, fontWeight: '700', marginLeft: 8 },
+  milestoneRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: RHSColors.grey200,
+  },
+  milestoneDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: RHSColors.blue50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  milestoneDotText: { fontSize: 11, fontWeight: '700', color: RHSColors.blue700 },
   desc: { ...typography.bodySmall, color: RHSColors.textSecondary, lineHeight: 22 },
 
   // Map

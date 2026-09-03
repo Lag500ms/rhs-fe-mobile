@@ -26,6 +26,7 @@ import {
   LOTTERY_RESULT_LABEL,
   type LotteryDrawParticipant,
   type LotteryDrawResult,
+  type LotteryWaitlistItem,
 } from '../types/lottery';
 
 type RouteParams = {
@@ -65,6 +66,7 @@ export const LotteryResultScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [result, setResult] = useState<LotteryDrawResult | null>(null);
+  const [waitlist, setWaitlist] = useState<LotteryWaitlistItem[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [celebrated, setCelebrated] = useState(false);
   const [celebrating, setCelebrating] = useState(false);
@@ -73,8 +75,12 @@ export const LotteryResultScreen = () => {
     setLoading(true);
     setError('');
     try {
-      const data = await lotteryApi.getResult(projectId);
+      const [data, wl] = await Promise.all([
+        lotteryApi.getResult(projectId),
+        lotteryApi.getWaitlist(projectId).catch(() => [] as LotteryWaitlistItem[]),
+      ]);
       setResult(data);
+      setWaitlist(wl);
       if (!data) setError('Chưa có kết quả bốc thăm cho dự án này.');
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Không tải được kết quả.');
@@ -107,6 +113,14 @@ export const LotteryResultScreen = () => {
         : null,
     [entries, applicationId],
   );
+  const ownWaitlist = useMemo(
+    () =>
+      applicationId
+        ? waitlist.find((w) => String(w.applicationId) === applicationId) ?? null
+        : null,
+    [waitlist, applicationId],
+  );
+  const ownWaitlistRank = ownWaitlist?.waitlistNumber ?? own?.waitlistNumber ?? null;
   const ownWon = !!own && isWinner(own);
 
   // Mở màn ăn mừng đúng một lần sau khi biết người dùng trúng.
@@ -235,7 +249,7 @@ export const LotteryResultScreen = () => {
               </Card>
             )}
 
-            {!!own && (
+            {(!!own || !!ownWaitlist) && (
               <Card
                 style={[styles.ownCard, ownWon ? styles.ownCardWon : styles.ownCardLost]}
                 elevated
@@ -261,7 +275,11 @@ export const LotteryResultScreen = () => {
                         { color: ownWon ? RHSColors.green700 : RHSColors.textSecondary },
                       ]}
                     >
-                      {LOTTERY_RESULT_LABEL[resultCode(own)] ?? resultCode(own) ?? '—'}
+                      {ownWaitlistRank
+                        ? `Danh sách chờ — thứ hạng ${ownWaitlistRank}`
+                        : own
+                          ? LOTTERY_RESULT_LABEL[resultCode(own)] ?? resultCode(own) ?? '—'
+                          : 'Danh sách chờ'}
                     </Text>
                   </View>
                 </View>
@@ -275,8 +293,9 @@ export const LotteryResultScreen = () => {
                 )}
                 {!ownWon && (
                   <Text style={styles.ownHint}>
-                    Bạn vẫn có thể đăng ký dự án khác. Hồ sơ đã duyệt được dùng lại cho lần bốc
-                    thăm sau.
+                    {ownWaitlistRank
+                      ? `Hồ sơ được xếp danh sách chờ thứ ${ownWaitlistRank}. Khi có căn trả lại, hệ thống chuyển quyền mua theo thứ hạng (thường 48–72 giờ để xác nhận nộp cọc).`
+                      : 'Bạn vẫn có thể đăng ký dự án khác. Hồ sơ đã duyệt được dùng lại cho lần bốc thăm sau.'}
                   </Text>
                 )}
               </Card>

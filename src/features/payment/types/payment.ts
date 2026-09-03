@@ -67,6 +67,10 @@ export interface InstallmentPhase {
   status: string;
   paidAt?: string | null;
   remainingDays: number;
+  overdueDays?: number;
+  dailyPenaltyRate?: number;
+  penaltyAmount?: number;
+  totalPayableAmount?: number;
   note?: string | null;
 }
 
@@ -78,9 +82,48 @@ export interface InstallmentSummary {
   totalAmount: number;
   totalPaid: number;
   totalRemaining: number;
+  totalPenalty?: number;
+  totalAmountWithPenalty?: number;
   totalPhases: number;
   paidPhases: number;
   phases: InstallmentPhase[];
+}
+
+export interface ContractCancellationPreview {
+  applicationId: string;
+  applicantName: string;
+  apartmentUnitName?: string | null;
+  apartmentPrice?: number | null;
+  currentApplicationStatus: string;
+  canCancel: boolean;
+  message?: string | null;
+  overduePhasesCount: number;
+  isEligibleForForcedRevocation: boolean;
+  phase1Amount: number;
+  phase1PaidAmount: number;
+  depositForfeited: number;
+  phase2PlusPaidAmount: number;
+  totalUnpaidPenalty: number;
+  refundAmount: number;
+  promotedWaitlistApplicantName?: string | null;
+}
+
+export interface CancelContractRequest {
+  reason: string;
+  isForcedRevocation?: boolean;
+  bankAccountNumber?: string;
+  bankName?: string;
+  accountHolderName?: string;
+}
+
+export interface ContractCancellationResult {
+  success: boolean;
+  message: string;
+  applicationId: string;
+  isForcedRevocation?: boolean;
+  depositForfeited: number;
+  refundAmount: number;
+  totalPenaltyDeducted?: number;
 }
 
 export interface InstallmentSummaryResponse {

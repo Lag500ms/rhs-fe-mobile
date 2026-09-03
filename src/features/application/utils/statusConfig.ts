@@ -103,6 +103,18 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     textColor: '#C62828',
     dotColor: '#EF5350',
   },
+  WAITLIST: {
+    label: 'Danh sách chờ (dự bị)',
+    bg: '#FFF8E1',
+    textColor: '#F57F17',
+    dotColor: '#F9A825',
+  },
+  CANCELLATION_REQUESTED: {
+    label: 'Chờ duyệt đơn ngừng thanh toán',
+    bg: '#FFF3E0',
+    textColor: '#E65100',
+    dotColor: '#FF9800',
+  },
   REJECTED: {
     label: 'Bị từ chối',
     bg: '#FFEBEE',
@@ -212,6 +224,10 @@ export function getActionForStatus(status: string): StatusAction | null {
       return { label: 'Xem lịch thanh toán', icon: 'calendar', color: RHSColors.blue700 };
     case 'LOTTERY_LOST':
       return { label: 'Xem kết quả bốc thăm', icon: 'eye', color: RHSColors.red600 };
+    case 'WAITLIST':
+      return { label: 'Xem thứ hạng danh sách chờ', icon: 'clock', color: RHSColors.amber700 };
+    case 'CANCELLATION_REQUESTED':
+      return { label: 'Đang chờ chủ đầu tư duyệt đơn', icon: 'clock', color: RHSColors.amber700 };
     case 'FULLY_PAID':
       return { label: 'Xem lịch thanh toán', icon: 'check-circle', color: RHSColors.green600 };
     case 'REJECTED':

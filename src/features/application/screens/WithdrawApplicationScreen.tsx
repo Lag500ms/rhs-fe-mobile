@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,10 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { RHSColors, borderRadius, shadows, spacing, typography } from '../../../lib/theme';
 import { housingApplicationApi } from '../api/housingApplicationApi';
+import { paymentApi } from '../../payment/api/paymentApi';
+import type { ContractCancellationPreview } from '../../payment/types/payment';
 
-const REASONS = [
+const APP_REASONS = [
   'Tôi đã tìm được nhà ở khác phù hợp',
   'Tôi nộp nhầm dự án',
   'Điều kiện tài chính thay đổi',
@@ -24,38 +26,103 @@ const REASONS = [
   'Lý do khác',
 ];
 
+const CONTRACT_REASONS = [
+  'Gặp khó khăn tài chính, không thể tiếp tục đóng tiền',
+  'Thay đổi nhu cầu nhà ở',
+  'Lý do gia đình / sức khỏe',
+  'Lý do khác',
+];
+
+const formatVnd = (amount?: number | null) =>
+  `${Math.round(amount || 0).toLocaleString('vi-VN')} VNĐ`;
+
 export const WithdrawApplicationScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { applicationId, projectName } = route.params as {
+  const { applicationId, projectName, mode } = route.params as {
     applicationId: string;
     projectName?: string;
+    mode?: 'application' | 'contract';
   };
+  const isContract = mode === 'contract';
+  const reasons = isContract ? CONTRACT_REASONS : APP_REASONS;
 
   const [selected, setSelected] = useState<number | null>(null);
   const [otherReason, setOtherReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [preview, setPreview] = useState<ContractCancellationPreview | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(isContract);
+  const [bankName, setBankName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [accountHolderName, setAccountHolderName] = useState('');
 
-  const isOther = selected === REASONS.length - 1;
+  const isOther = selected === reasons.length - 1;
 
   const finalReason = useMemo(() => {
     if (selected === null) return '';
-    return isOther ? otherReason.trim() : REASONS[selected];
-  }, [selected, isOther, otherReason]);
+    return isOther ? otherReason.trim() : reasons[selected];
+  }, [selected, isOther, otherReason, reasons]);
 
-  const canSubmit = finalReason.length > 0 && !submitting;
+  useEffect(() => {
+    if (!isContract) return;
+    let cancelled = false;
+    setLoadingPreview(true);
+    paymentApi
+      .getCancellationPreview(applicationId)
+      .then((data) => {
+        if (!cancelled) setPreview(data);
+      })
+      .catch((e: any) => {
+        if (!cancelled) {
+          appAlert(
+            'Lỗi',
+            e?.response?.data?.message || e?.message || 'Không tính được bảng hoàn tiền.',
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPreview(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [applicationId, isContract]);
+
+  const canSubmit =
+    finalReason.length > 0 &&
+    !submitting &&
+    (!isContract || (!loadingPreview && preview?.canCancel !== false));
 
   const doWithdraw = async () => {
     setSubmitting(true);
     try {
-      await housingApplicationApi.cancelApplication(applicationId, finalReason);
-      appAlert(
-        'Đã hủy hồ sơ',
-        'Hồ sơ của bạn đã được hủy thành công.',
-        [{ text: 'Đồng ý', onPress: () => navigation.goBack() }],
-      );
+      if (isContract) {
+        await paymentApi.requestCancellation(applicationId, {
+          reason: finalReason,
+          bankName: bankName.trim() || undefined,
+          bankAccountNumber: bankAccountNumber.trim() || undefined,
+          accountHolderName: accountHolderName.trim() || undefined,
+        });
+        appAlert(
+          'Đã gửi đơn',
+          'Đơn xin ngừng thanh toán đã gửi tới chủ đầu tư. Tiền cọc đợt đầu sẽ bị trừ nếu đơn được chấp thuận.',
+          [{ text: 'Đồng ý', onPress: () => navigation.goBack() }],
+        );
+      } else {
+        await housingApplicationApi.cancelApplication(applicationId, finalReason);
+        appAlert(
+          'Đã hủy hồ sơ',
+          'Hồ sơ của bạn đã được hủy thành công.',
+          [{ text: 'Đồng ý', onPress: () => navigation.goBack() }],
+        );
+      }
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Không thể hủy hồ sơ. Vui lòng thử lại.';
+      const msg =
+        e?.response?.data?.message ||
+        e?.message ||
+        (isContract
+          ? 'Không gửi được đơn xin ngừng thanh toán.'
+          : 'Không thể hủy hồ sơ. Vui lòng thử lại.');
       appAlert('Lỗi', msg);
     } finally {
       setSubmitting(false);
@@ -65,18 +132,24 @@ export const WithdrawApplicationScreen = () => {
   const handleConfirm = () => {
     if (!canSubmit) return;
     appAlert(
-      'Xác nhận hủy hồ sơ',
-      'Sau khi hủy, hồ sơ sẽ chuyển sang trạng thái "Đã hủy" và không thể tiếp tục. Nếu đang giữ suất/căn, hệ thống sẽ hoàn lại. Bạn có chắc chắn?',
+      isContract ? 'Xác nhận xin ngừng thanh toán' : 'Xác nhận hủy hồ sơ',
+      isContract
+        ? 'Chủ đầu tư sẽ xét đơn. Nếu chấp thuận, bạn mất toàn bộ tiền cọc đợt đầu; các khoản đã đóng sau đó được hoàn sau khi trừ lãi phạt (nếu có).'
+        : 'Sau khi hủy, hồ sơ sẽ chuyển sang trạng thái "Đã hủy" và không thể tiếp tục. Nếu đang giữ suất/căn, hệ thống sẽ hoàn lại. Bạn có chắc chắn?',
       [
         { text: 'Không', style: 'cancel' },
-        { text: 'Hủy hồ sơ', style: 'destructive', onPress: doWithdraw },
+        {
+          text: isContract ? 'Gửi đơn' : 'Hủy hồ sơ',
+          style: 'destructive',
+          onPress: doWithdraw,
+        },
       ],
     );
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScreenHeader title="Hủy hồ sơ" isWhite />
+      <ScreenHeader title={isContract ? 'Xin ngừng thanh toán' : 'Hủy hồ sơ'} isWhite />
 
       <ScrollView
         style={styles.scroll}
@@ -87,14 +160,41 @@ export const WithdrawApplicationScreen = () => {
         <View style={styles.warnCard}>
           <Feather name="alert-triangle" size={18} color={RHSColors.red600} />
           <Text style={styles.warnText}>
-            Bạn đang yêu cầu hủy hồ sơ
-            {projectName ? ` cho dự án "${projectName}"` : ''}. Thao tác này không thể hoàn tác.
+            {isContract
+              ? `Bạn đang xin dừng mua nhà${projectName ? ` tại "${projectName}"` : ''}. Tiền cọc đợt đầu bị mất nếu chủ đầu tư chấp thuận.`
+              : `Bạn đang yêu cầu hủy hồ sơ${projectName ? ` cho dự án "${projectName}"` : ''}. Thao tác này không thể hoàn tác.`}
           </Text>
         </View>
 
-        <Text style={styles.sectionTitle}>Lý do hủy hồ sơ</Text>
+        {isContract && loadingPreview && (
+          <View style={styles.previewLoading}>
+            <ActivityIndicator color={RHSColors.blue700} />
+            <Text style={styles.previewHint}>Đang tính bảng hoàn tiền…</Text>
+          </View>
+        )}
 
-        {REASONS.map((reason, index) => {
+        {isContract && preview && (
+          <View style={styles.previewCard}>
+            <Text style={styles.sectionTitle}>Bảng kê phạt cọc & hoàn tiền</Text>
+            {preview.apartmentUnitName ? (
+              <Text style={styles.previewLine}>Căn: {preview.apartmentUnitName}</Text>
+            ) : null}
+            <Text style={styles.previewLine}>Tiền cọc (đợt 1) bị trừ: {formatVnd(preview.depositForfeited)}</Text>
+            <Text style={styles.previewLine}>Đã đóng từ đợt 2 trở đi: {formatVnd(preview.phase2PlusPaidAmount)}</Text>
+            <Text style={styles.previewLine}>Lãi phạt chưa thanh toán: {formatVnd(preview.totalUnpaidPenalty)}</Text>
+            <Text style={styles.previewRefund}>Số tiền dự kiến hoàn: {formatVnd(preview.refundAmount)}</Text>
+            {preview.overduePhasesCount >= 2 ? (
+              <Text style={styles.previewWarn}>
+                Đã quá hạn liên tiếp {preview.overduePhasesCount} đợt. Chủ đầu tư có thể cưỡng chế thu hồi căn.
+              </Text>
+            ) : null}
+            {preview.message ? <Text style={styles.previewHint}>{preview.message}</Text> : null}
+          </View>
+        )}
+
+        <Text style={styles.sectionTitle}>{isContract ? 'Lý do xin dừng' : 'Lý do hủy hồ sơ'}</Text>
+
+        {reasons.map((reason, index) => {
           const active = selected === index;
           return (
             <TouchableOpacity
@@ -122,6 +222,36 @@ export const WithdrawApplicationScreen = () => {
             maxLength={300}
           />
         )}
+
+        {isContract && (
+          <>
+            <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>
+              Tài khoản nhận hoàn tiền (nếu có)
+            </Text>
+            <TextInput
+              style={styles.singleInput}
+              placeholder="Chủ tài khoản"
+              placeholderTextColor={RHSColors.textMuted}
+              value={accountHolderName}
+              onChangeText={setAccountHolderName}
+            />
+            <TextInput
+              style={styles.singleInput}
+              placeholder="Số tài khoản"
+              placeholderTextColor={RHSColors.textMuted}
+              keyboardType="number-pad"
+              value={bankAccountNumber}
+              onChangeText={setBankAccountNumber}
+            />
+            <TextInput
+              style={styles.singleInput}
+              placeholder="Ngân hàng"
+              placeholderTextColor={RHSColors.textMuted}
+              value={bankName}
+              onChangeText={setBankName}
+            />
+          </>
+        )}
       </ScrollView>
 
       <SafeAreaView style={styles.bottomBar} edges={['bottom']}>
@@ -134,9 +264,11 @@ export const WithdrawApplicationScreen = () => {
           {submitting ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Feather name="x-octagon" size={18} color="#fff" />
+            <Feather name={isContract ? 'send' : 'x-octagon'} size={18} color="#fff" />
           )}
-          <Text style={styles.submitBtnText}>Xác nhận hủy hồ sơ</Text>
+          <Text style={styles.submitBtnText}>
+            {isContract ? 'Gửi đơn xin ngừng thanh toán' : 'Xác nhận hủy hồ sơ'}
+          </Text>
         </TouchableOpacity>
       </SafeAreaView>
     </SafeAreaView>
@@ -167,6 +299,21 @@ const styles = StyleSheet.create({
     color: RHSColors.text,
     marginBottom: spacing.sm,
   },
+
+  previewLoading: { alignItems: 'center', gap: 8, marginBottom: spacing.lg },
+  previewCard: {
+    backgroundColor: RHSColors.white,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    gap: 4,
+  },
+  previewLine: { ...typography.caption, color: RHSColors.textSecondary, lineHeight: 18 },
+  previewRefund: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.green700, marginTop: 6 },
+  previewWarn: { ...typography.caption, color: RHSColors.red600, marginTop: 6, lineHeight: 18 },
+  previewHint: { ...typography.caption, color: RHSColors.textMuted, marginTop: 4 },
 
   reasonRow: {
     flexDirection: 'row',
@@ -205,6 +352,16 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: RHSColors.text,
     marginTop: spacing.xs,
+  },
+  singleInput: {
+    backgroundColor: RHSColors.white,
+    borderWidth: 1,
+    borderColor: RHSColors.border,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    ...typography.bodySmall,
+    color: RHSColors.text,
+    marginBottom: spacing.sm,
   },
 
   bottomBar: {

@@ -39,59 +39,27 @@ const formatDate = (value?: string | null) => {
   }
 };
 
-/** Đồng bộ nhãn / mô tả đợt với web + BE PaymentMilestoneConstants.GetDisplayName */
-const PHASE_COPY: Record<
-  number,
-  { short: string; title: string; description: string }
-> = {
-  1: {
-    short: 'Cọc',
-    title: 'Đợt 1 — Cọc',
-    description: '10% giá trị căn khi trúng bốc thăm / cấp nhà.',
-  },
-  2: {
-    short: 'Sau ký HĐ',
-    title: 'Đợt 2 — Sau ký hợp đồng',
-    description: '20% giá trị căn khi ký hợp đồng mua bán chính thức.',
-  },
-  3: {
-    short: 'Xây thô',
-    title: 'Đợt 3 — Xây thô',
-    description: '20% giá trị căn khi hoàn thành xây thô.',
-  },
-  4: {
-    short: 'Cất nóc',
-    title: 'Đợt 4 — Cất nóc',
-    description: '20% giá trị căn khi cất nóc tòa nhà.',
-  },
-  5: {
-    short: 'Bàn giao',
-    title: 'Đợt 5 — Bàn giao',
-    description: '25% giá trị căn + 2% phí bảo trì khi bàn giao nhà & chìa khóa.',
-  },
-  6: {
-    short: 'Sổ hồng',
-    title: 'Đợt 6 — Sổ hồng',
-    description: '5% còn lại khi nhận Giấy chứng nhận (Sổ hồng).',
-  },
-};
-
+/** Nhãn đợt lấy từ CĐT (API installments), không hard-code 6 đợt mẫu. Đợt 1 = cọc. */
 function phaseTitle(phase: InstallmentPhase): string {
-  return PHASE_COPY[phase.phaseOrder]?.short
-    || phase.phaseName?.trim()
-    || `Đợt ${phase.phaseOrder}`;
+  if (phase.phaseOrder === 1) return 'Cọc';
+  const name = phase.phaseName?.trim();
+  if (name) return name.replace(/^Đợt\s*\d+\s*[—–-]?\s*/i, '') || name;
+  return `Đợt ${phase.phaseOrder}`;
 }
 
 function phaseTitleLong(phase: InstallmentPhase): string {
-  return PHASE_COPY[phase.phaseOrder]?.title
-    || phase.phaseName?.trim()
-    || `Đợt ${phase.phaseOrder}`;
+  const name = phase.phaseName?.trim();
+  if (name) return name;
+  return phase.phaseOrder === 1 ? 'Đợt 1 — Cọc' : `Đợt ${phase.phaseOrder}`;
 }
 
 function phaseDescription(phase: InstallmentPhase): string {
-  return PHASE_COPY[phase.phaseOrder]?.description
-    || phase.note?.trim()
-    || '';
+  const note = phase.note?.trim();
+  if (note) return note;
+  if (phase.phaseOrder === 1) {
+    return 'Tiền cọc do chủ đầu tư cấu hình, tối đa 30% giá căn.';
+  }
+  return '';
 }
 
 function isPaid(status: string) {
@@ -105,6 +73,13 @@ function isPayable(status: string) {
 
 function isLocked(status: string) {
   return String(status || '').toUpperCase() === 'LOCKED';
+}
+
+function payableAmount(phase: InstallmentPhase): number {
+  if (phase.totalPayableAmount != null && phase.totalPayableAmount > 0) {
+    return phase.totalPayableAmount;
+  }
+  return phase.amount + (phase.penaltyAmount || 0);
 }
 
 /**
@@ -235,7 +210,7 @@ export const PaymentScheduleScreen = () => {
           orderId: result.data.orderId,
           applicationId,
           projectName: projectName || '',
-          amount: phase.amount,
+          amount: payableAmount(phase),
           phaseLabel: phaseTitleLong(phase),
         });
       } else {
@@ -330,7 +305,7 @@ export const PaymentScheduleScreen = () => {
                     {isPaid(current.status)
                       ? 'Đã hoàn tất các khoản trên lịch'
                       : isPayable(current.status)
-                        ? `Đang tới: ${phaseTitleLong(current)} · ${formatVnd(current.amount)}`
+                      ? `Đang tới: ${phaseTitleLong(current)} · ${formatVnd(payableAmount(current))}`
                         : isLocked(current.status)
                           ? `Tiếp theo: ${phaseTitleLong(current)} (chưa mở)`
                           : `Hiện tại: ${phaseTitleLong(current)}`}
@@ -375,6 +350,9 @@ export const PaymentScheduleScreen = () => {
                           {desc ? <Text style={styles.journeyDesc}>{desc}</Text> : null}
                           <Text style={styles.journeyMeta}>
                             {formatVnd(phase.amount)}
+                            {(phase.penaltyAmount || 0) > 0
+                              ? ` + lãi phạt ${formatVnd(phase.penaltyAmount || 0)} (${phase.overdueDays || 0} ngày)`
+                              : ''}
                             {paid && phase.paidAt ? ` · Đã đóng ${formatDate(phase.paidAt)}` : ''}
                             {payable ? ' · Đến hạn đóng' : ''}
                             {locked ? ' · Chưa mở' : ''}
@@ -414,7 +392,7 @@ export const PaymentScheduleScreen = () => {
                     <>
                       <Feather name="credit-card" size={16} color="#fff" />
                       <Text style={styles.payBtnText}>
-                        Thanh toán {formatVnd(current.amount)}
+                        Thanh toán {formatVnd(payableAmount(current))}
                       </Text>
                     </>
                   )}
@@ -441,7 +419,30 @@ export const PaymentScheduleScreen = () => {
                 <Text style={styles.summaryFootText}>
                   Đã đóng {formatVnd(summary.totalPaid)} / {formatVnd(summary.totalAmount)}
                 </Text>
+                {(summary.totalPenalty || 0) > 0 ? (
+                  <Text style={styles.penaltyFoot}>
+                    Lãi phạt chậm nộp: {formatVnd(summary.totalPenalty || 0)} · Còn phải đóng{' '}
+                    {formatVnd(summary.totalAmountWithPenalty ?? summary.totalRemaining)}
+                  </Text>
+                ) : null}
               </View>
+
+              {(appStatus === 'CONTRACT_SIGNED' || appStatus === 'INSTALLMENT_IN_PROGRESS') && (
+                <TouchableOpacity
+                  style={styles.stopBtn}
+                  onPress={() =>
+                    navigation.navigate('WithdrawApplication', {
+                      applicationId,
+                      projectName,
+                      mode: 'contract',
+                    })
+                  }
+                  activeOpacity={0.85}
+                >
+                  <Feather name="slash" size={16} color={RHSColors.red600} />
+                  <Text style={styles.stopBtnText}>Xin ngừng thanh toán / rút hồ sơ</Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
         </ScrollView>
@@ -621,4 +622,24 @@ const styles = StyleSheet.create({
 
   summaryFoot: { marginTop: spacing.lg },
   summaryFootText: { fontSize: 12, color: RHSColors.textMuted, textAlign: 'center' },
+  penaltyFoot: {
+    marginTop: 6,
+    fontSize: 12,
+    color: RHSColors.red600,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  stopBtn: {
+    marginTop: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: RHSColors.red400,
+    borderRadius: borderRadius.md,
+    paddingVertical: 12,
+    backgroundColor: RHSColors.red50,
+  },
+  stopBtnText: { fontSize: 13, fontWeight: '700', color: RHSColors.red600 },
 });

@@ -10,7 +10,13 @@ export type CitizenNextStep = {
 
 export function getCitizenNextStep(
   status: string,
-  opts?: { needMoreNote?: string | null; hasApartment?: boolean; depositPaid?: boolean },
+  opts?: {
+    needMoreNote?: string | null;
+    hasApartment?: boolean;
+    depositPaid?: boolean;
+    waitlistNumber?: number | null;
+    depositDeadline?: string | null;
+  },
 ): CitizenNextStep | null {
   const s = (status || '').toUpperCase();
 
@@ -63,7 +69,9 @@ export function getCitizenNextStep(
     case 'DEPOSIT_PENDING':
       return {
         title: 'Việc tiếp theo: đóng tiền cọc',
-        body: 'Bạn đã được cấp suất. Đóng cọc để giữ suất, sau đó mới ký hợp đồng.',
+        body: opts?.depositDeadline
+          ? `Bạn được đôn từ danh sách chờ. Vui lòng xác nhận nộp cọc trước ${new Date(opts.depositDeadline).toLocaleString('vi-VN')}.`
+          : 'Bạn đã được cấp suất. Đóng cọc để giữ suất, sau đó mới ký hợp đồng.',
         tone: 'action',
       };
     case 'CONTRACT_PENDING':
@@ -103,8 +111,24 @@ export function getCitizenNextStep(
     case 'LOTTERY_LOST':
       return {
         title: 'Không trúng suất lần này',
-        body: 'Bạn có thể xem kết quả bốc thăm để biết chi tiết.',
-        tone: 'danger',
+        body: opts?.waitlistNumber
+          ? `Hồ sơ được xếp danh sách chờ thứ ${opts.waitlistNumber}. Nếu có căn trả lại, hệ thống sẽ chuyển quyền mua cho bạn.`
+          : 'Bạn có thể xem kết quả bốc thăm để biết chi tiết.',
+        tone: opts?.waitlistNumber ? 'warn' : 'danger',
+      };
+    case 'WAITLIST':
+      return {
+        title: opts?.waitlistNumber
+          ? `Danh sách chờ — thứ hạng ${opts.waitlistNumber}`
+          : 'Đã vào danh sách chờ',
+        body: 'Hồ sơ không bị hủy. Khi có căn trả lại, người đứng đầu danh sách được nhận quyền mua (thường 48–72 giờ để xác nhận nộp cọc).',
+        tone: 'warn',
+      };
+    case 'CANCELLATION_REQUESTED':
+      return {
+        title: 'Đã gửi đơn xin ngừng thanh toán',
+        body: 'Chủ đầu tư đang xét đơn. Nếu chấp thuận, tiền cọc đợt đầu bị trừ; các khoản đã đóng sau đó được hoàn sau khi khấu trừ lãi phạt (nếu có).',
+        tone: 'warn',
       };
     case 'REJECTED':
       return {

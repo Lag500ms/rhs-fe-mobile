@@ -6,6 +6,7 @@ import type {
   LotteryLiveState,
   LotteryNextCandidate,
   LotteryScheduleDetail,
+  LotteryWaitlistItem,
   VerifyJoinCodeResult,
 } from '../types/lottery';
 
@@ -168,5 +169,36 @@ export const lotteryApi = {
       if (err?.response?.status === 404) return null;
       throw err;
     }
+  },
+
+  async getWaitlist(projectId: string): Promise<LotteryWaitlistItem[]> {
+    const res = await apiClient.get(`/projects/${projectId}/lottery/waitlist`);
+    const raw = res.data;
+    const list = Array.isArray(raw)
+      ? raw
+      : Array.isArray((raw as { data?: unknown })?.data)
+        ? (raw as { data: unknown[] }).data
+        : [];
+    return list.map((it) => {
+      const p = (it ?? {}) as Record<string, unknown>;
+      return {
+        applicationId: String(p.applicationId ?? p.ApplicationId ?? ''),
+        projectId: String(p.projectId ?? p.ProjectId ?? projectId),
+        projectName: String(p.projectName ?? p.ProjectName ?? ''),
+        applicantFullName: String(p.applicantFullName ?? p.ApplicantFullName ?? ''),
+        citizenId: String(p.citizenId ?? p.CitizenId ?? ''),
+        applicationStatus: String(p.applicationStatus ?? p.ApplicationStatus ?? ''),
+        waitlistNumber: (p.waitlistNumber ?? p.WaitlistNumber) as number | null | undefined,
+        waitlistPromotedAt: (p.waitlistPromotedAt ?? p.WaitlistPromotedAt) as
+          | string
+          | null
+          | undefined,
+        depositDeadline: (p.depositDeadline ?? p.DepositDeadline) as string | null | undefined,
+        desiredApartmentTypeLabel: (p.desiredApartmentTypeLabel ?? p.DesiredApartmentTypeLabel) as
+          | string
+          | null
+          | undefined,
+      };
+    });
   },
 };

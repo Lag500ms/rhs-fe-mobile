@@ -41,6 +41,7 @@ const PIPELINE = [
 ] as const;
 
 const TERMINAL_FAIL = new Set(['REJECTED', 'CANCELED', 'EXPIRED', 'LOTTERY_LOST']);
+const WAITLIST_STATUSES = new Set(['WAITLIST']);
 const TERMINAL_SUCCESS = new Set([
   'CONTRACT_SIGNED',
   'INSTALLMENT_IN_PROGRESS',
@@ -62,6 +63,7 @@ function resolveIndex(status: string, depositPaid?: boolean): number {
     case 'APPROVED_BY_TIMEOUT':
     case 'LOTTERY_WON':
     case 'LOTTERY_LOST':
+    case 'WAITLIST':
       return 3;
     case 'DEPOSIT_PENDING':
       return 4;
@@ -92,7 +94,9 @@ export function ApplicationTimeline({ currentStatus, needMoreNote, depositPaid }
   const currentIdx = resolveIndex(status, depositPaid);
   const isNeedMore = status === 'NEED_MORE_DOCUMENTS';
   const isFailed = TERMINAL_FAIL.has(status);
+  const isWaitlist = WAITLIST_STATUSES.has(status);
   const isComplete = TERMINAL_SUCCESS.has(status);
+  const isCancellation = status === 'CANCELLATION_REQUESTED';
 
   return (
     <View style={styles.wrap}>
@@ -110,6 +114,22 @@ export function ApplicationTimeline({ currentStatus, needMoreNote, depositPaid }
         <View style={[styles.banner, styles.bannerDanger]}>
           <Text style={styles.bannerDangerText}>
             Hồ sơ kết thúc: {getStatusConfig(status).label}
+          </Text>
+        </View>
+      )}
+      {isWaitlist && (
+        <View style={[styles.banner, styles.bannerWarn]}>
+          <Text style={styles.bannerWarnTitle}>Đã xếp danh sách chờ (dự bị)</Text>
+          <Text style={styles.bannerWarnText}>
+            Hồ sơ không bị hủy. Khi có căn trả lại, hệ thống chuyển quyền mua theo thứ hạng.
+          </Text>
+        </View>
+      )}
+      {isCancellation && (
+        <View style={[styles.banner, styles.bannerWarn]}>
+          <Text style={styles.bannerWarnTitle}>Đơn xin ngừng thanh toán đang chờ duyệt</Text>
+          <Text style={styles.bannerWarnText}>
+            Chủ đầu tư sẽ xác nhận. Tiền cọc đợt đầu bị trừ nếu đơn được chấp thuận.
           </Text>
         </View>
       )}
