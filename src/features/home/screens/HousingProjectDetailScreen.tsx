@@ -26,6 +26,9 @@ import {
   sortedMilestones,
   unitGroupLabel,
   formatPaymentScheduleHint,
+  getIntakeCloseInfo,
+  formatIntakeDeadline,
+  INTAKE_CLOSING_SOON_DAYS,
 } from '../types/housing';
 import { housingApi } from '../api/housingApi';
 import { formatPrice, getThumb } from '../utils/format';
@@ -351,6 +354,8 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
     new mapboxgl.Marker({element:el,anchor:'bottom'}).setLngLat([${coords.longitude},${coords.latitude}]).addTo(map);
     </script></body></html>` : '';
 
+  const intakeClose = getIntakeCloseInfo(project.applicationCloseDate);
+
   return (
     <SafeAreaView style={styles.safe}>
       {/* Thin brand bar at top */}
@@ -605,6 +610,49 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
             </Text>
           </View>
         )}
+        {/* Hạn chót tiếp nhận — hạn này có hiệu lực thật ở BE nên phải hiện trước khi bấm đăng ký */}
+        {intakeClose.closeAt && !isUpcoming(project.status) && (
+          <View
+            style={[
+              styles.deadlineCard,
+              intakeClose.tone === 'closed'
+                ? styles.deadlineCardClosed
+                : intakeClose.tone === 'urgent'
+                  ? styles.deadlineCardUrgent
+                  : intakeClose.tone === 'soon'
+                    ? styles.deadlineCardSoon
+                    : styles.deadlineCardNormal,
+            ]}
+          >
+            <Feather
+              name={intakeClose.tone === 'closed' ? 'slash' : 'clock'}
+              size={16}
+              color={
+                intakeClose.tone === 'closed'
+                  ? RHSColors.textMuted
+                  : intakeClose.tone === 'urgent'
+                    ? RHSColors.red700
+                    : intakeClose.tone === 'soon'
+                      ? RHSColors.amber700
+                      : RHSColors.blue700
+              }
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.deadlineTitle}>
+                {intakeClose.tone === 'closed'
+                  ? 'Đã hết hạn tiếp nhận hồ sơ'
+                  : `Hạn chót nộp hồ sơ: ${formatIntakeDeadline(intakeClose.closeAt)}`}
+              </Text>
+              <Text style={styles.deadlineNote}>
+                {intakeClose.tone === 'closed'
+                  ? 'Dự án không còn nhận hồ sơ mới. Hồ sơ nháp chưa nộp sẽ không còn hiệu lực.'
+                  : intakeClose.daysLeft != null && intakeClose.daysLeft <= INTAKE_CLOSING_SOON_DAYS
+                    ? `Chỉ còn ${intakeClose.daysLeft} ngày. Hồ sơ nháp chưa nộp trước hạn sẽ không còn hiệu lực.`
+                    : `Còn ${intakeClose.daysLeft} ngày. Hồ sơ phải được nộp trước hạn này mới được xét.`}
+              </Text>
+            </View>
+          </View>
+        )}
         <TouchableOpacity
           style={[styles.registerBtn, !isOpenForRegistration(project.status) && styles.registerBtnMuted]}
           onPress={handleRegister}
@@ -856,5 +904,22 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   upcomingHintText: { flex: 1, ...typography.bodySmall, color: RHSColors.amber700, lineHeight: 20 },
+
+  deadlineCard: {
+    marginHorizontal: 14,
+    marginBottom: 10,
+    padding: 12,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  deadlineCardNormal: { backgroundColor: RHSColors.blue50, borderColor: RHSColors.blue200 },
+  deadlineCardSoon: { backgroundColor: RHSColors.amber50, borderColor: RHSColors.amber600 },
+  deadlineCardUrgent: { backgroundColor: RHSColors.red50, borderColor: RHSColors.red400 },
+  deadlineCardClosed: { backgroundColor: RHSColors.grey100, borderColor: RHSColors.border },
+  deadlineTitle: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text },
+  deadlineNote: { marginTop: 2, ...typography.caption, color: RHSColors.textSecondary, lineHeight: 18 },
 
 });
