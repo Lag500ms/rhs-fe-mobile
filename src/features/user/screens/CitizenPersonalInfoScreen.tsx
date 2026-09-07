@@ -31,8 +31,11 @@ import {
   MAX_SMALL_HOUSE_AREA,
   isFutureDateOnly,
   isValidCitizenId,
+  maritalAllowsSpouse,
   normalizeCitizenId,
   parseDateOnly,
+  sanitizeDecimalInput,
+  sanitizeMoneyInput,
 } from '../../../lib/fieldRules';
 
 export const CitizenPersonalInfoScreen = () => {
@@ -50,7 +53,7 @@ export const CitizenPersonalInfoScreen = () => {
   const [workPlace, setWorkPlace] = useState('');
   const [monthlyIncome, setMonthlyIncome] = useState('');
   const [currentResidence, setCurrentResidence] = useState('');
-  const [permanentAddress, setPermanentAddress] = useState('');
+  const [sameAsPermanent, setSameAsPermanent] = useState(true);
   const [housingStatus, setHousingStatus] = useState<HousingStatus | ''>('');
   const [avgArea, setAvgArea] = useState('');
 
@@ -61,16 +64,20 @@ export const CitizenPersonalInfoScreen = () => {
     setSpouseCitizenId(p.spouseCitizenId || '');
     setSpouseDateOfBirth(p.spouseDateOfBirth ? p.spouseDateOfBirth.split('T')[0] : '');
     setSpouseMonthlyIncome(
-      p.spouseMonthlyIncome != null ? String(p.spouseMonthlyIncome) : '',
+      p.spouseMonthlyIncome != null && p.spouseMonthlyIncome >= 0 ? String(p.spouseMonthlyIncome) : '',
     );
     setOccupation(p.occupation || '');
     setWorkPlace(p.workPlace || '');
-    setMonthlyIncome(p.monthlyIncome != null ? String(p.monthlyIncome) : '');
-    setCurrentResidence(p.currentResidence || '');
-    setPermanentAddress(p.permanentAddress || '');
+    setMonthlyIncome(p.monthlyIncome != null && p.monthlyIncome >= 0 ? String(p.monthlyIncome) : '');
+    const ekyc = (p.address || '').trim();
+    const current = (p.currentResidence || '').trim();
+    setCurrentResidence(current);
+    setSameAsPermanent(!current || current === ekyc || current === (p.permanentAddress || '').trim());
     setHousingStatus((p.housingStatus as HousingStatus) || '');
     setAvgArea(
-      p.averageHousingAreaPerPerson != null ? String(p.averageHousingAreaPerPerson) : '',
+      p.housingStatus === 'SMALL_HOUSE' && p.averageHousingAreaPerPerson != null && p.averageHousingAreaPerPerson > 0
+        ? String(p.averageHousingAreaPerPerson)
+        : '',
     );
   };
 
@@ -93,8 +100,22 @@ export const CitizenPersonalInfoScreen = () => {
   );
 
   const parseNumber = (v: string): number | null => {
-    const n = Number(v.replace(/[^\d.]/g, ''));
+    if (!v.trim()) return null;
+    const n = Number(sanitizeMoneyInput(v));
     return Number.isFinite(n) ? n : null;
+  };
+
+  const ekycAddress = (profile?.address || '').trim();
+  const resolvedCurrent = sameAsPermanent ? ekycAddress : currentResidence.trim();
+
+  const applyMaritalStatus = (value: MaritalStatus) => {
+    setMaritalStatus(value);
+    if (!maritalAllowsSpouse(value)) {
+      setSpouseFullName('');
+      setSpouseCitizenId('');
+      setSpouseDateOfBirth('');
+      setSpouseMonthlyIncome('');
+    }
   };
 
   const handleSave = async () => {
@@ -102,8 +123,24 @@ export const CitizenPersonalInfoScreen = () => {
       appAlert('Thiếu thông tin', 'Vui lòng chọn tình trạng hôn nhân.');
       return;
     }
+    if (!occupation.trim()) {
+      appAlert('Thiếu thông tin', 'Vui lòng nhập nghề nghiệp.');
+      return;
+    }
+    if (!workPlace.trim()) {
+      appAlert('Thiếu thông tin', 'Vui lòng nhập nơi làm việc.');
+      return;
+    }
     if (!housingStatus) {
       appAlert('Thiếu thông tin', 'Vui lòng chọn thực trạng nhà ở.');
+      return;
+    }
+    if (!ekycAddress) {
+      appAlert('Thiếu thông tin', 'Chưa có địa chỉ thường trú từ CCCD. Vui lòng xác minh danh tính.');
+      return;
+    }
+    if (!resolvedCurrent) {
+      appAlert('Thiếu thông tin', 'Vui lòng nhập chỗ ở hiện tại, hoặc chọn giống địa chỉ thường trú.');
       return;
     }
     if (maritalStatus === 'MARRIED' && !spouseFullName.trim()) {
@@ -143,7 +180,7 @@ export const CitizenPersonalInfoScreen = () => {
       appAlert('Không hợp lệ', 'Nơi làm việc không được quá 500 ký tự.');
       return;
     }
-    if (currentResidence.trim().length > 500 || permanentAddress.trim().length > 500) {
+    if (currentResidence.trim().length > 500) {
       appAlert('Không hợp lệ', 'Địa chỉ không được quá 500 ký tự.');
       return;
     }
@@ -168,12 +205,31 @@ export const CitizenPersonalInfoScreen = () => {
 
     const ownIncome = monthlyIncome ? parseNumber(monthlyIncome) : null;
     const spouseInc = spouseMonthlyIncome ? parseNumber(spouseMonthlyIncome) : null;
-    if (ownIncome != null && ownIncome < 0) {
+    if (ownIncome == null) {
+      appAlert('Thiếu thông tin', 'Vui lòng nhập thu nhập hàng tháng.');
+      return;
+    }
+    if (ownIncome < 0) {
       appAlert('Không hợp lệ', 'Thu nhập không được âm.');
       return;
     }
     if (spouseInc != null && spouseInc < 0) {
       appAlert('Không hợp lệ', 'Thu nhập vợ/chồng không được âm.');
+      return;
+    }
+    if (maritalStatus === 'MARRIED') {
+      if (ownIncome + (spouseInc || 0) > MAX_COUPLE_INCOME) {
+        appAlert(
+          'Không hợp lệ',
+          `Tổng thu nhập vợ chồng không được vượt ${MAX_COUPLE_INCOME.toLocaleString('vi-VN')} VNĐ.`,
+        );
+        return;
+      }
+    } else if (ownIncome > MAX_SINGLE_INCOME) {
+      appAlert(
+        'Không hợp lệ',
+        `Thu nhập hàng tháng không được vượt ${MAX_SINGLE_INCOME.toLocaleString('vi-VN')} VNĐ.`,
+      );
       return;
     }
 
@@ -182,9 +238,9 @@ export const CitizenPersonalInfoScreen = () => {
       housingStatus,
       occupation: occupation.trim() || null,
       workPlace: workPlace.trim() || null,
-      currentResidence: currentResidence.trim() || null,
-      permanentAddress: permanentAddress.trim() || null,
-      monthlyIncome: monthlyIncome ? parseNumber(monthlyIncome) : null,
+      currentResidence: resolvedCurrent || null,
+      permanentAddress: ekycAddress || null,
+      monthlyIncome: ownIncome,
       averageHousingAreaPerPerson:
         housingStatus === 'SMALL_HOUSE' && avgArea ? parseNumber(avgArea) : null,
     };
@@ -251,13 +307,14 @@ export const CitizenPersonalInfoScreen = () => {
                   : undefined
               }
             />
+            <ReadonlyRow label="Địa chỉ thường trú" value={ekycAddress || 'Chưa có từ CCCD'} />
           </Section>
 
           <Section title="Tình trạng hôn nhân">
             <ChipGroup
               options={MARITAL_OPTIONS}
               value={maritalStatus}
-              onChange={(v) => setMaritalStatus(v as MaritalStatus)}
+              onChange={(v) => applyMaritalStatus(v as MaritalStatus)}
             />
             {maritalStatus === 'MARRIED' && (
               <View style={styles.spouseBlock}>
@@ -278,16 +335,19 @@ export const CitizenPersonalInfoScreen = () => {
                 <Field
                   label="Thu nhập vợ/chồng (VNĐ/tháng)"
                   value={spouseMonthlyIncome}
-                  onChange={setSpouseMonthlyIncome}
-                  keyboardType="numeric"
+                  onChange={(v) => setSpouseMonthlyIncome(sanitizeMoneyInput(v))}
+                  keyboardType="number-pad"
                 />
               </View>
             )}
             {maritalStatus === 'SINGLE' && (
-              <Hint text="Cần giấy xác nhận tình trạng độc thân trong Kho giấy tờ." />
+              <Hint text="Cần giấy xác nhận tình trạng độc thân trong Kho giấy tờ. Không khai vợ/chồng." />
             )}
             {maritalStatus === 'DIVORCED' && (
-              <Hint text="Cần quyết định / bản án ly hôn trong Kho giấy tờ." />
+              <Hint text="Cần quyết định / bản án ly hôn trong Kho giấy tờ. Không khai vợ/chồng cũ." />
+            )}
+            {maritalStatus === 'WIDOWED' && (
+              <Hint text="Góa: không khai vợ/chồng. Có thể khai con và người sống cùng ở mục Hộ gia đình." />
             )}
             {maritalStatus === 'MARRIED' && (
               <Hint text="Vợ/chồng sẽ được đồng bộ vào hộ gia đình với quan hệ vợ/chồng." />
@@ -295,15 +355,15 @@ export const CitizenPersonalInfoScreen = () => {
           </Section>
 
           <Section title="Thu nhập & việc làm">
-            <Field label="Nghề nghiệp" value={occupation} onChange={setOccupation} maxLength={200} />
-            <Field label="Nơi làm việc" value={workPlace} onChange={setWorkPlace} maxLength={500} />
+            <Field label="Nghề nghiệp *" value={occupation} onChange={setOccupation} maxLength={200} />
+            <Field label="Nơi làm việc *" value={workPlace} onChange={setWorkPlace} maxLength={500} />
             <Field
-              label="Thu nhập tháng của bạn (VNĐ)"
+              label="Thu nhập tháng của bạn (VNĐ) *"
               value={monthlyIncome}
-              onChange={setMonthlyIncome}
-              keyboardType="numeric"
+              onChange={(v) => setMonthlyIncome(sanitizeMoneyInput(v))}
+              keyboardType="number-pad"
             />
-            <Hint text="Đính kèm xác nhận thu nhập, bảng lương hoặc sao kê trong Kho giấy tờ." />
+            <Hint text="Chỉ nhập số không âm. Độc thân tối đa 15 triệu; vợ chồng cộng tối đa 30 triệu." />
             {maritalStatus === 'SINGLE' && (parseNumber(monthlyIncome) || 0) > MAX_SINGLE_INCOME ? (
               <Hint
                 text={`Độc thân: thu nhập tháng không được vượt ${MAX_SINGLE_INCOME.toLocaleString('vi-VN')} đ khi nộp hồ sơ.`}
@@ -319,30 +379,43 @@ export const CitizenPersonalInfoScreen = () => {
           </Section>
 
           <Section title="Nơi ở & điều kiện nhà">
-            <Field
-              label="Nơi ở hiện tại"
-              value={currentResidence}
-              onChange={setCurrentResidence}
-              multiline
-              maxLength={500}
-            />
-            <Field
-              label="Địa chỉ thường trú"
-              value={permanentAddress}
-              onChange={setPermanentAddress}
-              multiline
-              maxLength={500}
-            />
+            <ReadonlyRow label="Địa chỉ thường trú (CCCD)" value={ekycAddress || 'Chưa có từ CCCD'} />
+            <TouchableOpacity
+              style={styles.checkRow}
+              onPress={() => {
+                const next = !sameAsPermanent;
+                setSameAsPermanent(next);
+                if (next) setCurrentResidence(ekycAddress);
+              }}
+            >
+              <Text style={styles.checkMark}>{sameAsPermanent ? '☑' : '☐'}</Text>
+              <Text style={styles.checkLabel}>Giống địa chỉ thường trú</Text>
+            </TouchableOpacity>
+            {sameAsPermanent ? (
+              <ReadonlyRow label="Chỗ ở hiện tại *" value={ekycAddress || '—'} />
+            ) : (
+              <Field
+                label="Chỗ ở hiện tại *"
+                value={currentResidence}
+                onChange={setCurrentResidence}
+                multiline
+                maxLength={500}
+              />
+            )}
             <ChipGroup
               options={HOUSING_OPTIONS}
               value={housingStatus}
-              onChange={(v) => setHousingStatus(v as HousingStatus)}
+              onChange={(v) => {
+                const next = v as HousingStatus;
+                setHousingStatus(next);
+                if (next !== 'SMALL_HOUSE') setAvgArea('');
+              }}
             />
             {housingStatus === 'SMALL_HOUSE' && (
               <Field
                 label="Diện tích bình quân (m²/người) — phải dưới 10 *"
                 value={avgArea}
-                onChange={setAvgArea}
+                onChange={(v) => setAvgArea(sanitizeDecimalInput(v, 2))}
                 keyboardType="decimal-pad"
               />
             )}
@@ -479,6 +552,9 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, color: RHSColors.textSecondary, fontWeight: '600' },
   chipTextActive: { color: RHSColors.blue700 },
   spouseBlock: { marginTop: spacing.sm },
+  checkRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.md },
+  checkMark: { fontSize: 18, color: RHSColors.blue700 },
+  checkLabel: { fontSize: 14, color: RHSColors.text, flex: 1 },
   hint: { fontSize: 12, color: RHSColors.textMuted, lineHeight: 18, marginTop: 4 },
   saveBtn: {
     backgroundColor: RHSColors.blue700,

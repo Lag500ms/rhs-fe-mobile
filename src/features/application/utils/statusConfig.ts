@@ -3,6 +3,7 @@
  * Map BE → nhãn người dân (mobile). Cọc → ký; đợt sau ở lịch TT.
  */
 
+import { MAX_SMALL_HOUSE_AREA } from '../../../lib/fieldRules';
 import { RHSColors } from '../../../lib/theme';
 
 export interface StatusConfig {
@@ -174,7 +175,7 @@ export function getHousingStatusLabel(value: string): string {
     case 'NO_HOUSE':
       return 'Chưa có nhà ở thuộc sở hữu';
     case 'SMALL_HOUSE':
-      return 'Có nhà ở nhưng diện tích bình quân dưới 10 m²/người';
+      return `Có nhà ở nhưng diện tích bình quân dưới ${MAX_SMALL_HOUSE_AREA} m²/người`;
     default:
       return value;
   }

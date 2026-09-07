@@ -39,9 +39,12 @@ const formatDate = (value?: string | null) => {
   }
 };
 
-/** Nhãn đợt lấy từ CĐT (API installments), không hard-code 6 đợt mẫu. Đợt 1 = cọc. */
+/**
+ * Nhãn đợt lấy từ CĐT (API installments), không hard-code 6 đợt mẫu.
+ * Đợt 1 = thanh toán lần đầu, đã gồm tiền đặt cọc (Đ25.1 Luật KDBĐS 2023).
+ */
 function phaseTitle(phase: InstallmentPhase): string {
-  if (phase.phaseOrder === 1) return 'Cọc';
+  if (phase.phaseOrder === 1) return 'Thanh toán lần đầu';
   const name = phase.phaseName?.trim();
   if (name) return name.replace(/^Đợt\s*\d+\s*[—–-]?\s*/i, '') || name;
   return `Đợt ${phase.phaseOrder}`;
@@ -50,14 +53,14 @@ function phaseTitle(phase: InstallmentPhase): string {
 function phaseTitleLong(phase: InstallmentPhase): string {
   const name = phase.phaseName?.trim();
   if (name) return name;
-  return phase.phaseOrder === 1 ? 'Đợt 1 — Cọc' : `Đợt ${phase.phaseOrder}`;
+  return phase.phaseOrder === 1 ? 'Đợt 1 — Thanh toán lần đầu' : `Đợt ${phase.phaseOrder}`;
 }
 
 function phaseDescription(phase: InstallmentPhase): string {
   const note = phase.note?.trim();
   if (note) return note;
   if (phase.phaseOrder === 1) {
-    return 'Tiền cọc do chủ đầu tư cấu hình, tối đa 30% giá căn.';
+    return 'Thanh toán lần đầu, đã gồm tiền đặt cọc. Chủ đầu tư cấu hình, tối đa 30% giá trị hợp đồng.';
   }
   return '';
 }

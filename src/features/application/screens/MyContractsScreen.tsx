@@ -160,7 +160,7 @@ export const MyContractsScreen = () => {
       <ScreenHeader
         title="Hợp đồng"
         hero
-        subtitle="Đợt 1 (cọc ≤30%) → ký hợp đồng → các đợt theo lịch CĐT"
+        subtitle="Đợt 1 (thanh toán lần đầu ≤30%, gồm đặt cọc) → ký hợp đồng → các đợt theo lịch chủ đầu tư"
         onBack={() => navigation.goBack()}
       >
         <View style={styles.statRow}>

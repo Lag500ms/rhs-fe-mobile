@@ -16,7 +16,7 @@ const PIPELINE = [
   {
     key: 'REVIEWING',
     label: 'Chủ đầu tư tiếp nhận hồ sơ',
-    hint: 'CĐT đang tiếp nhận và thẩm định',
+    hint: 'Chủ đầu tư đang tiếp nhận và thẩm định',
   },
   {
     key: 'PENDING_SXD_REVIEW',
@@ -66,9 +66,10 @@ function resolveIndex(status: string, depositPaid?: boolean): number {
     case 'WAITLIST':
       return 3;
     case 'DEPOSIT_PENDING':
+      if (depositPaid === true) return 5;
       return 4;
     case 'CONTRACT_PENDING':
-      // Sau cấp nhà BE để CONTRACT_PENDING trước khi cọc.
+      // Dữ liệu cũ: CONTRACT_PENDING trước khi cọc → đứng ở bước cọc.
       if (depositPaid !== true) return 4;
       return 5;
     case 'CONTRACT_SIGNED':

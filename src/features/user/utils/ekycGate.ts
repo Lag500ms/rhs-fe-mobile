@@ -1,3 +1,4 @@
+import { MAX_SMALL_HOUSE_AREA, maritalAllowsSpouse } from '../../../lib/fieldRules';
 import { getToken } from '../../../lib/tokenStorage';
 import { userApi } from '../api/userApi';
 import type { UserProfileDto } from '../types/user';
@@ -54,19 +55,26 @@ export function getCitizenProfileReadyGaps(p?: CitizenFullProfileDto | null): st
   if (p.maritalStatus?.toUpperCase() === 'MARRIED' && !p.spouseFullName?.trim()) {
     gaps.push('Đã kết hôn nhưng chưa khai họ tên vợ/chồng.');
   }
+  const hasSpouse = (p.householdMembers || []).some(
+    (m) => m.relationship?.toUpperCase() === 'SPOUSE',
+  );
+  if (p.maritalStatus?.toUpperCase() === 'MARRIED' && !hasSpouse) {
+    gaps.push('Hộ gia đình chưa có thành viên vợ/chồng.');
+  }
+  if (p.maritalStatus && p.maritalStatus.toUpperCase() !== 'MARRIED' && hasSpouse) {
+    gaps.push('Độc thân / ly hôn / góa không được khai vợ/chồng trong hộ.');
+  }
+  if (!p.occupation?.trim()) gaps.push('Chưa khai nghề nghiệp.');
+  if (!p.workPlace?.trim()) gaps.push('Chưa khai nơi làm việc.');
+  if (!p.currentResidence?.trim() && !p.address?.trim()) gaps.push('Chưa khai chỗ ở hiện tại.');
+  if (p.monthlyIncome != null && p.monthlyIncome < 0) gaps.push('Thu nhập không được âm.');
   if (!p.housingStatus) gaps.push('Chưa khai thực trạng nhà ở.');
   if (p.housingStatus?.toUpperCase() === 'SMALL_HOUSE') {
     if (p.averageHousingAreaPerPerson == null) {
       gaps.push('Nhà chật hẹp bắt buộc nhập diện tích bình quân đầu người.');
-    } else if (p.averageHousingAreaPerPerson >= 10) {
-      gaps.push('Diện tích bình quân phải dưới 10 m²/người (Điều 29).');
+    } else if (p.averageHousingAreaPerPerson >= MAX_SMALL_HOUSE_AREA) {
+      gaps.push(`Diện tích bình quân phải dưới ${MAX_SMALL_HOUSE_AREA} m²/người (Đ29.2 Nghị định 100/2024).`);
     }
-  }
-  if (p.maritalStatus?.toUpperCase() === 'MARRIED') {
-    const hasSpouse = (p.householdMembers || []).some(
-      (m) => m.relationship?.toUpperCase() === 'SPOUSE',
-    );
-    if (!hasSpouse) gaps.push('Hộ gia đình chưa có thành viên vợ/chồng.');
   }
   return gaps;
 }
@@ -87,15 +95,20 @@ export function getCitizenProfileCompleteness(p?: CitizenFullProfileDto | null):
   }
 
   const identity = isEkycVerified(p);
+  const hasSpouse = (p.householdMembers || []).some(
+    (m) => m.relationship?.toUpperCase() === 'SPOUSE',
+  );
   const personal = !!(
     p.maritalStatus &&
     p.housingStatus &&
+    p.occupation?.trim() &&
+    p.workPlace?.trim() &&
+    (p.currentResidence?.trim() || p.address?.trim()) &&
+    (p.monthlyIncome == null || p.monthlyIncome >= 0) &&
     (p.housingStatus !== 'SMALL_HOUSE' || p.averageHousingAreaPerPerson != null) &&
     (p.maritalStatus !== 'MARRIED' || p.spouseFullName)
   );
-  const household =
-    p.maritalStatus !== 'MARRIED' ||
-    (p.householdMembers || []).some((m) => m.relationship?.toUpperCase() === 'SPOUSE');
+  const household = maritalAllowsSpouse(p.maritalStatus) ? hasSpouse : !hasSpouse;
   const documents = (p.missingDocumentTypes?.length ?? 0) === 0 && personal;
 
   const flags = [identity, personal, household, documents];

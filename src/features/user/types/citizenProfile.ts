@@ -1,6 +1,8 @@
 /** Citizen full profile + household + document vault types (aligned with BE) */
 
-export type MaritalStatus = 'SINGLE' | 'MARRIED' | 'DIVORCED';
+import { MAX_SMALL_HOUSE_AREA } from '../../../lib/fieldRules';
+
+export type MaritalStatus = 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED';
 export type HousingStatus = 'NO_HOUSE' | 'SMALL_HOUSE';
 export type DependentReason = 'UNDER_18' | 'STUDENT' | 'DISABLED' | 'ELDERLY' | 'OTHER';
 export type HouseholdRelationship =
@@ -136,11 +138,12 @@ export const MARITAL_OPTIONS: { value: MaritalStatus; label: string }[] = [
   { value: 'SINGLE', label: 'Độc thân' },
   { value: 'MARRIED', label: 'Đã kết hôn' },
   { value: 'DIVORCED', label: 'Đã ly hôn' },
+  { value: 'WIDOWED', label: 'Góa' },
 ];
 
 export const HOUSING_OPTIONS: { value: HousingStatus; label: string }[] = [
   { value: 'NO_HOUSE', label: 'Chưa có nhà ở thuộc sở hữu' },
-  { value: 'SMALL_HOUSE', label: 'Nhà ở chật hẹp (dưới 10 m²/người)' },
+  { value: 'SMALL_HOUSE', label: `Nhà ở chật hẹp (dưới ${MAX_SMALL_HOUSE_AREA} m²/người)` },
 ];
 
 export const RELATIONSHIP_OPTIONS: { value: HouseholdRelationship; label: string }[] = [

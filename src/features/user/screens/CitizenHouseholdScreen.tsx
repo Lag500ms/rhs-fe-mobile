@@ -30,7 +30,7 @@ import {
   type UserHouseholdMemberDto,
   type UserHouseholdMemberRequestDto,
 } from '../types/citizenProfile';
-import { isValidCitizenId, normalizeCitizenId } from '../../../lib/fieldRules';
+import { isValidCitizenId, maritalAllowsSpouse, normalizeCitizenId, sanitizeMoneyInput } from '../../../lib/fieldRules';
 
 const emptyForm = () => ({
   fullName: '',
@@ -76,7 +76,11 @@ export const CitizenHouseholdScreen = () => {
 
   const openAdd = () => {
     setEditing(null);
-    setForm(emptyForm());
+    const form = emptyForm();
+    if (maritalAllowsSpouse(profile?.maritalStatus) && !members.some((m) => m.relationship?.toUpperCase() === 'SPOUSE')) {
+      form.relationship = 'SPOUSE';
+    }
+    setForm(form);
     setModalVisible(true);
   };
 
@@ -124,6 +128,17 @@ export const CitizenHouseholdScreen = () => {
       appAlert('Thiếu thông tin', 'Vui lòng chọn quan hệ.');
       return;
     }
+    if (form.relationship === 'SPOUSE' && !maritalAllowsSpouse(profile?.maritalStatus)) {
+      appAlert('Không hợp lệ', 'Độc thân, ly hôn hoặc góa không được khai vợ/chồng.');
+      return;
+    }
+    const otherSpouse = members.find(
+      (m) => m.relationship?.toUpperCase() === 'SPOUSE' && m.memberId !== editing?.memberId,
+    );
+    if (form.relationship === 'SPOUSE' && otherSpouse) {
+      appAlert('Không hợp lệ', 'Hộ gia đình chỉ được khai một người vợ/chồng.');
+      return;
+    }
 
     const cid = normalizeCitizenId(form.citizenId);
     if (cid) {
@@ -164,17 +179,22 @@ export const CitizenHouseholdScreen = () => {
         ? new Date(form.dateOfBirth).toISOString()
         : undefined,
       relationship: form.relationship,
-      occupation: form.occupation.trim() || undefined,
+      occupation: isDependent ? undefined : form.occupation.trim() || undefined,
       monthlyIncome:
         isDependent || !form.monthlyIncome
           ? null
-          : Number(form.monthlyIncome.replace(/[^\d.]/g, '')),
+          : Number(sanitizeMoneyInput(form.monthlyIncome)),
       isDependent,
       dependentReason: isDependent ? form.dependentReason : undefined,
       hasMeritService: form.hasMeritService,
       meritDetails: form.hasMeritService ? form.meritDetails.trim() || undefined : undefined,
       note: form.note.trim() || undefined,
     };
+
+    if (!isDependent && dto.monthlyIncome != null && dto.monthlyIncome < 0) {
+      appAlert('Không hợp lệ', 'Thu nhập không được âm.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -306,7 +326,14 @@ export const CitizenHouseholdScreen = () => {
             <ScrollView keyboardShouldPersistTaps="handled">
               <Label>Quan hệ *</Label>
               <View style={styles.chips}>
-                {RELATIONSHIP_OPTIONS.map((o) => (
+                {RELATIONSHIP_OPTIONS.filter((o) => {
+                  if (o.value !== 'SPOUSE') return true;
+                  if (!maritalAllowsSpouse(profile?.maritalStatus)) return false;
+                  const otherSpouse = members.some(
+                    (m) => m.relationship?.toUpperCase() === 'SPOUSE' && m.memberId !== editing?.memberId,
+                  );
+                  return form.relationship === 'SPOUSE' || !otherSpouse;
+                }).map((o) => (
                   <TouchableOpacity
                     key={o.value}
                     style={[
@@ -396,8 +423,8 @@ export const CitizenHouseholdScreen = () => {
                   <Label>Thu nhập tháng (VNĐ)</Label>
                   <Input
                     value={form.monthlyIncome}
-                    onChangeText={(v) => setForm((f) => ({ ...f, monthlyIncome: v }))}
-                    keyboardType="numeric"
+                    onChangeText={(v) => setForm((f) => ({ ...f, monthlyIncome: sanitizeMoneyInput(v) }))}
+                    keyboardType="number-pad"
                   />
                   <Label>Nghề nghiệp</Label>
                   <Input

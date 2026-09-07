@@ -67,6 +67,13 @@ export function getCitizenNextStep(
         tone: 'info',
       };
     case 'DEPOSIT_PENDING':
+      if (opts?.depositPaid === true) {
+        return {
+          title: 'Việc tiếp theo: ký hợp đồng',
+          body: 'Đã đóng cọc. Đọc kỹ và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.',
+          tone: 'action',
+        };
+      }
       return {
         title: 'Việc tiếp theo: đóng tiền cọc',
         body: opts?.depositDeadline
@@ -94,9 +101,14 @@ export function getCitizenNextStep(
         body: 'Đã đóng cọc. Đọc kỹ và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.',
         tone: 'action',
       };
+    case 'DEPOSIT_PAID':
+      return {
+        title: 'Việc tiếp theo: ký hợp đồng',
+        body: 'Đã đóng cọc. Đọc kỹ và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.',
+        tone: 'action',
+      };
     case 'CONTRACT_SIGNED':
     case 'INSTALLMENT_IN_PROGRESS':
-    case 'DEPOSIT_PAID':
       return {
         title: 'Đã ký hợp đồng',
         body: 'Xem lịch thanh toán để biết khoản nào đang mở. Các đợt theo tiến độ do chủ đầu tư thông báo.',

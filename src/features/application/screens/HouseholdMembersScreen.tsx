@@ -28,10 +28,13 @@ import {
   ageFromDateOnly,
   isFutureDateOnly,
   isValidCitizenId,
+  maritalAllowsSpouse,
   normalizeCitizenId,
   parseDateOnly,
   parsePositiveNumber,
+  sanitizeMoneyInput,
 } from '../../../lib/fieldRules';
+import { citizenProfileApi } from '../../user/api/citizenProfileApi';
 
 const emptyForm = () => ({
   fullName: '',
@@ -67,6 +70,7 @@ export const HouseholdMembersScreen = () => {
     applicationStatus === 'NEED_MORE_DOCUMENTS';
 
   const [members, setMembers] = useState<HouseholdMember[]>([]);
+  const [maritalStatus, setMaritalStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -82,6 +86,12 @@ export const HouseholdMembersScreen = () => {
     try {
       const data = await householdMemberApi.getMembers(applicationId);
       setMembers(data);
+      try {
+        const profile = await citizenProfileApi.getFullProfile();
+        setMaritalStatus(profile.maritalStatus || null);
+      } catch {
+        setMaritalStatus(null);
+      }
     } catch (e: any) {
       appAlert('Lỗi', e?.response?.data?.message || e?.message || 'Không tải được danh sách thành viên.');
     } finally {
@@ -149,6 +159,17 @@ export const HouseholdMembersScreen = () => {
       appAlert('Thiếu thông tin', 'Vui lòng chọn mối quan hệ.');
       return;
     }
+    if (form.relationship === 'SPOUSE' && !maritalAllowsSpouse(maritalStatus)) {
+      appAlert('Không hợp lệ', 'Độc thân, ly hôn hoặc góa không được khai vợ/chồng.');
+      return;
+    }
+    const otherSpouse = members.find(
+      (m) => m.relationship?.toUpperCase() === 'SPOUSE' && m.memberId !== editing?.memberId,
+    );
+    if (form.relationship === 'SPOUSE' && otherSpouse) {
+      appAlert('Không hợp lệ', 'Hồ sơ chỉ được khai một người vợ/chồng.');
+      return;
+    }
 
     const cid = normalizeCitizenId(form.citizenId);
     if (cid && !isValidCitizenId(cid)) {
@@ -187,9 +208,9 @@ export const HouseholdMembersScreen = () => {
       return;
     }
 
-    const income = isDependent ? null : parsePositiveNumber(form.monthlyIncome);
-    if (!isDependent && form.monthlyIncome.trim() && income == null) {
-      appAlert('Không hợp lệ', 'Thu nhập tháng không hợp lệ.');
+    const income = isDependent ? null : parsePositiveNumber(sanitizeMoneyInput(form.monthlyIncome));
+    if (!isDependent && form.monthlyIncome.trim() && (income == null || income < 0)) {
+      appAlert('Không hợp lệ', 'Thu nhập tháng phải là số không âm.');
       return;
     }
 
@@ -374,7 +395,14 @@ export const HouseholdMembersScreen = () => {
 
               <Text style={styles.label}>Quan hệ *</Text>
               <View style={styles.relWrap}>
-                {RELATIONSHIP_OPTIONS.map((opt) => {
+                {RELATIONSHIP_OPTIONS.filter((opt) => {
+                  if (opt.value !== 'SPOUSE') return true;
+                  if (!maritalAllowsSpouse(maritalStatus)) return false;
+                  const otherSpouse = members.some(
+                    (m) => m.relationship?.toUpperCase() === 'SPOUSE' && m.memberId !== editing?.memberId,
+                  );
+                  return form.relationship === 'SPOUSE' || !otherSpouse;
+                }).map((opt) => {
                   const active = form.relationship === opt.value;
                   return (
                     <TouchableOpacity
@@ -432,9 +460,9 @@ export const HouseholdMembersScreen = () => {
                   <TextInput
                     style={styles.input}
                     value={form.monthlyIncome}
-                    onChangeText={(v) => setForm((f) => ({ ...f, monthlyIncome: v }))}
-                    keyboardType="numeric"
-                    placeholder="Tùy chọn"
+                    onChangeText={(v) => setForm((f) => ({ ...f, monthlyIncome: sanitizeMoneyInput(v) }))}
+                    keyboardType="number-pad"
+                    placeholder="Chỉ số không âm"
                   />
                   <Text style={styles.label}>Nghề nghiệp</Text>
                   <TextInput

@@ -32,7 +32,7 @@ const FAQS = [
   },
   {
     q: 'Thanh toán diễn ra theo thứ tự nào?',
-    a: 'Sau khi được cấp căn: đóng tiền cọc (đợt 1 do chủ đầu tư cấu hình, tối đa 30% giá căn) → ký hợp đồng mua bán → các đợt còn lại theo lịch chủ đầu tư công bố trên từng dự án (số đợt không cố định).',
+    a: 'Sau khi được cấp căn: đóng Đợt 1 — thanh toán lần đầu, đã gồm tiền đặt cọc (do chủ đầu tư cấu hình, tối đa 30% giá trị hợp đồng) → ký hợp đồng mua bán → các đợt còn lại theo lịch chủ đầu tư công bố trên từng dự án (số đợt không cố định).',
   },
 ];
 

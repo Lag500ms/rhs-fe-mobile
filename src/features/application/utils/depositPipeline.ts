@@ -21,14 +21,20 @@ export function needsDepositBeforeContract(opts: {
   return status === 'CONTRACT_PENDING' && opts.hasApartment;
 }
 
-/** Ký HĐ mua bán: đã cấp căn + đã cọc Đợt 1 + đang CONTRACT_PENDING. */
+/** Ký HĐ mua bán: đã cấp căn + đã cọc Đợt 1. */
 export function canSignAfterDeposit(opts: {
   applicationStatus: string;
   hasApartment: boolean;
   depositPaid: boolean;
 }): boolean {
+  if (!opts.hasApartment || !opts.depositPaid) return false;
   const status = String(opts.applicationStatus || '').toUpperCase();
-  return status === 'CONTRACT_PENDING' && opts.hasApartment && opts.depositPaid;
+  return (
+    status === 'CONTRACT_PENDING' ||
+    status === 'DEPOSIT_PENDING' ||
+    status === 'DEPOSIT_PAID' ||
+    status === 'CONTRACTING'
+  );
 }
 
 export function isContractSignedForInstallments(status?: string | null): boolean {

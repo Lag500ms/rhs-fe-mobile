@@ -112,7 +112,11 @@ export function sortedMilestones(project: HousingProjectResponse): ProjectMilest
   return [...(project.milestones || [])].sort((a, b) => a.phaseOrder - b.phaseOrder);
 }
 
-/** Đợt 1 trên lịch CĐT = tiền cọc, tối đa 30% giá căn. */
+/**
+ * Đợt 1 trên lịch CĐT = thanh toán lần đầu, tối đa 30% giá trị hợp đồng và ĐÃ GỒM tiền đặt cọc
+ * (Đ25.1 Luật Kinh doanh bất động sản 2023). Riêng phần đặt cọc bị giới hạn 5% (Đ23.5), nên gọi
+ * cả đợt là "tiền cọc" là mô tả sai một khoản đang vượt trần cọc.
+ */
 export function getDepositMilestone(
   project: HousingProjectResponse,
 ): ProjectMilestoneResponse | undefined {
@@ -128,12 +132,12 @@ export function formatPaymentScheduleHint(project: HousingProjectResponse): stri
     pct != null && Number(pct) > 0 ? ` ${Number(pct)}% giá căn` : '';
 
   if (list.length > 0) {
-    return `Chủ đầu tư cấu hình ${list.length} đợt đóng tiền. Đợt 1 là tiền cọc${pctText} (tối đa 30%).`;
+    return `Chủ đầu tư cấu hình ${list.length} đợt đóng tiền. Đợt 1 là thanh toán lần đầu${pctText}, đã gồm tiền đặt cọc (tối đa 30%).`;
   }
   if (pct != null && Number(pct) > 0) {
-    return `Đợt 1 là tiền cọc ${Number(pct)}% giá căn (tối đa 30%). Số đợt còn lại do chủ đầu tư công bố.`;
+    return `Đợt 1 là thanh toán lần đầu ${Number(pct)}% giá căn, đã gồm tiền đặt cọc (tối đa 30%). Số đợt còn lại do chủ đầu tư công bố.`;
   }
-  return 'Chủ đầu tư cấu hình số đợt đóng tiền theo tiến độ. Đợt 1 là tiền cọc, tối đa 30% giá căn.';
+  return 'Chủ đầu tư cấu hình số đợt đóng tiền theo tiến độ. Đợt 1 là thanh toán lần đầu, đã gồm tiền đặt cọc, tối đa 30% giá căn.';
 }
 
 export interface HousingProjectFilterParams {

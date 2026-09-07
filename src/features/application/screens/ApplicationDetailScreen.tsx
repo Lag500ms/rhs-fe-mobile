@@ -238,7 +238,11 @@ export const ApplicationDetailScreen = () => {
   }, [detail, navigation]);
 
   const hasApartment = !!(detail?.apartmentId || detail?.apartmentUnitName);
-  const depositPaid = isDepositPaymentSettled(existingPayment?.status);
+  const depositPaid =
+    isDepositPaymentSettled(existingPayment?.status) ||
+    ['DEPOSIT_PAID', 'CONTRACT_SIGNED', 'INSTALLMENT_IN_PROGRESS', 'FULLY_PAID'].includes(
+      String(detail?.applicationStatus || '').toUpperCase(),
+    );
   const needsDeposit = !!(
     detail &&
     needsDepositBeforeContract({
@@ -1001,6 +1005,7 @@ export const ApplicationDetailScreen = () => {
                 existingPayment={existingPayment}
                 checkingPayment={checkingPayment}
                 startedAtHint={detail.updatedAt}
+                deadlineFromBe={detail.depositDeadline}
               />
             )}
 
@@ -1167,31 +1172,33 @@ const DepositPendingPaymentContent = ({
   existingPayment,
   checkingPayment,
   startedAtHint,
+  deadlineFromBe,
 }: {
   existingPayment: PaymentInfo | null;
   checkingPayment: boolean;
   startedAtHint?: string | null;
+  deadlineFromBe?: string | null;
 }) => {
   const [remainingLabel, setRemainingLabel] = useState<string | null>(null);
   const paid = isPaymentSuccessStatus(existingPayment?.status);
 
   useEffect(() => {
-    if (!startedAtHint || paid) {
+    if ((!startedAtHint && !deadlineFromBe) || paid) {
       setRemainingLabel(null);
       return;
     }
     const tick = () => {
-      const ms = getDepositRemainingMs(startedAtHint);
+      const ms = getDepositRemainingMs(startedAtHint ?? '', Date.now(), deadlineFromBe);
       if (ms <= 0) {
-        setRemainingLabel('Đã hết hạn đóng cọc');
+        setRemainingLabel('Đã hết hạn thanh toán Đợt 1');
         return;
       }
-      setRemainingLabel(`Còn ${formatDepositHhmmss(ms)} để đóng cọc`);
+      setRemainingLabel(`Còn ${formatDepositHhmmss(ms)} để thanh toán Đợt 1`);
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [startedAtHint, paid]);
+  }, [startedAtHint, deadlineFromBe, paid]);
 
   if (paid) {
     return (
