@@ -1,6 +1,6 @@
 /**
  * Cấu hình trạng thái hồ sơ đăng ký nhà ở xã hội.
- * Map BE → nhãn người dân (mobile). Cọc → ký; đợt sau ở lịch TT.
+ * Map BE → nhãn người dân (mobile). Đợt 1 → ký; đợt sau ở lịch TT.
  */
 
 import { MAX_SMALL_HOUSE_AREA } from '../../../lib/fieldRules';
@@ -57,7 +57,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: '#4CAF50',
   },
   DEPOSIT_PENDING: {
-    label: 'Chờ đóng tiền cọc',
+    label: 'Chờ đóng Đợt 1',
     bg: '#FFF3E0',
     textColor: '#E65100',
     dotColor: '#FF9800',
@@ -69,7 +69,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: '#4CAF50',
   },
   CONTRACT_PENDING: {
-    label: 'Đã cấp suất — đóng cọc / ký HĐ',
+    label: 'Đã cấp suất — Đợt 1 / ký HĐ',
     bg: '#E8EAF6',
     textColor: '#283593',
     dotColor: '#3F51B5',
@@ -81,7 +81,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: '#3F51B5',
   },
   DEPOSIT_PAID: {
-    label: 'Đã đóng cọc',
+    label: 'Đã đóng Đợt 1',
     bg: '#E8F5E9',
     textColor: '#1B5E20',
     dotColor: '#2E7D32',
@@ -216,9 +216,9 @@ export function getActionForStatus(status: string): StatusAction | null {
     case 'LOTTERY_WON':
       return { label: 'Chờ chốt suất', icon: 'home', color: RHSColors.green700 };
     case 'DEPOSIT_PENDING':
-      return { label: 'Đóng tiền cọc', icon: 'credit-card', color: RHSColors.red600 };
+      return { label: 'Đóng Đợt 1', icon: 'credit-card', color: RHSColors.red600 };
     case 'CONTRACT_PENDING':
-      return { label: 'Đóng cọc / ký hợp đồng', icon: 'credit-card', color: RHSColors.red600 };
+      return { label: 'Đóng Đợt 1 / ký hợp đồng', icon: 'credit-card', color: RHSColors.red600 };
     case 'CONTRACT_SIGNED':
     case 'INSTALLMENT_IN_PROGRESS':
     case 'DEPOSIT_PAID':

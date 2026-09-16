@@ -13,6 +13,7 @@ import { RHSColors, borderRadius } from '../../../lib/theme';
 import { PaymentStackParamList } from '../navigation/PaymentNavigator';
 import { paymentApi } from '../api/paymentApi';
 import { DepositPaymentResult } from '../types/payment';
+import { formatHousingVnd, formatSandboxPayVnd } from '../../../lib/money';
 
 type PaymentProcessingRouteProp = RouteProp<PaymentStackParamList, 'PaymentProcessing'>;
 
@@ -171,12 +172,20 @@ export const PaymentProcessingScreen = () => {
               <Text style={styles.infoValue}>{orderId}</Text>
             </View>
             {depositAmount > 0 && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Số tiền</Text>
-                <Text style={styles.infoValue}>
-                  {depositAmount.toLocaleString('vi-VN')} đ
-                </Text>
-              </View>
+              <>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Số tiền</Text>
+                  <Text style={styles.infoValue}>
+                    {formatHousingVnd(depositAmount)}
+                  </Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>VNPay thu</Text>
+                  <Text style={styles.infoValue}>
+                    {formatSandboxPayVnd(depositAmount)}
+                  </Text>
+                </View>
+              </>
             )}
           </View>
 

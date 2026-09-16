@@ -57,54 +57,54 @@ export function getCitizenNextStep(
     case 'APPROVED_BY_TIMEOUT':
       return {
         title: 'Đã duyệt — chờ chốt suất',
-        body: 'Chờ chủ đầu tư cấp nhà trực tiếp hoặc tổ chức bốc thăm rồi cấp suất. Sau khi có suất, bạn sẽ đóng cọc.',
+        body: 'Chờ chủ đầu tư cấp nhà trực tiếp hoặc tổ chức bốc thăm rồi cấp suất. Khi đã có suất, bạn đóng Đợt 1 (thanh toán lần đầu, gồm đặt cọc).',
         tone: 'info',
       };
     case 'LOTTERY_WON':
       return {
         title: 'Đã trúng — chờ chốt suất',
-        body: 'Bạn đã trúng suất. Chủ đầu tư sẽ chọn căn hộ cụ thể. Khi đã có căn, bạn đóng cọc Đợt 1 rồi mới ký hợp đồng.',
+        body: 'Bạn đã trúng suất. Chủ đầu tư sẽ chọn căn hộ cụ thể. Khi đã có căn, bạn đóng Đợt 1 rồi mới ký hợp đồng.',
         tone: 'info',
       };
     case 'DEPOSIT_PENDING':
       if (opts?.depositPaid === true) {
         return {
           title: 'Việc tiếp theo: ký hợp đồng',
-          body: 'Đã đóng cọc. Đọc kỹ và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.',
+          body: 'Đã đóng Đợt 1. Đọc kỹ và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.',
           tone: 'action',
         };
       }
       return {
-        title: 'Việc tiếp theo: đóng tiền cọc',
+        title: 'Việc tiếp theo: đóng Đợt 1',
         body: opts?.depositDeadline
-          ? `Bạn được đôn từ danh sách chờ. Vui lòng xác nhận nộp cọc trước ${new Date(opts.depositDeadline).toLocaleString('vi-VN')}.`
-          : 'Bạn đã được cấp suất. Đóng cọc để giữ suất, sau đó mới ký hợp đồng.',
+          ? `Bạn được đôn từ danh sách chờ. Vui lòng xác nhận và đóng Đợt 1 trước ${new Date(opts.depositDeadline).toLocaleString('vi-VN')}.`
+          : 'Bạn đã được cấp suất. Đóng Đợt 1 (thanh toán lần đầu, gồm đặt cọc) để giữ suất, sau đó mới ký hợp đồng.',
         tone: 'action',
       };
     case 'CONTRACT_PENDING':
       if (opts?.hasApartment === false) {
         return {
           title: 'Đã trúng — chờ chủ đầu tư chọn căn',
-          body: 'Bạn đã có suất. Khi chủ đầu tư gán căn cụ thể, bạn đóng cọc Đợt 1 rồi mới ký hợp đồng.',
+          body: 'Bạn đã có suất. Khi chủ đầu tư gán căn cụ thể, bạn đóng Đợt 1 rồi mới ký hợp đồng.',
           tone: 'info',
         };
       }
       if (opts?.depositPaid !== true) {
         return {
-          title: 'Việc tiếp theo: đóng tiền cọc (Đợt 1)',
-          body: 'Bạn đã được cấp căn. Đóng cọc trước, sau đó mới ký hợp đồng. Đợt 2 mở sau khi ký.',
+          title: 'Việc tiếp theo: đóng Đợt 1',
+          body: 'Bạn đã được cấp căn. Đóng Đợt 1 (thanh toán lần đầu, gồm đặt cọc) trước, sau đó mới ký hợp đồng. Đợt 2 mở sau khi ký.',
           tone: 'action',
         };
       }
       return {
         title: 'Việc tiếp theo: ký hợp đồng',
-        body: 'Đã đóng cọc. Đọc kỹ và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.',
+        body: 'Đã đóng Đợt 1. Đọc kỹ và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.',
         tone: 'action',
       };
     case 'DEPOSIT_PAID':
       return {
         title: 'Việc tiếp theo: ký hợp đồng',
-        body: 'Đã đóng cọc. Đọc kỹ và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.',
+        body: 'Đã đóng Đợt 1. Đọc kỹ và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.',
         tone: 'action',
       };
     case 'CONTRACT_SIGNED':
@@ -133,13 +133,15 @@ export function getCitizenNextStep(
         title: opts?.waitlistNumber
           ? `Danh sách chờ — thứ hạng ${opts.waitlistNumber}`
           : 'Đã vào danh sách chờ',
-        body: 'Hồ sơ không bị hủy. Khi có căn trả lại, người đứng đầu danh sách được nhận quyền mua (thường 48–72 giờ để xác nhận nộp cọc).',
+        body: opts?.depositDeadline
+          ? `Hồ sơ không bị hủy. Khi có căn trả lại, người đứng đầu danh sách được nhận quyền mua. Hạn xác nhận: ${new Date(opts.depositDeadline).toLocaleString('vi-VN')}.`
+          : 'Hồ sơ không bị hủy. Khi có căn trả lại, người đứng đầu danh sách được nhận quyền mua và phải xác nhận trong thời hạn hệ thống thông báo.',
         tone: 'warn',
       };
     case 'CANCELLATION_REQUESTED':
       return {
         title: 'Đã gửi đơn xin ngừng thanh toán',
-        body: 'Chủ đầu tư đang xét đơn. Nếu chấp thuận, tiền cọc đợt đầu bị trừ; các khoản đã đóng sau đó được hoàn sau khi khấu trừ lãi phạt (nếu có).',
+        body: 'Chủ đầu tư đang xét đơn. Nếu chấp thuận, tiền đặt cọc trong Đợt 1 bị trừ; các khoản đã đóng sau đó được hoàn sau khi khấu trừ lãi phạt (nếu có).',
         tone: 'warn',
       };
     case 'REJECTED':
@@ -151,7 +153,7 @@ export function getCitizenNextStep(
     case 'EXPIRED':
       return {
         title: 'Hồ sơ đã hết hạn',
-        body: 'Quá hạn đóng cọc hoặc ký hợp đồng. Hãy tạo hồ sơ mới nếu muốn tiếp tục.',
+        body: 'Quá hạn đóng Đợt 1 hoặc ký hợp đồng. Hãy tạo hồ sơ mới nếu muốn tiếp tục.',
         tone: 'danger',
       };
     case 'CANCELED':

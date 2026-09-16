@@ -16,6 +16,7 @@ import type { BadgeTone } from '../../../components/ui';
 import { RHSColors, spacing, typography } from '../../../lib/theme';
 import { paymentApi } from '../api/paymentApi';
 import type { PaymentInfo } from '../types/payment';
+import { formatHousingVnd } from '../../../lib/money';
 
 const PAYMENT_STATUS_VI: Record<string, string> = {
   Pending: 'Chờ thanh toán',
@@ -53,16 +54,6 @@ function statusMeta(status: string): StatusMeta {
   return { label, tone: 'warning', accent: RHSColors.amber600, icon: 'clock', settled: false };
 }
 
-const formatVnd = (amount: number) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
-
-const compactVnd = (amount: number) => {
-  const v = amount || 0;
-  if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1).replace('.0', '')} tỷ`;
-  if (v >= 1_000_000) return `${Math.round(v / 1_000_000)} tr`;
-  if (v >= 1_000) return `${Math.round(v / 1_000)} k`;
-  return String(v);
-};
 
 export const MyPaymentsScreen = () => {
   const navigation = useNavigation<any>();
@@ -126,7 +117,7 @@ export const MyPaymentsScreen = () => {
             <Feather name={st.icon} size={18} color={st.accent} />
           </View>
           <View style={styles.cardHeadBody}>
-            <Text style={styles.amount}>{formatVnd(Number(item.amount))}</Text>
+            <Text style={styles.amount}>{formatHousingVnd(Number(item.amount))}</Text>
             <Text style={styles.orderId} numberOfLines={1}>
               {item.orderId}
             </Text>
@@ -177,7 +168,7 @@ export const MyPaymentsScreen = () => {
           <StatTile
             onDark
             icon="check-circle"
-            value={loading ? '—' : compactVnd(summary.total)}
+            value={loading ? '—' : formatHousingVnd(summary.total)}
             label="Đã thanh toán"
           />
           <StatTile
@@ -210,7 +201,7 @@ export const MyPaymentsScreen = () => {
             <EmptyState
               icon="credit-card"
               title="Chưa có giao dịch nào"
-              description="Thanh toán Đợt 1 (cọc) và các đợt sau được thực hiện từ chi tiết hồ sơ hoặc mục Hợp đồng."
+              description="Thanh toán Đợt 1 (thanh toán lần đầu, gồm đặt cọc) và các đợt sau được thực hiện từ chi tiết hồ sơ hoặc mục Hợp đồng."
             />
           }
           refreshControl={

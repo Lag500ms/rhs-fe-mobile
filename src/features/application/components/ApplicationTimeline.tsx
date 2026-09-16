@@ -5,7 +5,7 @@ import { getStatusConfig } from '../utils/statusConfig';
 
 /**
  * Tiến độ sau khi nộp — kể chuyện ngắn, không trùng wizard 5 bước tạo hồ sơ.
- * Cọc tiền → Ký HĐ; các đợt sau nằm ở lịch thanh toán.
+ * Đợt 1 → Ký HĐ; các đợt sau nằm ở lịch thanh toán.
  */
 const PIPELINE = [
   {
@@ -30,8 +30,8 @@ const PIPELINE = [
   },
   {
     key: 'DEPOSIT_PENDING',
-    label: 'Cọc tiền',
-    hint: 'Đóng cọc để giữ suất nhà',
+    label: 'Đợt 1',
+    hint: 'Thanh toán lần đầu, gồm đặt cọc',
   },
   {
     key: 'CONTRACT_PENDING',
@@ -130,7 +130,7 @@ export function ApplicationTimeline({ currentStatus, needMoreNote, depositPaid }
         <View style={[styles.banner, styles.bannerWarn]}>
           <Text style={styles.bannerWarnTitle}>Đơn xin ngừng thanh toán đang chờ duyệt</Text>
           <Text style={styles.bannerWarnText}>
-            Chủ đầu tư sẽ xác nhận. Tiền cọc đợt đầu bị trừ nếu đơn được chấp thuận.
+            Chủ đầu tư sẽ xác nhận. Tiền đặt cọc trong Đợt 1 bị trừ nếu đơn được chấp thuận.
           </Text>
         </View>
       )}

@@ -30,8 +30,8 @@ const CONTRACT_STATUSES = new Set([
   'FULLY_PAID',
 ]);
 
-/** Bốn cột mốc người dân đi qua: cọc → ký → đóng theo đợt → hoàn tất. */
-const MILESTONES = ['Đặt cọc', 'Ký hợp đồng', 'Đóng theo đợt', 'Hoàn tất'];
+/** Bốn cột mốc người dân đi qua: Đợt 1 → ký → đóng theo đợt → hoàn tất. */
+const MILESTONES = ['Đợt 1', 'Ký hợp đồng', 'Đóng theo đợt', 'Hoàn tất'];
 
 const MILESTONE_BY_STATUS: Record<string, number> = {
   DEPOSIT_PENDING: 0,
@@ -148,7 +148,7 @@ export const MyContractsScreen = () => {
         </View>
 
         <View style={styles.ctaRow}>
-          <Text style={styles.cta}>Xem chi tiết · đóng cọc / ký HĐ</Text>
+          <Text style={styles.cta}>Xem chi tiết · Đợt 1 / ký HĐ</Text>
           <Feather name="chevron-right" size={18} color={RHSColors.blue700} />
         </View>
       </Card>
@@ -195,7 +195,7 @@ export const MyContractsScreen = () => {
             <EmptyState
               icon="file-text"
               title="Chưa có hồ sơ ở bước hợp đồng"
-              description="Hồ sơ xuất hiện tại đây khi bạn trúng bốc thăm hoặc được cấp suất, bắt đầu từ Đợt 1 (cọc)."
+              description="Hồ sơ xuất hiện tại đây khi bạn trúng bốc thăm hoặc được cấp suất, bắt đầu từ Đợt 1 (thanh toán lần đầu, gồm đặt cọc)."
             />
           }
           refreshControl={

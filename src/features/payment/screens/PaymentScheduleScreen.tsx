@@ -22,13 +22,12 @@ import { InstallmentPhase, InstallmentSummary } from '../types/payment';
 import { housingApplicationApi } from '../../application/api/housingApplicationApi';
 import { isPaymentSuccessStatus } from '../../../lib/depositDeadline';
 import { isContractSignedForInstallments } from '../../application/utils/depositPipeline';
+import { formatHousingVnd, formatSandboxPayVnd, SANDBOX_PRICE_HINT } from '../../../lib/money';
+import { PHASE1_LABEL, PHASE1_LEGAL_NOTE, PHASE1_SHORT } from '../../../lib/paymentCopy';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-const formatVnd = (amount: number) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 
 const formatDate = (value?: string | null) => {
   if (!value) return '—';
@@ -44,24 +43,27 @@ const formatDate = (value?: string | null) => {
  * Đợt 1 = thanh toán lần đầu, đã gồm tiền đặt cọc (Đ25.1 Luật KDBĐS 2023).
  */
 function phaseTitle(phase: InstallmentPhase): string {
-  if (phase.phaseOrder === 1) return 'Thanh toán lần đầu';
+  if (phase.phaseOrder === 1) return PHASE1_SHORT;
   const name = phase.phaseName?.trim();
   if (name) return name.replace(/^Đợt\s*\d+\s*[—–-]?\s*/i, '') || name;
   return `Đợt ${phase.phaseOrder}`;
 }
 
 function phaseTitleLong(phase: InstallmentPhase): string {
+  if (phase.phaseOrder === 1) {
+    const name = phase.phaseName?.trim();
+    if (name && /thanh toán lần đầu|đặt cọc/i.test(name)) return name;
+    return PHASE1_LABEL;
+  }
   const name = phase.phaseName?.trim();
   if (name) return name;
-  return phase.phaseOrder === 1 ? 'Đợt 1 — Thanh toán lần đầu' : `Đợt ${phase.phaseOrder}`;
+  return `Đợt ${phase.phaseOrder}`;
 }
 
 function phaseDescription(phase: InstallmentPhase): string {
   const note = phase.note?.trim();
   if (note) return note;
-  if (phase.phaseOrder === 1) {
-    return 'Thanh toán lần đầu, đã gồm tiền đặt cọc. Chủ đầu tư cấu hình, tối đa 30% giá trị hợp đồng.';
-  }
+  if (phase.phaseOrder === 1) return PHASE1_LEGAL_NOTE;
   return '';
 }
 
@@ -196,7 +198,7 @@ export const PaymentScheduleScreen = () => {
       appAlert(
         'Chưa tới lúc đóng',
         phase.phaseOrder === 2
-          ? 'Khoản này mở sau khi bạn đóng cọc Đợt 1 và ký hợp đồng.'
+          ? 'Khoản này mở sau khi bạn đóng Đợt 1 và ký hợp đồng.'
           : 'Khoản này mở khi chủ đầu tư thông báo theo tiến độ xây dựng.',
       );
       return;
@@ -248,7 +250,7 @@ export const PaymentScheduleScreen = () => {
               <Feather name="calendar" size={40} color={RHSColors.grey400} />
               <Text style={styles.emptyTitle}>Chưa có lịch đóng tiền</Text>
               <Text style={styles.emptyDesc}>
-                Lịch xuất hiện sau khi chủ đầu tư cấp suất nhà. Khi đó bạn đóng cọc, rồi ký hợp đồng.
+                Lịch xuất hiện sau khi chủ đầu tư cấp suất nhà. Khi đó bạn đóng Đợt 1 (thanh toán lần đầu, gồm đặt cọc), rồi ký hợp đồng.
               </Text>
             </View>
           ) : (
@@ -308,7 +310,7 @@ export const PaymentScheduleScreen = () => {
                     {isPaid(current.status)
                       ? 'Đã hoàn tất các khoản trên lịch'
                       : isPayable(current.status)
-                      ? `Đang tới: ${phaseTitleLong(current)} · ${formatVnd(payableAmount(current))}`
+                      ? `Đang tới: ${phaseTitleLong(current)} · ${formatHousingVnd(payableAmount(current))}`
                         : isLocked(current.status)
                           ? `Tiếp theo: ${phaseTitleLong(current)} (chưa mở)`
                           : `Hiện tại: ${phaseTitleLong(current)}`}
@@ -352,9 +354,9 @@ export const PaymentScheduleScreen = () => {
                           <Text style={styles.journeyName}>{phaseTitleLong(phase)}</Text>
                           {desc ? <Text style={styles.journeyDesc}>{desc}</Text> : null}
                           <Text style={styles.journeyMeta}>
-                            {formatVnd(phase.amount)}
+                            {formatHousingVnd(phase.amount)}
                             {(phase.penaltyAmount || 0) > 0
-                              ? ` + lãi phạt ${formatVnd(phase.penaltyAmount || 0)} (${phase.overdueDays || 0} ngày)`
+                              ? ` + lãi phạt ${formatHousingVnd(phase.penaltyAmount || 0)} (${phase.overdueDays || 0} ngày)`
                               : ''}
                             {paid && phase.paidAt ? ` · Đã đóng ${formatDate(phase.paidAt)}` : ''}
                             {payable ? ' · Đến hạn đóng' : ''}
@@ -395,7 +397,7 @@ export const PaymentScheduleScreen = () => {
                     <>
                       <Feather name="credit-card" size={16} color="#fff" />
                       <Text style={styles.payBtnText}>
-                        Thanh toán {formatVnd(payableAmount(current))}
+                        Thanh toán {formatHousingVnd(payableAmount(current))}
                       </Text>
                     </>
                   )}
@@ -413,21 +415,28 @@ export const PaymentScheduleScreen = () => {
                       <Text style={styles.historyName}>{phaseTitleLong(phase)}</Text>
                       <Text style={styles.historyMeta}>Đã đóng · {formatDate(phase.paidAt)}</Text>
                     </View>
-                    <Text style={styles.historyAmount}>{formatVnd(phase.amount)}</Text>
+                    <Text style={styles.historyAmount}>{formatHousingVnd(phase.amount)}</Text>
                   </View>
                 ))
               )}
 
               <View style={styles.summaryFoot}>
                 <Text style={styles.summaryFootText}>
-                  Đã đóng {formatVnd(summary.totalPaid)} / {formatVnd(summary.totalAmount)}
+                  Đã đóng {formatHousingVnd(summary.totalPaid)} / {formatHousingVnd(summary.totalAmount)}
                 </Text>
                 {(summary.totalPenalty || 0) > 0 ? (
                   <Text style={styles.penaltyFoot}>
-                    Lãi phạt chậm nộp: {formatVnd(summary.totalPenalty || 0)} · Còn phải đóng{' '}
-                    {formatVnd(summary.totalAmountWithPenalty ?? summary.totalRemaining)}
+                    Lãi phạt chậm nộp: {formatHousingVnd(summary.totalPenalty || 0)} · Còn phải đóng{' '}
+                    {formatHousingVnd(summary.totalAmountWithPenalty ?? summary.totalRemaining)}
                   </Text>
                 ) : null}
+                {current && isPayable(current.status) ? (
+                  <Text style={styles.sandboxHint}>
+                    VNPay sandbox thu {formatSandboxPayVnd(payableAmount(current))} cho khoản đang mở. {SANDBOX_PRICE_HINT}
+                  </Text>
+                ) : (
+                  <Text style={styles.sandboxHint}>{SANDBOX_PRICE_HINT}</Text>
+                )}
               </View>
 
               {(appStatus === 'CONTRACT_SIGNED' || appStatus === 'INSTALLMENT_IN_PROGRESS') && (
@@ -625,6 +634,13 @@ const styles = StyleSheet.create({
 
   summaryFoot: { marginTop: spacing.lg },
   summaryFootText: { fontSize: 12, color: RHSColors.textMuted, textAlign: 'center' },
+  sandboxHint: {
+    marginTop: 8,
+    fontSize: 11,
+    lineHeight: 16,
+    color: RHSColors.textMuted,
+    textAlign: 'center',
+  },
   penaltyFoot: {
     marginTop: 6,
     fontSize: 12,

@@ -36,12 +36,13 @@ import {
 type Nav = NativeStackNavigationProp<HomeStackParamList, 'HomeList'>;
 type FilterSheet = 'district' | 'price' | 'area' | 'sort' | 'status' | null;
 
+/** Khoảng lọc theo số BE lưu; nhãn là giá tượng trưng (×1.000). */
 const PRICE_RANGES = [
-  { label: 'Dưới 300 triệu', min: 0, max: 300_000_000 },
-  { label: '300 - 500 triệu', min: 300_000_000, max: 500_000_000 },
-  { label: '500 triệu - 1 tỷ', min: 500_000_000, max: 1_000_000_000 },
-  { label: '1 - 2 tỷ', min: 1_000_000_000, max: 2_000_000_000 },
-  { label: 'Trên 2 tỷ', min: 2_000_000_000, max: undefined },
+  { label: 'Dưới 300 triệu', min: 0, max: 300_000 },
+  { label: '300 - 500 triệu', min: 300_000, max: 500_000 },
+  { label: '500 triệu - 1 tỷ', min: 500_000, max: 1_000_000 },
+  { label: '1 - 2 tỷ', min: 1_000_000, max: 2_000_000 },
+  { label: 'Trên 2 tỷ', min: 2_000_000, max: undefined },
   { label: 'Tất cả', min: undefined, max: undefined },
 ];
 

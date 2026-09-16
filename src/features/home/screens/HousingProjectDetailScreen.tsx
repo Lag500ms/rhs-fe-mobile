@@ -32,6 +32,7 @@ import {
 } from '../types/housing';
 import { housingApi } from '../api/housingApi';
 import { formatPrice, getThumb } from '../utils/format';
+import { formatHousingVnd } from '../../../lib/money';
 import { geocode, LatLng, MAPBOX_TOKEN } from '../services/geocodeService';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { getToken } from '../../../lib/tokenStorage';
@@ -434,7 +435,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
                       <Text style={styles.aptName}>{m.phaseName}</Text>
                       {m.phaseOrder === 1 && (
                         <View style={styles.aptChipPriority}>
-                          <Text style={styles.aptChipPriorityText}>Cọc ≤30%</Text>
+                          <Text style={styles.aptChipPriorityText}>Đợt 1 ≤30%</Text>
                         </View>
                       )}
                     </View>
@@ -497,7 +498,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
                       <Text style={styles.aptMeta}>{parts.join(' · ')}</Text>
                     )}
                     <Text style={styles.aptMeta}>
-                      {areaLine || `${apt.area} m²`} · {Number(apt.price).toLocaleString('vi-VN')} VNĐ
+                      {areaLine || `${apt.area} m²`} · {formatHousingVnd(apt.price)}
                     </Text>
                     <Text style={styles.aptMeta}>
                       {unitGroupLabel(apt)} · {saleTypeLabel(apt)}

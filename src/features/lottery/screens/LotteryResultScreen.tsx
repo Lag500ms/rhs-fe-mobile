@@ -294,7 +294,7 @@ export const LotteryResultScreen = () => {
                 {!ownWon && (
                   <Text style={styles.ownHint}>
                     {ownWaitlistRank
-                      ? `Hồ sơ được xếp danh sách chờ thứ ${ownWaitlistRank}. Khi có căn trả lại, hệ thống chuyển quyền mua theo thứ hạng (thường 48–72 giờ để xác nhận nộp cọc).`
+                      ? `Hồ sơ được xếp danh sách chờ thứ ${ownWaitlistRank}. Khi có căn trả lại, hệ thống chuyển quyền mua theo thứ hạng. Hạn xác nhận do hệ thống thông báo trên hồ sơ.`
                       : 'Bạn vẫn có thể đăng ký dự án khác. Hồ sơ đã duyệt được dùng lại cho lần bốc thăm sau.'}
                   </Text>
                 )}

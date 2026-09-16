@@ -17,6 +17,7 @@ import { RHSColors, borderRadius, shadows, spacing, typography } from '../../../
 import { housingApplicationApi } from '../api/housingApplicationApi';
 import { paymentApi } from '../../payment/api/paymentApi';
 import type { ContractCancellationPreview } from '../../payment/types/payment';
+import { formatHousingVnd } from '../../../lib/money';
 
 const APP_REASONS = [
   'Tôi đã tìm được nhà ở khác phù hợp',
@@ -32,9 +33,6 @@ const CONTRACT_REASONS = [
   'Lý do gia đình / sức khỏe',
   'Lý do khác',
 ];
-
-const formatVnd = (amount?: number | null) =>
-  `${Math.round(amount || 0).toLocaleString('vi-VN')} VNĐ`;
 
 export const WithdrawApplicationScreen = () => {
   const navigation = useNavigation<any>();
@@ -105,7 +103,7 @@ export const WithdrawApplicationScreen = () => {
         });
         appAlert(
           'Đã gửi đơn',
-          'Đơn xin ngừng thanh toán đã gửi tới chủ đầu tư. Tiền cọc đợt đầu sẽ bị trừ nếu đơn được chấp thuận.',
+          'Đơn xin ngừng thanh toán đã gửi tới chủ đầu tư. Tiền đặt cọc trong Đợt 1 sẽ bị trừ nếu đơn được chấp thuận.',
           [{ text: 'Đồng ý', onPress: () => navigation.goBack() }],
         );
       } else {
@@ -134,7 +132,7 @@ export const WithdrawApplicationScreen = () => {
     appAlert(
       isContract ? 'Xác nhận xin ngừng thanh toán' : 'Xác nhận hủy hồ sơ',
       isContract
-        ? 'Chủ đầu tư sẽ xét đơn. Nếu chấp thuận, bạn mất toàn bộ tiền cọc đợt đầu; các khoản đã đóng sau đó được hoàn sau khi trừ lãi phạt (nếu có).'
+        ? 'Chủ đầu tư sẽ xét đơn. Nếu chấp thuận, bạn mất toàn bộ tiền đặt cọc trong Đợt 1; các khoản đã đóng sau đó được hoàn sau khi trừ lãi phạt (nếu có).'
         : 'Sau khi hủy, hồ sơ sẽ chuyển sang trạng thái "Đã hủy" và không thể tiếp tục. Nếu đang giữ suất/căn, hệ thống sẽ hoàn lại. Bạn có chắc chắn?',
       [
         { text: 'Không', style: 'cancel' },
@@ -161,7 +159,7 @@ export const WithdrawApplicationScreen = () => {
           <Feather name="alert-triangle" size={18} color={RHSColors.red600} />
           <Text style={styles.warnText}>
             {isContract
-              ? `Bạn đang xin dừng mua nhà${projectName ? ` tại "${projectName}"` : ''}. Tiền cọc đợt đầu bị mất nếu chủ đầu tư chấp thuận.`
+              ? `Bạn đang xin dừng mua nhà${projectName ? ` tại "${projectName}"` : ''}. Tiền đặt cọc trong Đợt 1 bị mất nếu chủ đầu tư chấp thuận.`
               : `Bạn đang yêu cầu hủy hồ sơ${projectName ? ` cho dự án "${projectName}"` : ''}. Thao tác này không thể hoàn tác.`}
           </Text>
         </View>
@@ -179,10 +177,10 @@ export const WithdrawApplicationScreen = () => {
             {preview.apartmentUnitName ? (
               <Text style={styles.previewLine}>Căn: {preview.apartmentUnitName}</Text>
             ) : null}
-            <Text style={styles.previewLine}>Tiền cọc (đợt 1) bị trừ: {formatVnd(preview.depositForfeited)}</Text>
-            <Text style={styles.previewLine}>Đã đóng từ đợt 2 trở đi: {formatVnd(preview.phase2PlusPaidAmount)}</Text>
-            <Text style={styles.previewLine}>Lãi phạt chưa thanh toán: {formatVnd(preview.totalUnpaidPenalty)}</Text>
-            <Text style={styles.previewRefund}>Số tiền dự kiến hoàn: {formatVnd(preview.refundAmount)}</Text>
+            <Text style={styles.previewLine}>Tiền đặt cọc trong Đợt 1 bị trừ: {formatHousingVnd(preview.depositForfeited)}</Text>
+            <Text style={styles.previewLine}>Đã đóng từ đợt 2 trở đi: {formatHousingVnd(preview.phase2PlusPaidAmount)}</Text>
+            <Text style={styles.previewLine}>Lãi phạt chưa thanh toán: {formatHousingVnd(preview.totalUnpaidPenalty)}</Text>
+            <Text style={styles.previewRefund}>Số tiền dự kiến hoàn: {formatHousingVnd(preview.refundAmount)}</Text>
             {preview.overduePhasesCount >= 2 ? (
               <Text style={styles.previewWarn}>
                 Đã quá hạn liên tiếp {preview.overduePhasesCount} đợt. Chủ đầu tư có thể cưỡng chế thu hồi căn.

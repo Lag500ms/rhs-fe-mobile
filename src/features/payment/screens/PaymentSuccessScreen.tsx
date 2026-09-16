@@ -12,10 +12,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { RHSColors, borderRadius, spacing, typography, shadows } from '../../../lib/theme';
 import { Card, CelebrationModal, GradientButton } from '../../../components/ui';
 import { PaymentStackParamList } from '../navigation/PaymentNavigator';
+import { formatHousingVnd, formatSandboxPayVnd } from '../../../lib/money';
 
 type PaymentSuccessRouteProp = RouteProp<PaymentStackParamList, 'PaymentSuccess'>;
 
-const formatCurrency = (value: number) => `${(value || 0).toLocaleString('vi-VN')} đ`;
+const formatCurrency = (value: number) => formatHousingVnd(value);
 
 const formatDate = (dateStr?: string) => {
   if (!dateStr) return '—';
@@ -47,6 +48,7 @@ export const PaymentSuccessScreen = () => {
     ...(applicantName ? [{ label: 'Người đăng ký', value: applicantName }] : []),
     { label: 'Đợt thanh toán', value: phaseText },
     { label: 'Số tiền', value: formatCurrency(amount), highlight: true },
+    { label: 'VNPay đã thu', value: formatSandboxPayVnd(amount) },
     { label: 'Mã giao dịch', value: orderId },
     { label: 'Thời gian', value: formatDate(paidAt) },
   ];

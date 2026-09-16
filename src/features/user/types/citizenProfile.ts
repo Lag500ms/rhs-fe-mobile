@@ -212,10 +212,7 @@ export function getDependentReasonLabel(value?: string | null): string {
   return DEPENDENT_REASON_OPTIONS.find((o) => o.value === value)?.label || value;
 }
 
-export function formatVnd(amount?: number | null): string {
-  if (amount == null || Number.isNaN(amount)) return '—';
-  return `${Math.round(amount).toLocaleString('vi-VN')} đ`;
-}
+export { formatVnd } from '../../../lib/money';
 
 export function calcAge(dateOfBirth?: string | null): number | null {
   if (!dateOfBirth) return null;

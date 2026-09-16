@@ -70,7 +70,7 @@ export interface HousingProjectResponse {
   thumbnailUrl?: string;
   lotteryDate?: string;
   lotteryLocation?: string;
-  /** Tỉ lệ Đợt 1 (cọc) nếu BE còn trả field này — ưu tiên lấy từ milestones[0].percentage. Trần 30%. */
+  /** Tỉ lệ Đợt 1 (thanh toán lần đầu, gồm đặt cọc). Trần 30%. Ưu tiên milestones[0].percentage. */
   phase1Percentage?: number;
   createdAt: string;
   updatedAt?: string;
