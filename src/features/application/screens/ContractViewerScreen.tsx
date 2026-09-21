@@ -229,9 +229,7 @@ export const ContractViewerScreen = () => {
                 setSignedAt(result.data?.signedAt || new Date().toISOString());
                 appAlert(
                   'Thành công',
-                  result.message?.includes('nguyên tắc')
-                    ? 'Đã ký hợp đồng mua bán nhà ở xã hội.'
-                    : result.message || 'Đã ký hợp đồng mua bán nhà ở xã hội.',
+                  'Đã ký hợp đồng mua bán nhà ở xã hội. Đợt 1 đã mở trên lịch thanh toán.',
                 );
               } else {
                 appAlert('Không ký được', result.message || 'Vui lòng thử lại.');

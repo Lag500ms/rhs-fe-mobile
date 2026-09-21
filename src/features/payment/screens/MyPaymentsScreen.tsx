@@ -201,7 +201,7 @@ export const MyPaymentsScreen = () => {
             <EmptyState
               icon="credit-card"
               title="Chưa có giao dịch nào"
-              description="Thanh toán Đợt 1 (thanh toán lần đầu, gồm đặt cọc) và các đợt sau được thực hiện từ chi tiết hồ sơ hoặc mục Hợp đồng."
+              description="Thanh toán Đợt 1 sau khi ký hợp đồng, và các đợt sau, từ chi tiết hồ sơ hoặc mục Hợp đồng."
             />
           }
           refreshControl={

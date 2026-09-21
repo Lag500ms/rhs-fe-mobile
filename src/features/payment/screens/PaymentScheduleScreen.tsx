@@ -88,8 +88,7 @@ function payableAmount(phase: InstallmentPhase): number {
 }
 
 /**
- * BE từng đánh Đợt 1 = PAID khi hồ sơ CONTRACT_PENDING (chưa VNPay).
- * Đợt 2 chỉ được trả sau khi ký HĐ.
+ * Đợt 1 chỉ thu sau khi ký. Không giả PENDING nếu BE ghi PAID (tránh bấm thanh toán rồi lỗi).
  */
 function pipelineStatus(
   phase: InstallmentPhase,
@@ -97,10 +96,16 @@ function pipelineStatus(
   depositPaid: boolean,
 ): string {
   const st = String(phase.status || '').toUpperCase();
-  if (phase.phaseOrder === 1 && !depositPaid && st === 'PAID') {
-    return 'PENDING';
+  const signed = isContractSignedForInstallments(appStatus);
+  if (phase.phaseOrder === 1) {
+    if (!signed) {
+      if (depositPaid && st === 'PAID') return 'PAID';
+      if (st === 'CANCELLED' || st === 'CANCELED') return st;
+      return 'LOCKED';
+    }
+    return st;
   }
-  if (phase.phaseOrder === 2 && (!depositPaid || !isContractSignedForInstallments(appStatus))) {
+  if (!signed && st !== 'PAID' && st !== 'CANCELLED' && st !== 'CANCELED') {
     return 'LOCKED';
   }
   return st;
@@ -204,6 +209,13 @@ export const PaymentScheduleScreen = () => {
       return;
     }
     if (st !== 'PENDING' && st !== 'OVERDUE') return;
+    if (phase.phaseOrder === 1 && !isContractSignedForInstallments(appStatus)) {
+      appAlert(
+        'Ký hợp đồng trước',
+        'Đợt 1 mở sau khi bạn ký hợp đồng mua bán.',
+      );
+      return;
+    }
     setPayingId(phase.id);
     try {
       const result = phase.phaseOrder === 1
