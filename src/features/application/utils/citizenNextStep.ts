@@ -57,57 +57,53 @@ export function getCitizenNextStep(
     case 'APPROVED_BY_TIMEOUT':
       return {
         title: 'Đã duyệt — chờ chốt suất',
-        body: 'Chờ chủ đầu tư cấp nhà trực tiếp hoặc tổ chức bốc thăm rồi cấp suất. Khi đã có suất, bạn đóng Đợt 1 (thanh toán lần đầu, gồm đặt cọc).',
+        body: 'Chờ chủ đầu tư cấp nhà trực tiếp hoặc tổ chức bốc thăm rồi cấp suất. Khi đã có căn, bạn ký hợp đồng mua bán; Đợt 1 mở sau khi ký.',
         tone: 'info',
       };
     case 'LOTTERY_WON':
       return {
         title: 'Đã trúng — chờ chốt suất',
-        body: 'Bạn đã trúng suất. Chủ đầu tư sẽ chọn căn hộ cụ thể. Khi đã có căn, bạn đóng Đợt 1 rồi mới ký hợp đồng.',
+        body: 'Bạn đã trúng suất. Chủ đầu tư sẽ chọn căn hộ cụ thể. Khi đã có căn, hãy đọc và ký hợp đồng mua bán. Đợt 1 mở sau khi ký.',
         tone: 'info',
       };
     case 'DEPOSIT_PENDING':
-      if (opts?.depositPaid === true) {
-        return {
-          title: 'Việc tiếp theo: ký hợp đồng',
-          body: 'Đã đóng Đợt 1. Đọc kỹ và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.',
-          tone: 'action',
-        };
-      }
-      return {
-        title: 'Việc tiếp theo: đóng Đợt 1',
-        body: opts?.depositDeadline
-          ? `Bạn được đôn từ danh sách chờ. Vui lòng xác nhận và đóng Đợt 1 trước ${new Date(opts.depositDeadline).toLocaleString('vi-VN')}.`
-          : 'Bạn đã được cấp suất. Đóng Đợt 1 (thanh toán lần đầu, gồm đặt cọc) để giữ suất, sau đó mới ký hợp đồng.',
-        tone: 'action',
-      };
     case 'CONTRACT_PENDING':
       if (opts?.hasApartment === false) {
         return {
           title: 'Đã trúng — chờ chủ đầu tư chọn căn',
-          body: 'Bạn đã có suất. Khi chủ đầu tư gán căn cụ thể, bạn đóng Đợt 1 rồi mới ký hợp đồng.',
+          body: 'Bạn đã có suất. Khi chủ đầu tư gán căn cụ thể, hãy đọc và ký hợp đồng mua bán.',
           tone: 'info',
         };
       }
-      if (opts?.depositPaid !== true) {
+      if (opts?.depositPaid === true) {
         return {
-          title: 'Việc tiếp theo: đóng Đợt 1',
-          body: 'Bạn đã được cấp căn. Đóng Đợt 1 (thanh toán lần đầu, gồm đặt cọc) trước, sau đó mới ký hợp đồng. Đợt 2 mở sau khi ký.',
+          title: 'Việc tiếp theo: ký hợp đồng',
+          body: 'Đã đóng Đợt 1 (dữ liệu cũ). Đọc kỹ và ký hợp đồng mua bán.',
           tone: 'action',
         };
       }
       return {
         title: 'Việc tiếp theo: ký hợp đồng',
-        body: 'Đã đóng Đợt 1. Đọc kỹ và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.',
+        body: opts?.depositDeadline
+          ? `Bạn được đôn từ danh sách chờ. Vui lòng đọc và ký hợp đồng mua bán trước ${new Date(opts.depositDeadline).toLocaleString('vi-VN')}. Đợt 1 mở sau khi ký.`
+          : 'Bạn đã được cấp căn. Đọc kỹ và ký hợp đồng mua bán. Đợt 1 (thanh toán lần đầu, gồm đặt cọc nếu có) sẽ mở sau khi ký.',
         tone: 'action',
       };
     case 'DEPOSIT_PAID':
       return {
-        title: 'Việc tiếp theo: ký hợp đồng',
-        body: 'Đã đóng Đợt 1. Đọc kỹ và ký hợp đồng mua bán. Đợt 2 sẽ mở trên lịch thanh toán sau khi ký.',
-        tone: 'action',
+        title: 'Đã đóng Đợt 1',
+        body: 'Thanh toán lần đầu theo hợp đồng thành công. Các đợt sau do chủ đầu tư mở theo tiến độ — xem lịch thanh toán.',
+        tone: 'success',
       };
     case 'CONTRACT_SIGNED':
+      return {
+        title: opts?.depositPaid === true ? 'Đã ký hợp đồng' : 'Việc tiếp theo: thanh toán Đợt 1',
+        body:
+          opts?.depositPaid === true
+            ? 'Xem lịch thanh toán để biết khoản nào đang mở. Các đợt theo tiến độ do chủ đầu tư thông báo.'
+            : 'Hợp đồng đã ký. Hãy thanh toán Đợt 1 (lần đầu theo hợp đồng, gồm đặt cọc nếu có) đúng hạn.',
+        tone: opts?.depositPaid === true ? 'success' : 'action',
+      };
     case 'INSTALLMENT_IN_PROGRESS':
       return {
         title: 'Đã ký hợp đồng',
@@ -153,7 +149,7 @@ export function getCitizenNextStep(
     case 'EXPIRED':
       return {
         title: 'Hồ sơ đã hết hạn',
-        body: 'Quá hạn đóng Đợt 1 hoặc ký hợp đồng. Hãy tạo hồ sơ mới nếu muốn tiếp tục.',
+        body: 'Quá hạn ký hợp đồng hoặc thanh toán Đợt 1. Hãy tạo hồ sơ mới nếu muốn tiếp tục.',
         tone: 'danger',
       };
     case 'CANCELED':

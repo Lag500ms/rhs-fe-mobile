@@ -28,11 +28,11 @@ const FAQS = [
   },
   {
     q: 'Bốc thăm được tổ chức khi nào?',
-    a: 'Sau khi Sở duyệt hồ sơ và chủ đầu tư chốt danh sách: nếu vượt số căn thì tổ chức bốc thăm. Phiên Live chỉ công bố hồ sơ trúng suất — chủ đầu tư chọn căn sau. Khi đã có căn, bạn đóng Đợt 1 (thanh toán lần đầu, gồm đặt cọc) qua VNPay → ký hợp đồng → thanh toán các khoản còn lại theo tiến độ.',
+    a: 'Sau khi Sở duyệt hồ sơ và chủ đầu tư chốt danh sách: nếu vượt số căn thì tổ chức bốc thăm. Phiên Live chỉ công bố hồ sơ trúng suất — chủ đầu tư chọn căn sau. Khi đã có căn, bạn ký hợp đồng mua bán → đóng Đợt 1 (thanh toán lần đầu, gồm đặt cọc nếu có) qua VNPay → các khoản còn lại theo tiến độ.',
   },
   {
     q: 'Thanh toán diễn ra theo thứ tự nào?',
-    a: 'Sau khi được cấp căn: đóng Đợt 1 — thanh toán lần đầu, đã gồm tiền đặt cọc (do chủ đầu tư cấu hình, tối đa 30% giá trị hợp đồng) → ký hợp đồng mua bán → các đợt còn lại theo lịch chủ đầu tư công bố trên từng dự án (số đợt không cố định).',
+    a: 'Sau khi được cấp căn: ký hợp đồng mua bán → đóng Đợt 1 — thanh toán lần đầu, đã gồm tiền đặt cọc nếu có (do chủ đầu tư cấu hình, tối đa 30% giá trị hợp đồng theo Điều 89 Luật Nhà ở năm 2023) → các đợt còn lại theo lịch chủ đầu tư công bố trên từng dự án (số đợt không cố định).',
   },
 ];
 

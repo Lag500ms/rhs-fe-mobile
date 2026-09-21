@@ -4,8 +4,8 @@ import { RHSColors, borderRadius } from '../../../lib/theme';
 import { getStatusConfig } from '../utils/statusConfig';
 
 /**
- * Tiến độ sau khi nộp — kể chuyện ngắn, không trùng wizard 5 bước tạo hồ sơ.
- * Đợt 1 → Ký HĐ; các đợt sau nằm ở lịch thanh toán.
+ * Tiến độ sau khi nộp — kể chuyện ngắn, không trùng wizard tạo hồ sơ.
+ * Ký HĐ là bước cuối timeline; Đợt 1 nằm ở lịch thanh toán.
  */
 const PIPELINE = [
   {
@@ -29,14 +29,9 @@ const PIPELINE = [
     hint: 'Cấp thẳng hoặc sau bốc thăm',
   },
   {
-    key: 'DEPOSIT_PENDING',
-    label: 'Đợt 1',
-    hint: 'Thanh toán lần đầu, gồm đặt cọc',
-  },
-  {
     key: 'CONTRACT_PENDING',
     label: 'Ký hợp đồng',
-    hint: 'Ký hợp đồng mua bán',
+    hint: 'Ký hợp đồng mua bán; Đợt 1 mở sau khi ký',
   },
 ] as const;
 
@@ -49,7 +44,7 @@ const TERMINAL_SUCCESS = new Set([
   'FULLY_PAID',
 ]);
 
-function resolveIndex(status: string, depositPaid?: boolean): number {
+function resolveIndex(status: string, _depositPaid?: boolean): number {
   switch (status) {
     case 'DRAFT':
     case 'SUBMITTED':
@@ -66,17 +61,13 @@ function resolveIndex(status: string, depositPaid?: boolean): number {
     case 'WAITLIST':
       return 3;
     case 'DEPOSIT_PENDING':
-      if (depositPaid === true) return 5;
-      return 4;
     case 'CONTRACT_PENDING':
-      // Dữ liệu cũ: CONTRACT_PENDING trước khi cọc → đứng ở bước cọc.
-      if (depositPaid !== true) return 4;
-      return 5;
+    case 'CONTRACTING':
+    case 'DEPOSIT_PAID':
     case 'CONTRACT_SIGNED':
     case 'INSTALLMENT_IN_PROGRESS':
-    case 'DEPOSIT_PAID':
     case 'FULLY_PAID':
-      return 5;
+      return 4;
     default:
       return 0;
   }
@@ -139,7 +130,9 @@ export function ApplicationTimeline({ currentStatus, needMoreNote, depositPaid }
           <Text style={styles.bannerInfoText}>
             {status === 'FULLY_PAID'
               ? 'Bạn đã hoàn tất các khoản trên lịch thanh toán.'
-              : 'Đã ký hợp đồng. Các khoản còn lại xem trong lịch thanh toán — chủ đầu tư sẽ mở dần theo tiến độ.'}
+              : status === 'CONTRACT_SIGNED'
+                ? 'Đã ký hợp đồng. Đợt 1 (thanh toán lần đầu) đã mở trên lịch thanh toán.'
+                : 'Đã ký hợp đồng. Các khoản còn lại xem trong lịch thanh toán — chủ đầu tư sẽ mở dần theo tiến độ.'}
           </Text>
         </View>
       )}

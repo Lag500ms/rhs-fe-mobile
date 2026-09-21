@@ -197,9 +197,9 @@ export const PaymentScheduleScreen = () => {
     if (st === 'LOCKED') {
       appAlert(
         'Chưa tới lúc đóng',
-        phase.phaseOrder === 2
-          ? 'Khoản này mở sau khi bạn đóng Đợt 1 và ký hợp đồng.'
-          : 'Khoản này mở khi chủ đầu tư thông báo theo tiến độ xây dựng.',
+        phase.phaseOrder === 1
+          ? 'Đợt 1 mở sau khi bạn ký hợp đồng mua bán.'
+          : 'Khoản này mở khi chủ đầu tư thông báo theo tiến độ xây dựng (sau khi Đợt 1 đã đóng).',
       );
       return;
     }
@@ -250,7 +250,7 @@ export const PaymentScheduleScreen = () => {
               <Feather name="calendar" size={40} color={RHSColors.grey400} />
               <Text style={styles.emptyTitle}>Chưa có lịch đóng tiền</Text>
               <Text style={styles.emptyDesc}>
-                Lịch xuất hiện sau khi chủ đầu tư cấp suất nhà. Khi đó bạn đóng Đợt 1 (thanh toán lần đầu, gồm đặt cọc), rồi ký hợp đồng.
+                Lịch xuất hiện sau khi chủ đầu tư cấp căn. Hãy ký hợp đồng mua bán trước; Đợt 1 (thanh toán lần đầu, gồm đặt cọc nếu có) mở sau khi ký.
               </Text>
             </View>
           ) : (

@@ -105,7 +105,7 @@ export const LotteryLiveHall: React.FC<Props> = ({
         <Card style={styles.mineWon} accentColor={RHSColors.green600}>
           <Text style={styles.mineTitle}>Bạn đã trúng suất</Text>
           <Text style={styles.mineBody}>
-            Chủ dự án sẽ chọn căn hộ cụ thể. Khi đã có căn, mở hồ sơ để đóng Đợt 1 và ký hợp đồng.
+            Chủ dự án sẽ chọn căn hộ cụ thể. Khi đã có căn, mở hồ sơ để ký hợp đồng; Đợt 1 mở sau khi ký.
           </Text>
         </Card>
       )}

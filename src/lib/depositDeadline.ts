@@ -1,11 +1,9 @@
 /**
  * Helper đồng bộ hạn Đợt 1 — mặc định BE là DEPOSIT_PAYMENT_HOURS≈168h (7 ngày),
- * tính từ khi vào DEPOSIT_PENDING (trúng / cấp nhà), không phải sau khi ký HĐ.
+ * tính từ khi ký hợp đồng (CONTRACT_SIGNED / SignedAt).
  *
- * QUAN TRỌNG: người được đôn từ Danh sách dự bị chỉ có WAITLIST_CONFIRM_HOURS (mặc định 48h),
- * ngắn hơn nhiều. Vì vậy luôn ưu tiên `depositDeadline` do BE trả về; con số 168h dưới đây chỉ là
- * phương án dự phòng khi BE chưa trả hạn, nếu tự cộng 168h cho mọi trường hợp thì người dự bị sẽ
- * thấy còn 7 ngày trong khi hệ thống thu hồi suất sau 48 giờ.
+ * QUAN TRỌNG: người được đôn từ Danh sách dự bị có hạn xác nhận WAITLIST_CONFIRM_HOURS (mặc định 48h)
+ * để ký hợp đồng, ngắn hơn nhiều. Luôn ưu tiên `depositDeadline` do BE trả về.
  */
 export const DEPOSIT_PAYMENT_HOURS = 168;
 export const DEPOSIT_PAYMENT_DAYS = 7;

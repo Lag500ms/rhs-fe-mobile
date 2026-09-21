@@ -30,15 +30,15 @@ const CONTRACT_STATUSES = new Set([
   'FULLY_PAID',
 ]);
 
-/** Bốn cột mốc người dân đi qua: Đợt 1 → ký → đóng theo đợt → hoàn tất. */
-const MILESTONES = ['Đợt 1', 'Ký hợp đồng', 'Đóng theo đợt', 'Hoàn tất'];
+/** Bốn cột mốc người dân đi qua: ký → Đợt 1 → đóng theo đợt → hoàn tất. */
+const MILESTONES = ['Ký hợp đồng', 'Đợt 1', 'Đóng theo đợt', 'Hoàn tất'];
 
 const MILESTONE_BY_STATUS: Record<string, number> = {
   DEPOSIT_PENDING: 0,
-  DEPOSIT_PAID: 1,
-  CONTRACT_PENDING: 1,
-  CONTRACT_SIGNED: 2,
-  CONTRACTING: 2,
+  CONTRACT_PENDING: 0,
+  CONTRACT_SIGNED: 1,
+  CONTRACTING: 1,
+  DEPOSIT_PAID: 2,
   INSTALLMENT_IN_PROGRESS: 2,
   PARTIALLY_PAID: 2,
   PAID: 3,
@@ -148,7 +148,7 @@ export const MyContractsScreen = () => {
         </View>
 
         <View style={styles.ctaRow}>
-          <Text style={styles.cta}>Xem chi tiết · Đợt 1 / ký HĐ</Text>
+          <Text style={styles.cta}>Xem chi tiết · Ký HĐ / Đợt 1</Text>
           <Feather name="chevron-right" size={18} color={RHSColors.blue700} />
         </View>
       </Card>
@@ -160,7 +160,7 @@ export const MyContractsScreen = () => {
       <ScreenHeader
         title="Hợp đồng"
         hero
-        subtitle="Đợt 1 (thanh toán lần đầu ≤30%, gồm đặt cọc) → ký hợp đồng → các đợt theo lịch chủ đầu tư"
+        subtitle="Ký hợp đồng → Đợt 1 (thanh toán lần đầu ≤30%, gồm đặt cọc nếu có) → các đợt theo lịch chủ đầu tư"
         onBack={() => navigation.goBack()}
       >
         <View style={styles.statRow}>

@@ -57,7 +57,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: '#4CAF50',
   },
   DEPOSIT_PENDING: {
-    label: 'Chờ đóng Đợt 1',
+    label: 'Chờ ký hợp đồng',
     bg: '#FFF3E0',
     textColor: '#E65100',
     dotColor: '#FF9800',
@@ -69,7 +69,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
     dotColor: '#4CAF50',
   },
   CONTRACT_PENDING: {
-    label: 'Đã cấp suất — Đợt 1 / ký HĐ',
+    label: 'Chờ ký hợp đồng',
     bg: '#E8EAF6',
     textColor: '#283593',
     dotColor: '#3F51B5',
@@ -150,17 +150,7 @@ export function getStatusConfig(
         dotColor: '#3F51B5',
       };
     }
-    if (opts?.depositPaid === false) {
-      return STATUS_CONFIG.DEPOSIT_PENDING;
-    }
-    if (opts?.depositPaid === true) {
-      return {
-        label: 'Chờ ký hợp đồng',
-        bg: '#E8EAF6',
-        textColor: '#283593',
-        dotColor: '#3F51B5',
-      };
-    }
+    return STATUS_CONFIG.CONTRACT_PENDING;
   }
   return STATUS_CONFIG[key] || {
     label: 'Trạng thái không xác định',
@@ -216,10 +206,10 @@ export function getActionForStatus(status: string): StatusAction | null {
     case 'LOTTERY_WON':
       return { label: 'Chờ chốt suất', icon: 'home', color: RHSColors.green700 };
     case 'DEPOSIT_PENDING':
-      return { label: 'Đóng Đợt 1', icon: 'credit-card', color: RHSColors.red600 };
     case 'CONTRACT_PENDING':
-      return { label: 'Đóng Đợt 1 / ký hợp đồng', icon: 'credit-card', color: RHSColors.red600 };
+      return { label: 'Ký hợp đồng', icon: 'file-text', color: RHSColors.red600 };
     case 'CONTRACT_SIGNED':
+      return { label: 'Thanh toán Đợt 1', icon: 'credit-card', color: RHSColors.red600 };
     case 'INSTALLMENT_IN_PROGRESS':
     case 'DEPOSIT_PAID':
       return { label: 'Xem lịch thanh toán', icon: 'calendar', color: RHSColors.blue700 };
