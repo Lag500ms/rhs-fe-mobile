@@ -148,8 +148,10 @@ export const ContractViewerScreen = () => {
       }
 
       if (pdfUrl && /^https?:\/\//i.test(pdfUrl)) {
+        const dir = FileSystem.documentDirectory;
+        if (!dir) throw new Error('Không truy cập được bộ nhớ máy để lưu file.');
         const fileName = `doc_${Date.now()}.pdf`;
-        const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+        const fileUri = `${dir}${fileName}`;
         const result = await FileSystem.downloadAsync(pdfUrl, fileUri);
         await prepareViewer(result.uri);
         return;

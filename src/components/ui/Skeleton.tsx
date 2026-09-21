@@ -8,7 +8,7 @@ import {
   type ViewStyle,
   type DimensionValue,
 } from 'react-native';
-import { RHSColors, borderRadius, spacing } from '../../lib/theme';
+import { RHSColors, borderRadius, nativeDriver, spacing } from '../../lib/theme';
 
 /** Nhịp sáng/tối dùng chung cho mọi khối skeleton trong cùng màn hình. */
 function usePulse() {
@@ -21,13 +21,13 @@ function usePulse() {
           toValue: 1,
           duration: 700,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: nativeDriver,
         }),
         Animated.timing(anim, {
           toValue: 0,
           duration: 700,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: nativeDriver,
         }),
       ]),
     );

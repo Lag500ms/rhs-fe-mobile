@@ -10,6 +10,7 @@ import {
   LOTTERY_SESSION_LABEL,
   type LiveDrawResult,
   type LotteryLiveState,
+  type LotteryParticipant,
   type LotteryScheduleDetail,
 } from '../types/lottery';
 
@@ -34,12 +35,22 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
   const [myResult, setMyResult] = useState<LiveDrawResult | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [eligible, setEligible] = useState<LotteryParticipant[]>([]);
+  const [spinning, setSpinning] = useState(false);
   const hubRef = useRef<Awaited<ReturnType<typeof connectLotteryLobby>>>(null);
   const cancelledRef = useRef(false);
   const joiningRef = useRef(false);
+  const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastDrawKeyRef = useRef('');
 
   const pushLog = useCallback((line: string) => {
     setLogs((prev) => [line, ...prev].slice(0, 40));
+  }, []);
+
+  const startSpin = useCallback(() => {
+    setSpinning(true);
+    if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
+    spinTimerRef.current = setTimeout(() => setSpinning(false), 1400);
   }, []);
 
   const applyLive = useCallback(
@@ -48,6 +59,14 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
       if (state.sessionStatus) setSessionStatus(state.sessionStatus);
       if (typeof state.sxdOnlineCount === 'number') setSxdCount(state.sxdOnlineCount);
       if (typeof state.lobbyCount === 'number') setLobbyCount(state.lobbyCount);
+      const latest = state.latestDrawResult;
+      const key = latest?.applicationId
+        ? `${latest.applicationId}-${latest.drawnAt || latest.stt || ''}`
+        : '';
+      if (key && lastDrawKeyRef.current && key !== lastDrawKeyRef.current) {
+        startSpin();
+      }
+      if (key) lastDrawKeyRef.current = key;
       if (applicationId) {
         const mine =
           state.recentWinners.find((w) => w.applicationId === applicationId) ??
@@ -57,7 +76,7 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
         if (mine) setMyResult(mine);
       }
     },
-    [applicationId],
+    [applicationId, startSpin],
   );
 
   const loadSchedule = useCallback(async () => {
@@ -68,6 +87,7 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
       if (data.sessionStatus) setSessionStatus(data.sessionStatus);
       if (typeof data.sxdOnlineCount === 'number') setSxdCount(data.sxdOnlineCount);
       if (typeof data.lobbyCount === 'number') setLobbyCount(data.lobbyCount);
+      if (data.eligibleParticipants?.length) setEligible(data.eligibleParticipants);
       const code = data.joinCode?.trim();
       if (code) {
         rememberLotteryJoinCode(projectId, code);
@@ -141,6 +161,7 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
             },
             onDrawResult: (r) => {
               if (cancelledRef.current) return;
+              startSpin();
               pushLog(logLineFromDraw(r));
               if (applicationId && r.applicationId === applicationId) {
                 setMyResult(r);
@@ -170,6 +191,12 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
         setHubStatus(conn ? 'Đã vào sảnh (trực tuyến)' : 'Chế độ REST (không SignalR)');
         await loadLive();
         await loadSchedule();
+        try {
+          const list = await lotteryApi.getEligibleParticipants(projectId);
+          if (list.length) setEligible(list);
+        } catch {
+          /* dùng eligible từ lịch */
+        }
         return true;
       } catch (err: any) {
         const msg =
@@ -185,7 +212,7 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
         setJoining(false);
       }
     },
-    [projectId, disconnect, applyLive, pushLog, applicationId, loadLive, loadSchedule],
+    [projectId, disconnect, applyLive, pushLog, applicationId, loadLive, loadSchedule, startSpin],
   );
 
   const handleJoin = useCallback(() => joinWithCode(otp), [joinWithCode, otp]);
@@ -204,6 +231,7 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
     return () => {
       cancelledRef.current = true;
       joiningRef.current = false;
+      if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
       void leaveLotteryLobby(hubRef.current, projectId);
       hubRef.current = null;
     };
@@ -245,6 +273,8 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
     myResult,
     logs,
     error,
+    eligible,
+    spinning,
     setError,
     loadSchedule,
     loadLive,

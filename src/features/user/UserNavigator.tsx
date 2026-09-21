@@ -9,6 +9,7 @@ import { CitizenProfileHubScreen } from './screens/CitizenProfileHubScreen';
 import { CitizenPersonalInfoScreen } from './screens/CitizenPersonalInfoScreen';
 import { CitizenHouseholdScreen } from './screens/CitizenHouseholdScreen';
 import { CitizenDocumentsScreen } from './screens/CitizenDocumentsScreen';
+import { CitizenPriorityGroupScreen } from './screens/CitizenPriorityGroupScreen';
 
 export type UserStackParamList = {
   Profile: undefined;
@@ -18,6 +19,7 @@ export type UserStackParamList = {
   CitizenProfileHub: undefined;
   CitizenPersonalInfo: undefined;
   CitizenHousehold: undefined;
+  CitizenPriorityGroup: undefined;
   CitizenDocuments: undefined;
 };
 
@@ -36,6 +38,7 @@ export const UserNavigator = () => {
       <Stack.Screen name="CitizenProfileHub" component={CitizenProfileHubScreen} />
       <Stack.Screen name="CitizenPersonalInfo" component={CitizenPersonalInfoScreen} />
       <Stack.Screen name="CitizenHousehold" component={CitizenHouseholdScreen} />
+      <Stack.Screen name="CitizenPriorityGroup" component={CitizenPriorityGroupScreen} />
       <Stack.Screen name="CitizenDocuments" component={CitizenDocumentsScreen} />
     </Stack.Navigator>
   );

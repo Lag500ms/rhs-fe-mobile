@@ -78,7 +78,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
       style={hero ? styles.heroHeader : styles.header}
     >
       {hero && (
-        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
           <View style={[styles.circle, styles.circleTop]} />
           <View style={[styles.circle, styles.circleLeft]} />
           <View style={[styles.circle, styles.circleBottom]} />

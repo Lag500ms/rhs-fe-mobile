@@ -431,11 +431,7 @@ const styles = StyleSheet.create({
     padding: 40,
     backgroundColor: RHSColors.white,
     borderRadius: 20,
-    shadowColor: RHSColors.black,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
+    ...shadows.card,
     width: '100%',
   },
   loginIconCircle: {

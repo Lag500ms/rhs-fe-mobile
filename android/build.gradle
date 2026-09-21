@@ -10,9 +10,6 @@ buildscript {
     classpath('com.facebook.react:react-native-gradle-plugin')
     classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
   }
-  ext {
-        ndkVersion = "26.1.10909125"
-  }
 }
 
 allprojects {

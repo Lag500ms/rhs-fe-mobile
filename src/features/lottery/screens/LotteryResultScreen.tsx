@@ -20,7 +20,7 @@ import {
   SkeletonCardList,
   StatTile,
 } from '../../../components/ui';
-import { RHSColors, borderRadius, spacing, typography, shadows } from '../../../lib/theme';
+import { RHSColors, borderRadius, spacing, typography, shadows, shadowStyle } from '../../../lib/theme';
 import { lotteryApi } from '../api/lotteryApi';
 import {
   LOTTERY_RESULT_LABEL,
@@ -160,7 +160,13 @@ export const LotteryResultScreen = () => {
               height: medal.size,
               borderRadius: medal.size / 2,
               borderColor: medal.ring,
-              shadowColor: medal.glow,
+              ...shadowStyle({
+                color: medal.glow,
+                offset: { width: 0, height: 4 },
+                opacity: 0.35,
+                radius: 10,
+                elevation: 6,
+              }),
             },
           ]}
         >
@@ -433,10 +439,6 @@ const styles = StyleSheet.create({
     backgroundColor: RHSColors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
   },
   avatarText: { fontSize: 18, fontWeight: '800', color: RHSColors.blue800 },
   avatarTextLarge: { fontSize: 24 },

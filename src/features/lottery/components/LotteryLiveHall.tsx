@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { LotteryBallCage } from './LotteryBallCage';
 import { Badge, Card, ProgressBar, StatTile } from '../../../components/ui';
 import { RHSColors, borderRadius, spacing, typography } from '../../../lib/theme';
 import {
@@ -9,6 +10,7 @@ import {
   isWonLotteryResult,
   type LiveDrawResult,
   type LotteryLiveState,
+  type LotteryParticipant,
 } from '../types/lottery';
 
 type Props = {
@@ -18,6 +20,8 @@ type Props = {
   hubOk: boolean;
   hubLabel: string;
   restMode?: boolean;
+  eligible?: LotteryParticipant[];
+  spinning?: boolean;
 };
 
 function formatClock(d: Date) {
@@ -43,30 +47,18 @@ export const LotteryLiveHall: React.FC<Props> = ({
   hubOk,
   hubLabel,
   restMode,
+  eligible = [],
+  spinning: cageSpinning = false,
 }) => {
   const [now, setNow] = useState(() => new Date());
-  const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  const spinning = (live?.sessionStatus || '').toUpperCase() === 'LIVE';
-  useEffect(() => {
-    if (!spinning) {
-      pulse.setValue(1);
-      return;
-    }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.55, duration: 700, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [spinning, pulse]);
+  const isLive = (live?.sessionStatus || '').toUpperCase() === 'LIVE'
+    || (live?.sessionStatus || '').toUpperCase() === 'RUNNING';
 
   const total = live?.totalUnits ?? 0;
   const drawn = live?.drawnUnitsCount ?? 0;
@@ -75,7 +67,6 @@ export const LotteryLiveHall: React.FC<Props> = ({
   const phase = live?.sessionStatus || '';
   const phaseLabel = LOTTERY_SESSION_LABEL[phase] ?? (phase || 'Chưa có phiên');
   const latest = live?.latestDrawResult ?? null;
-  const next = live?.nextCandidate ?? null;
   const winners = live?.recentWinners ?? [];
   const fund = live?.projectApartmentFundStat;
   const categories = live?.apartmentFundStats ?? [];
@@ -89,21 +80,11 @@ export const LotteryLiveHall: React.FC<Props> = ({
   const iWon = mine && isWonLotteryResult(mine.result);
   const iLost = mine && String(mine.result).toUpperCase() === 'LOST';
 
-  const frameTitle = spinning
-    ? next
-      ? 'Hồ sơ đang gọi'
-      : 'Đang quay số'
-    : phase.toUpperCase() === 'PAUSED'
-      ? 'Phiên tạm dừng'
-      : 'Chờ chủ đầu tư bốc tiếp';
-  const frameCode = next ? hsCode(next) : latest ? hsCode(latest) : '— — —';
-  const frameName = next?.applicantName || latest?.applicantName || 'Chưa có hồ sơ được gọi';
-
   return (
     <View style={styles.wrap}>
       <View style={styles.metaRow}>
         <Badge label={formatClock(now)} tone="neutral" icon="clock" />
-        <Badge label={phaseLabel} tone={sessionTone(phase)} dot={spinning} />
+        <Badge label={phaseLabel} tone={sessionTone(phase)} dot={isLive} />
         <Badge
           label={hubOk ? 'Trực tuyến' : restMode ? 'REST' : hubLabel}
           tone={hubOk ? 'success' : 'warning'}
@@ -134,7 +115,15 @@ export const LotteryLiveHall: React.FC<Props> = ({
         </Card>
       )}
 
-      <Text style={styles.zone}>1 · Sảnh quay số</Text>
+      <Text style={styles.zone}>1 · Lồng cầu quay số</Text>
+      <LotteryBallCage
+        spinning={cageSpinning}
+        sessionStatus={phase}
+        eligible={eligible}
+        winners={winners}
+        latestWinner={latest}
+      />
+
       <Card elevated>
         <ProgressBar
           value={progress}
@@ -142,19 +131,6 @@ export const LotteryLiveHall: React.FC<Props> = ({
           valueLabel={`${drawn}/${total || '—'} suất`}
           height={10}
         />
-        <Animated.View style={[styles.frame, { opacity: spinning ? pulse : 1 }]}>
-          <Text style={styles.frameKicker}>{frameTitle}</Text>
-          <Text style={styles.frameCode}>{frameCode}</Text>
-          <Text style={styles.frameName} numberOfLines={2}>
-            {frameName}
-          </Text>
-          {spinning ? (
-            <View style={styles.livePill}>
-              <View style={styles.liveDot} />
-              <Text style={styles.livePillText}>LIVE</Text>
-            </View>
-          ) : null}
-        </Animated.View>
         {latest ? <LatestResultCard result={latest} mine={latest.applicationId === applicationId} /> : (
           <Text style={styles.muted}>Chưa có lượt công bố. Chờ chủ đầu tư bấm bốc tiếp.</Text>
         )}

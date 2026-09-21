@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { RHSColors, borderRadius, spacing, typography } from '../../lib/theme';
+import { RHSColors, borderRadius, nativeDriver, shadowStyle, spacing, typography } from '../../lib/theme';
 import { GradientButton } from './GradientButton';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -86,12 +86,12 @@ const Confetti: React.FC<{ pieces: ConfettiPiece[] }> = ({ pieces }) => {
             toValue: 1,
             duration: piece.duration,
             easing: Easing.linear,
-            useNativeDriver: true,
+            useNativeDriver: nativeDriver,
           }),
           Animated.timing(progress[i], {
             toValue: 0,
             duration: 0,
-            useNativeDriver: true,
+            useNativeDriver: nativeDriver,
           }),
         ]),
       ),
@@ -101,7 +101,7 @@ const Confetti: React.FC<{ pieces: ConfettiPiece[] }> = ({ pieces }) => {
   }, [pieces, progress]);
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
       {pieces.map((piece, i) => (
         <Animated.View
           key={i}
@@ -208,19 +208,19 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
       Animated.timing(overlayOpacity, {
         toValue: 1,
         duration: 220,
-        useNativeDriver: true,
+        useNativeDriver: nativeDriver,
       }),
       Animated.spring(cardScale, {
         toValue: 1,
         friction: 7,
         tension: 60,
-        useNativeDriver: true,
+        useNativeDriver: nativeDriver,
       }),
       Animated.spring(cardTranslateY, {
         toValue: 0,
         friction: 8,
         tension: 60,
-        useNativeDriver: true,
+        useNativeDriver: nativeDriver,
       }),
       Animated.sequence([
         Animated.delay(140),
@@ -228,7 +228,7 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
           toValue: 1,
           friction: 5,
           tension: 90,
-          useNativeDriver: true,
+          useNativeDriver: nativeDriver,
         }),
       ]),
       Animated.sequence([
@@ -236,7 +236,7 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
         Animated.timing(highlightOpacity, {
           toValue: 1,
           duration: 320,
-          useNativeDriver: true,
+          useNativeDriver: nativeDriver,
         }),
       ]),
     ]).start();
@@ -247,13 +247,13 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
           toValue: 1.12,
           duration: 1100,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: nativeDriver,
         }),
         Animated.timing(haloScale, {
           toValue: 0.9,
           duration: 1100,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: nativeDriver,
         }),
       ]),
     );
@@ -296,7 +296,16 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
                 colors={palette.ring}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={[styles.iconCircle, { shadowColor: palette.glow }]}
+                style={[
+                  styles.iconCircle,
+                  shadowStyle({
+                    color: palette.glow,
+                    offset: { width: 0, height: 8 },
+                    opacity: 0.35,
+                    radius: 16,
+                    elevation: 10,
+                  }),
+                ]}
               >
                 <Feather name={palette.icon} size={52} color="#FFFFFF" />
               </LinearGradient>
@@ -356,11 +365,13 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     alignItems: 'center',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 28,
-    elevation: 16,
+    ...shadowStyle({
+      color: '#000',
+      offset: { width: 0, height: 12 },
+      opacity: 0.25,
+      radius: 28,
+      elevation: 16,
+    }),
   },
   close: {
     position: 'absolute',
@@ -385,10 +396,6 @@ const styles = StyleSheet.create({
     borderRadius: 54,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 10,
   },
   title: {
     ...typography.h2,

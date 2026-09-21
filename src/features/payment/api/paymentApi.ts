@@ -117,7 +117,9 @@ export const paymentApi = {
       binary += String.fromCharCode(bytes[i]);
     }
     const base64 = globalThis.btoa(binary);
-    const fileUri = `${FileSystem.documentDirectory}hop_dong_${applicationId}.pdf`;
+    const dir = FileSystem.documentDirectory;
+    if (!dir) throw new Error('Không truy cập được bộ nhớ máy để lưu hợp đồng.');
+    const fileUri = `${dir}hop_dong_${applicationId}.pdf`;
     await FileSystem.writeAsStringAsync(fileUri, base64, {
       encoding: FileSystem.EncodingType.Base64,
     });

@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { RHSColors, borderRadius, spacing } from '../lib/theme';
+import { RHSColors, borderRadius, nativeDriver, shadowStyle, spacing } from '../lib/theme';
 
 const BAR_GRADIENT = ['#0A3A85', '#1565C0', '#1E88E5'] as const;
 
@@ -34,7 +34,7 @@ const TabItem: React.FC<TabItemProps> = ({
       toValue: focused ? 1 : 0,
       friction: 7,
       tension: 80,
-      useNativeDriver: true,
+      useNativeDriver: nativeDriver,
     }).start();
   }, [anim, focused]);
 
@@ -99,12 +99,27 @@ export const FloatingTabBar: React.FC<BottomTabBarProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
 
-  // Các màn hình con vẫn ẩn thanh tab qua `setOptions({ tabBarStyle: { display: 'none' } })`.
-  const focusedOptions = descriptors[state.routes[state.index].key]?.options;
+  // Wizard ẩn tab qua tabBarStyle. Trên web màn con thường không unmount khi
+  // quay về danh sách → style 'none' bị kẹt. Nếu stack đang ở màn gốc thì vẫn hiện tab.
+  const focusedRoute = state.routes[state.index];
+  const focusedOptions = descriptors[focusedRoute.key]?.options;
   const focusedTabBarStyle = StyleSheet.flatten(focusedOptions?.tabBarStyle) as
     | { display?: 'none' | 'flex' }
     | undefined;
-  if (focusedTabBarStyle?.display === 'none') return null;
+  const nestedState = focusedRoute.state as
+    | { index?: number; routes?: { name: string }[] }
+    | undefined;
+  const nestedName =
+    nestedState?.routes?.[nestedState.index ?? Math.max(0, (nestedState.routes?.length ?? 1) - 1)]
+      ?.name;
+  const applicationsListOpen =
+    focusedRoute.name === 'Applications' &&
+    (!nestedName ||
+      nestedName === 'MyApplications' ||
+      nestedName === 'MyLottery' ||
+      nestedName === 'MyContracts' ||
+      nestedName === 'MyPayments');
+  if (focusedTabBarStyle?.display === 'none' && !applicationsListOpen) return null;
 
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
@@ -173,11 +188,13 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xs,
-    shadowColor: RHSColors.blue800,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 14,
-    elevation: 12,
+    ...shadowStyle({
+      color: RHSColors.blue800,
+      offset: { width: 0, height: 6 },
+      opacity: 0.3,
+      radius: 14,
+      elevation: 12,
+    }),
   },
   item: {
     flex: 1,
@@ -187,7 +204,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   pill: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     marginHorizontal: spacing.xs,
     backgroundColor: RHSColors.white,
     borderRadius: borderRadius.xl,

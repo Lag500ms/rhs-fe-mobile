@@ -58,7 +58,7 @@ export const DraftActionSheet: React.FC<DraftActionSheetProps> = ({
 
 const styles = StyleSheet.create({
   sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject },
+  sheetBackdrop: { ...StyleSheet.absoluteFill },
   sheetContainer: {
     backgroundColor: RHSColors.white,
     borderTopLeftRadius: borderRadius.xxl,

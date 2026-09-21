@@ -39,6 +39,7 @@ import { JoinCodeReveal } from '../../lottery/components/JoinCodeReveal';
 import { rememberLotteryJoinCode } from '../../lottery/api/joinCodeCache';
 import { formatHousingVnd } from '../../../lib/money';
 import { PHASE1_CONTINUE_CTA, PHASE1_LABEL, PHASE1_PAY_CTA } from '../../../lib/paymentCopy';
+import { formatPriorityGroup } from '../../../lib/priorityGroup';
 import {
   hasLotterySession,
   isLotteryFinishedPhase,
@@ -837,7 +838,10 @@ export const ApplicationDetailScreen = () => {
               <DetailRow label="Họ tên" value={detail.fullName} />
               <DetailRow label="CCCD" value={detail.citizenId} />
               {detail.priorityGroup ? (
-                <DetailRow label="Đối tượng ưu tiên" value={detail.priorityGroup} />
+                <DetailRow
+                  label="Đối tượng ưu tiên"
+                  value={formatPriorityGroup(detail.priorityGroup) || detail.priorityGroup}
+                />
               ) : null}
               {detail.priorityScore != null ? (
                 <DetailRow label="Điểm ưu tiên" value={String(detail.priorityScore)} />

@@ -83,6 +83,8 @@ export const LotteryLiveScreen = () => {
               hubOk={session.hubOk}
               hubLabel={session.hubStatus}
               restMode={session.useRestMode}
+              eligible={session.eligible}
+              spinning={session.spinning}
             />
             {finished && (
               <GradientButton

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { ScreenHeader } from '../../../components/ScreenHeader';
@@ -20,13 +20,23 @@ import { appAlert } from '../../../lib/appDialog';
 import { citizenProfileApi } from '../api/citizenProfileApi';
 import {
   PROFILE_DOC_GROUPS,
+  getPriorityVaultRequirements,
   type CitizenFullProfileDto,
   type UserDocumentDto,
 } from '../types/citizenProfile';
+import { lookupApi } from '../../application/api/lookupApi';
+import type { RequiredDocumentItem } from '../../application/types/application';
+import { formatPriorityGroup } from '../../../lib/priorityGroup';
+
+const KNOWN_DOC_CODES = new Set(
+  PROFILE_DOC_GROUPS.flatMap((g) => g.types.map((t) => t.code.toUpperCase())),
+);
 
 export const CitizenDocumentsScreen = () => {
+  const navigation = useNavigation<any>();
   const [profile, setProfile] = useState<CitizenFullProfileDto | null>(null);
   const [docs, setDocs] = useState<UserDocumentDto[]>([]);
+  const [priorityRequired, setPriorityRequired] = useState<RequiredDocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
 
@@ -36,6 +46,13 @@ export const CitizenDocumentsScreen = () => {
       const p = await citizenProfileApi.getFullProfile();
       setProfile(p);
       setDocs(p.documents || []);
+      const group = p.priorityGroup?.trim();
+      if (group) {
+        const required = await lookupApi.getRequiredDocumentTypes(group).catch(() => []);
+        setPriorityRequired(required);
+      } else {
+        setPriorityRequired([]);
+      }
     } catch (e: any) {
       appAlert('Lỗi', e?.response?.data?.message || 'Không tải được kho giấy tờ.');
     } finally {
@@ -61,9 +78,19 @@ export const CitizenDocumentsScreen = () => {
   const missing = new Set(
     (profile?.missingDocumentTypes || []).map((t) => t.toUpperCase()),
   );
+  priorityRequired.forEach((item) => {
+    const code = item.documentType.toUpperCase();
+    required.add(code);
+    if (!byType.has(code)) missing.add(code);
+  });
+  getPriorityVaultRequirements(profile?.priorityGroup).forEach((item) => {
+    const code = item.code.toUpperCase();
+    required.add(code);
+    if (!byType.has(code)) missing.add(code);
+  });
 
   const visibleGroups = useMemo(() => {
-    return PROFILE_DOC_GROUPS.map((g) => {
+    const groups = PROFILE_DOC_GROUPS.map((g) => {
       let types = g.types;
       if (g.key === 'marital') {
         const m = profile?.maritalStatus?.toUpperCase();
@@ -80,7 +107,36 @@ export const CitizenDocumentsScreen = () => {
       }
       return { ...g, types };
     }).filter((g) => g.types.length > 0);
-  }, [profile]);
+
+    const extras = new Map<string, { code: string; label: string }>();
+    const fallback = getPriorityVaultRequirements(profile?.priorityGroup);
+    [...priorityRequired.map((item) => ({
+      code: item.documentType,
+      label: item.label || item.documentType,
+    })), ...fallback].forEach((item) => {
+      const code = item.code.toUpperCase();
+      if (!KNOWN_DOC_CODES.has(code) && !extras.has(code)) {
+        extras.set(code, { code: item.code, label: item.label || item.code });
+      }
+    });
+    (profile?.requiredDocumentTypes || []).forEach((raw) => {
+      const code = raw.toUpperCase();
+      if (!KNOWN_DOC_CODES.has(code) && !extras.has(code)) {
+        extras.set(code, { code: raw, label: raw });
+      }
+    });
+    if (extras.size > 0) {
+      const groupLabel =
+        formatPriorityGroup(profile?.priorityGroupLabel) ||
+        formatPriorityGroup(profile?.priorityGroup);
+      groups.push({
+        key: 'priority',
+        title: groupLabel ? `Theo đối tượng · ${groupLabel}` : 'Theo đối tượng ưu tiên',
+        types: Array.from(extras.values()),
+      });
+    }
+    return groups;
+  }, [profile, priorityRequired]);
 
   const pickAndUpload = (documentType: string) => {
     appAlert('Tải giấy tờ', 'Chọn nguồn tài liệu', [
@@ -186,12 +242,30 @@ export const CitizenDocumentsScreen = () => {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
+          {!profile?.priorityGroup?.trim() && (
+            <View style={styles.warnBox}>
+              <Feather name="alert-triangle" size={16} color={RHSColors.amber700} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.warnText}>
+                  Chưa chọn nhóm đối tượng. Giấy tờ bắt buộc theo Điều 76 nằm ở hồ sơ công dân — hãy
+                  chọn đối tượng trước.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('CitizenPriorityGroup')}
+                  style={{ marginTop: 8 }}
+                >
+                  <Text style={styles.linkText}>Chọn đối tượng ưu tiên</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
           {(profile?.missingDocumentTypes?.length ?? 0) > 0 && (
             <View style={styles.warnBox}>
               <Feather name="alert-triangle" size={16} color={RHSColors.amber700} />
               <Text style={styles.warnText}>
                 Còn thiếu {profile!.missingDocumentTypes.length} giấy tờ bắt buộc theo hồ sơ
-                hiện tại.
+                hiện tại. Lúc nộp hồ sơ dự án chỉ xác nhận lại giấy đã có trong kho.
               </Text>
             </View>
           )}
@@ -271,8 +345,8 @@ export const CitizenDocumentsScreen = () => {
           ))}
 
           <Text style={styles.hint}>
-            PDF hoặc ảnh ≤ 10MB. Mỗi loại chỉ giữ 1 file mới nhất. Ảnh cũng được kế thừa khi nộp
-            hồ sơ dự án.
+            PDF hoặc ảnh ≤ 10MB. Mỗi loại chỉ giữ 1 file mới nhất. Khi nộp hồ sơ dự án, giấy trong kho
+            được kế thừa — bước giấy tờ lúc nộp chỉ để xác nhận hoặc bổ sung phần còn thiếu.
           </Text>
         </ScrollView>
       )}
@@ -291,9 +365,10 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   warnText: { flex: 1, fontSize: 13, color: RHSColors.amber700, fontWeight: '600' },
+  linkText: { color: RHSColors.blue700, fontWeight: '700', fontSize: 13 },
   group: {
     backgroundColor: RHSColors.white,
     borderRadius: borderRadius.lg,

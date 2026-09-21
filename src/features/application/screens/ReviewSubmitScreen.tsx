@@ -19,6 +19,7 @@ import { housingApplicationApi } from '../api/housingApplicationApi';
 import { lookupApi } from '../api/lookupApi';
 import { ApplicationDetail, ApplicationDocument, RequiredDocumentItem } from '../types/application';
 import { getHousingStatusLabel, getMaritalStatusLabel } from '../utils/statusConfig';
+import { formatPriorityGroup } from '../../../lib/priorityGroup';
 import { ApplicationStepper } from '../components/ApplicationStepper';
 import { formatVnd } from '../../user/types/citizenProfile';
 
@@ -114,7 +115,9 @@ export const ReviewSubmitScreen = () => {
           lookupApi.getPriorityGroups().catch(() => []),
         ]);
         const group = groups.find((g) => g.code === result.priorityGroup);
-        setPriorityGroupLabel(group?.label ?? result.priorityGroup);
+        setPriorityGroupLabel(
+          formatPriorityGroup(group?.label) || formatPriorityGroup(result.priorityGroup),
+        );
         setDetail(result);
         setRequiredItems(requiredDocs);
       } catch (e: any) {
@@ -199,13 +202,13 @@ export const ReviewSubmitScreen = () => {
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {isSupplementMode ? 'Nộp lại hồ sơ' : 'Bước 4/4 — Rà soát'}
+          {isSupplementMode ? 'Nộp lại hồ sơ' : 'Bước 3/3 — Rà soát'}
         </Text>
         <View style={{ width: 36 }} />
       </View>
 
       {/* Stepper - chỉ hiện khi tạo mới */}
-      {!isSupplementMode && <ApplicationStepper current={4} />}
+      {!isSupplementMode && <ApplicationStepper current={3} />}
 
       <ScrollView
         style={styles.scroll}
@@ -215,7 +218,9 @@ export const ReviewSubmitScreen = () => {
         {/* Summary Header */}
         <View style={styles.summaryCard}>
           <Feather name="info" size={18} color={RHSColors.blue700} />
-          <Text style={styles.summaryTitle}>Kiểm tra lại thông tin trước khi nộp</Text>
+          <Text style={styles.summaryTitle}>
+            Xác nhận lại thông tin lấy từ hồ sơ công dân trước khi nộp
+          </Text>
         </View>
 
         {/* Personal Info Section */}
@@ -273,7 +278,9 @@ export const ReviewSubmitScreen = () => {
           <InfoRow
             icon="star"
             label="Nhóm ưu tiên"
-            value={priorityGroupLabel || detail.priorityGroup || '—'}
+            value={
+              priorityGroupLabel || formatPriorityGroup(detail.priorityGroup) || '—'
+            }
           />
         </View>
 
@@ -374,7 +381,7 @@ export const ReviewSubmitScreen = () => {
         {isDisabled && !hasRequiredDocs && (
           <Text style={styles.disabledHint}>
             {missingPriorityGroup
-              ? 'Hồ sơ thiếu nhóm đối tượng thụ hưởng. Quay lại bước thông tin để chọn đối tượng.'
+              ? 'Hồ sơ thiếu nhóm đối tượng thụ hưởng. Hãy khai đối tượng trên hồ sơ công dân rồi xác nhận lại.'
               : `Còn thiếu ${missingRequired.length} giấy tờ bắt buộc theo nhóm đối tượng. Quay lại bước giấy tờ để bổ sung.`}
           </Text>
         )}

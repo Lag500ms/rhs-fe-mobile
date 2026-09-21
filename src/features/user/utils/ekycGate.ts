@@ -2,7 +2,10 @@ import { MAX_SMALL_HOUSE_AREA, maritalAllowsSpouse } from '../../../lib/fieldRul
 import { getToken } from '../../../lib/tokenStorage';
 import { userApi } from '../api/userApi';
 import type { UserProfileDto } from '../types/user';
-import type { CitizenFullProfileDto } from '../types/citizenProfile';
+import {
+  citizenVaultMissingPriorityDocs,
+  type CitizenFullProfileDto,
+} from '../types/citizenProfile';
 
 /**
  * Đã eKYC khi BE báo isEkycVerified HOẶC đã có CCCD
@@ -76,6 +79,9 @@ export function getCitizenProfileReadyGaps(p?: CitizenFullProfileDto | null): st
       gaps.push(`Diện tích bình quân phải dưới ${MAX_SMALL_HOUSE_AREA} m²/người (Đ29.2 Nghị định 100/2024).`);
     }
   }
+  if (!p.priorityGroup?.trim()) {
+    gaps.push('Chưa chọn nhóm đối tượng hưởng chính sách (cập nhật hồ sơ công dân).');
+  }
   return gaps;
 }
 
@@ -87,11 +93,19 @@ export function getCitizenProfileCompleteness(p?: CitizenFullProfileDto | null):
   identity: boolean;
   personal: boolean;
   household: boolean;
+  priority: boolean;
   documents: boolean;
   percent: number;
 } {
   if (!p) {
-    return { identity: false, personal: false, household: false, documents: false, percent: 0 };
+    return {
+      identity: false,
+      personal: false,
+      household: false,
+      priority: false,
+      documents: false,
+      percent: 0,
+    };
   }
 
   const identity = isEkycVerified(p);
@@ -109,14 +123,20 @@ export function getCitizenProfileCompleteness(p?: CitizenFullProfileDto | null):
     (p.maritalStatus !== 'MARRIED' || p.spouseFullName)
   );
   const household = maritalAllowsSpouse(p.maritalStatus) ? hasSpouse : !hasSpouse;
-  const documents = (p.missingDocumentTypes?.length ?? 0) === 0 && personal;
+  const priority = !!p.priorityGroup?.trim();
+  const documents =
+    priority &&
+    (p.missingDocumentTypes?.length ?? 0) === 0 &&
+    citizenVaultMissingPriorityDocs(p).length === 0 &&
+    personal;
 
-  const flags = [identity, personal, household, documents];
+  const flags = [identity, personal, household, priority, documents];
   const done = flags.filter(Boolean).length;
   return {
     identity,
     personal,
     household,
+    priority,
     documents,
     percent: Math.round((done / flags.length) * 100),
   };

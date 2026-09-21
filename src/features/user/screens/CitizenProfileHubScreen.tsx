@@ -16,13 +16,14 @@ import { RHSColors, borderRadius, spacing, typography, shadows } from '../../../
 import { appAlert } from '../../../lib/appDialog';
 import { citizenProfileApi } from '../api/citizenProfileApi';
 import type { CitizenFullProfileDto } from '../types/citizenProfile';
-import { formatVnd } from '../types/citizenProfile';
+import { formatVnd, citizenVaultMissingPriorityDocs } from '../types/citizenProfile';
+import { formatPriorityGroup } from '../../../lib/priorityGroup';
 import {
   getCitizenProfileCompleteness,
   isEkycVerified,
 } from '../utils/ekycGate';
 
-type StepKey = 'identity' | 'personal' | 'household' | 'documents';
+type StepKey = 'identity' | 'personal' | 'household' | 'priority' | 'documents';
 
 export const CitizenProfileHubScreen = () => {
   const navigation = useNavigation<any>();
@@ -49,6 +50,12 @@ export const CitizenProfileHubScreen = () => {
 
   const completeness = getCitizenProfileCompleteness(profile);
   const verified = isEkycVerified(profile);
+  const missingDocCount = profile
+    ? new Set([
+        ...(profile.missingDocumentTypes || []),
+        ...citizenVaultMissingPriorityDocs(profile),
+      ]).size
+    : 0;
 
   const openStep = (key: StepKey) => {
     if (key === 'identity') {
@@ -68,6 +75,7 @@ export const CitizenProfileHubScreen = () => {
     }
     if (key === 'personal') navigation.navigate('CitizenPersonalInfo');
     if (key === 'household') navigation.navigate('CitizenHousehold');
+    if (key === 'priority') navigation.navigate('CitizenPriorityGroup');
     if (key === 'documents') navigation.navigate('CitizenDocuments');
   };
 
@@ -100,11 +108,23 @@ export const CitizenProfileHubScreen = () => {
       icon: 'users',
     },
     {
+      key: 'priority',
+      title: 'Đối tượng ưu tiên',
+      subtitle: profile?.priorityGroupLabel?.trim()
+        ? profile.priorityGroupLabel
+        : profile?.priorityGroup?.trim()
+          ? formatPriorityGroup(profile.priorityGroup)
+          : 'Chưa chọn nhóm hưởng chính sách',
+      done: completeness.priority,
+      icon: 'award',
+    },
+    {
       key: 'documents',
       title: 'Kho giấy tờ',
-      subtitle:
-        (profile?.missingDocumentTypes?.length ?? 0) > 0
-          ? `Thiếu ${profile!.missingDocumentTypes.length} loại bắt buộc`
+      subtitle: !profile?.priorityGroup?.trim()
+        ? 'Chọn đối tượng trước để biết giấy tờ bắt buộc'
+        : missingDocCount > 0
+          ? `Thiếu ${missingDocCount} loại bắt buộc`
           : 'Đủ giấy tờ theo hồ sơ',
       done: completeness.documents,
       icon: 'folder',
@@ -204,8 +224,8 @@ export const CitizenProfileHubScreen = () => {
           ))}
 
           <Text style={styles.hint}>
-            Hoàn thành 4 bước để tái sử dụng khi nộp hồ sơ nhà ở xã hội. Phần xác minh danh tính
-            không thay đổi trong luồng này.
+            Kê khai đối tượng ưu tiên và giấy tờ tại đây. Khi nộp hồ sơ dự án các bước vẫn giữ nguyên
+            nhưng chỉ để xác nhận lại. Định danh đã xác minh không sửa được trong luồng này.
           </Text>
         </ScrollView>
       )}

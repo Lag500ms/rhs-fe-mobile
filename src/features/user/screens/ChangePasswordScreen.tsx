@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { RHSColors } from '../../../lib/theme';
+import { RHSColors, shadows } from '../../../lib/theme';
 
 import { CustomInput } from '../../auth/components/CustomInput';
 import { authApi } from '../../auth/api/authApi';
@@ -197,11 +197,7 @@ const styles = StyleSheet.create({
     backgroundColor: RHSColors.white,
     borderRadius: 20,
     padding: 20,
-    shadowColor: RHSColors.black,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
+    ...shadows.card,
   },
   submitBtn: {
     backgroundColor: RHSColors.surface,

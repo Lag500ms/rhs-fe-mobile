@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { RHSColors } from '../lib/theme';
+import { RHSColors, nativeDriver } from '../lib/theme';
 
 type Props = {
   active: boolean;
@@ -63,13 +63,13 @@ export const WishlistHeart: React.FC<Props> = ({
         toValue: 1.28,
         friction: 3,
         tension: 220,
-        useNativeDriver: true,
+        useNativeDriver: nativeDriver,
       }),
       Animated.spring(scale, {
         toValue: 1,
         friction: 5,
         tension: 160,
-        useNativeDriver: true,
+        useNativeDriver: nativeDriver,
       }),
     ]).start();
 
@@ -79,7 +79,7 @@ export const WishlistHeart: React.FC<Props> = ({
         toValue: 1,
         duration: 480,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: nativeDriver,
       }).start();
     });
   }, [particles, scale]);
@@ -90,13 +90,13 @@ export const WishlistHeart: React.FC<Props> = ({
       Animated.timing(scale, {
         toValue: 0.82,
         duration: 90,
-        useNativeDriver: true,
+        useNativeDriver: nativeDriver,
       }),
       Animated.spring(scale, {
         toValue: 1,
         friction: 5,
         tension: 180,
-        useNativeDriver: true,
+        useNativeDriver: nativeDriver,
       }),
     ]).start();
   }, [scale]);
@@ -119,7 +119,7 @@ export const WishlistHeart: React.FC<Props> = ({
     Animated.timing(heartOpacity, {
       toValue: loading ? 0.45 : 1,
       duration: 120,
-      useNativeDriver: true,
+      useNativeDriver: nativeDriver,
     }).start();
   }, [loading, heartOpacity]);
 
@@ -139,7 +139,7 @@ export const WishlistHeart: React.FC<Props> = ({
       accessibilityRole="button"
       accessibilityLabel={active ? 'Bỏ quan tâm' : 'Quan tâm'}
     >
-      <View style={styles.stage} pointerEvents="none">
+      <View style={styles.stage}>
         {particles.map((p, index) => {
           const translateX = p.progress.interpolate({
             inputRange: [0, 1],
@@ -205,6 +205,7 @@ const styles = StyleSheet.create({
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    pointerEvents: 'none',
   },
   particle: {
     position: 'absolute',

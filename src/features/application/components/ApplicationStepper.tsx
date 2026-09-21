@@ -3,15 +3,14 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { RHSColors } from '../../../lib/theme';
 
-/** Khớp luồng nộp hồ sơ: Hồ sơ → Đối tượng → Giấy tờ → Rà soát */
+/** Khớp luồng nộp hồ sơ: xác nhận hồ sơ + đối tượng → xác nhận giấy tờ → rà soát */
 export const APPLICATION_STEPS = [
-  { key: 'info', label: 'Hồ sơ' },
-  { key: 'priority', label: 'Đối tượng' },
+  { key: 'info', label: 'Xác nhận' },
   { key: 'docs', label: 'Giấy tờ' },
   { key: 'submit', label: 'Rà soát' },
 ] as const;
 
-export type ApplicationStepIndex = 1 | 2 | 3 | 4;
+export type ApplicationStepIndex = 1 | 2 | 3;
 
 type Props = {
   current: ApplicationStepIndex;
@@ -82,7 +81,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: RHSColors.grey200,
   },
-  stepItem: { alignItems: 'center', gap: 3, maxWidth: 58 },
+  stepItem: { alignItems: 'center', gap: 3, maxWidth: 72 },
   stepCircle: {
     width: 24,
     height: 24,

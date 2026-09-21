@@ -5,6 +5,7 @@ export interface LotteryParticipant {
   applicantId: string;
   applicantName: string;
   citizenId: string;
+  applicationCode?: string;
   priorityGroup?: string | null;
   applicationStatus: string;
   submittedAt: string;

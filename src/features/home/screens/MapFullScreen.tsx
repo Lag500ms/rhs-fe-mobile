@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
 
 import { MAPBOX_TOKEN } from '../services/geocodeService';
+import { textShadowStyle } from '../../../lib/theme';
 
 const { width, height } = Dimensions.get('window');
 
@@ -227,9 +228,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    ...textShadowStyle('rgba(0,0,0,0.5)', { width: 0, height: 1 }, 3),
   },
   headerSub: {
     fontSize: 12,

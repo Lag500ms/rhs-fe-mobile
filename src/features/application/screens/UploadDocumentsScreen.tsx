@@ -10,7 +10,7 @@ import {
 import { appAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { BrandBar } from '../../../components/BrandBar';
@@ -25,6 +25,27 @@ import {
   RequiredDocumentItem,
 } from '../types/application';
 import { ApplicationStepper } from '../components/ApplicationStepper';
+import { formatPriorityGroup } from '../../../lib/priorityGroup';
+import {
+  PROFILE_DOC_GROUPS,
+  PRIORITY_SUBJECT_PROOF,
+} from '../../user/types/citizenProfile';
+
+const IDENTITY_DOC_TYPES = new Set(['CITIZEN_ID_FRONT', 'CITIZEN_ID_BACK']);
+
+function documentTypeLabel(code: string, requiredItems: RequiredDocumentItem[]): string {
+  const fromRequired = requiredItems.find((r) => r.documentType === code)?.label;
+  if (fromRequired?.trim()) return fromRequired;
+  const upper = code.toUpperCase();
+  for (const group of PROFILE_DOC_GROUPS) {
+    const hit = group.types.find((t) => t.code.toUpperCase() === upper);
+    if (hit) return hit.label;
+  }
+  for (const proof of Object.values(PRIORITY_SUBJECT_PROOF)) {
+    if (proof.code.toUpperCase() === upper) return proof.label;
+  }
+  return code;
+}
 
 interface UploadedFile {
   documentId: string;
@@ -83,16 +104,15 @@ export const UploadDocumentsScreen = () => {
       next[t] = null;
     });
     docs.forEach((doc) => {
-      if (types.includes(doc.documentType)) {
-        next[doc.documentType] = {
-          documentId: doc.documentId,
-          fileName: doc.fileName,
-          fileSize: doc.fileSizeBytes,
-          documentType: doc.documentType,
-          verificationStatus: doc.verificationStatus,
-          aiRejectedReason: doc.aiRejectedReason,
-        };
-      }
+      if (IDENTITY_DOC_TYPES.has(doc.documentType.toUpperCase())) return;
+      next[doc.documentType] = {
+        documentId: doc.documentId,
+        fileName: doc.fileName,
+        fileSize: doc.fileSizeBytes,
+        documentType: doc.documentType,
+        verificationStatus: doc.verificationStatus,
+        aiRejectedReason: doc.aiRejectedReason,
+      };
     });
     setUploadedFiles(next);
   }, []);
@@ -116,7 +136,9 @@ export const UploadDocumentsScreen = () => {
     ]);
 
     const group = groups.find((g) => g.code === detail.priorityGroup);
-    setPriorityGroupLabel(group?.label ?? detail.priorityGroup);
+    setPriorityGroupLabel(
+      formatPriorityGroup(group?.label) || formatPriorityGroup(detail.priorityGroup),
+    );
 
     setRequiredItems(requiredDocs);
     const types = requiredDocs.map((d) => d.documentType);
@@ -148,6 +170,23 @@ export const UploadDocumentsScreen = () => {
     })();
   }, [applicationId, loadRequired]);
 
+  const extraProofTypes = Object.keys(uploadedFiles).filter(
+    (t) =>
+      !!uploadedFiles[t] &&
+      !requiredItems.some((r) => r.documentType === t) &&
+      !IDENTITY_DOC_TYPES.has(t.toUpperCase()),
+  );
+
+  const displayItems: RequiredDocumentItem[] = isSupplementMode
+    ? requiredItems
+    : [
+        ...requiredItems.filter((item) => !!uploadedFiles[item.documentType]),
+        ...extraProofTypes.map((documentType) => ({
+          documentType,
+          label: documentTypeLabel(documentType, requiredItems),
+        })),
+        ...requiredItems.filter((item) => !uploadedFiles[item.documentType]),
+      ];
   const requiredCount = requiredItems.length;
   const uploadedCount = requiredItems.filter((item) => !!uploadedFiles[item.documentType]).length;
   const canProceed =
@@ -240,7 +279,13 @@ export const UploadDocumentsScreen = () => {
       navigation.goBack();
       return;
     }
-    navigation.navigate('MyApplications');
+    navigation.getParent()?.setOptions({ tabBarStyle: undefined });
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'MyApplications' }],
+      }),
+    );
   };
 
   const handleSaveAndBack = () => {
@@ -258,6 +303,18 @@ export const UploadDocumentsScreen = () => {
     });
   };
 
+  const openCitizenDocuments = () => {
+    navigation.getParent()?.getParent()?.navigate('UserProfile', {
+      screen: 'CitizenDocuments',
+    });
+  };
+
+  const openCitizenPriority = () => {
+    navigation.getParent()?.getParent()?.navigate('UserProfile', {
+      screen: 'CitizenPriorityGroup',
+    });
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -267,7 +324,7 @@ export const UploadDocumentsScreen = () => {
             <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
-            {isSupplementMode ? 'Bổ sung giấy tờ' : 'Bước 3/4 — Giấy tờ'}
+            {isSupplementMode ? 'Bổ sung giấy tờ' : 'Bước 2/3 — Xác nhận giấy tờ'}
           </Text>
           <View style={{ width: 36 }} />
         </View>
@@ -287,12 +344,12 @@ export const UploadDocumentsScreen = () => {
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {isSupplementMode ? 'Bổ sung giấy tờ' : 'Bước 3/4 — Giấy tờ'}
+          {isSupplementMode ? 'Bổ sung giấy tờ' : 'Bước 2/3 — Xác nhận giấy tờ'}
         </Text>
         <View style={{ width: 36 }} />
       </View>
 
-      {!isSupplementMode && <ApplicationStepper current={3} />}
+      {!isSupplementMode && <ApplicationStepper current={2} />}
 
       <ScrollView
         style={styles.scroll}
@@ -312,8 +369,8 @@ export const UploadDocumentsScreen = () => {
           <View style={styles.supplementBanner}>
             <Feather name="alert-circle" size={18} color={RHSColors.amber700} />
             <Text style={styles.supplementBannerText}>
-              Hồ sơ chưa có nhóm đối tượng thụ hưởng. Quay lại bước thông tin để chọn đối tượng — hệ
-              thống mới biết cần nộp 2 hay 3 giấy tờ.
+              Hồ sơ chưa có nhóm đối tượng thụ hưởng. Đối tượng kê khai trên hồ sơ công dân — hãy
+              cập nhật rồi quay lại xác nhận giấy tờ.
             </Text>
           </View>
         )}
@@ -328,35 +385,53 @@ export const UploadDocumentsScreen = () => {
           </View>
         )}
 
-        <Text style={styles.description}>
-          {missingPriorityGroup
-            ? 'Không thể xác định bộ giấy tờ bắt buộc khi thiếu nhóm đối tượng.'
-            : `Bộ giấy tờ bắt buộc theo đối tượng${
-                priorityGroupLabel ? ` «${priorityGroupLabel}»` : ''
-              } (Điều 76 / Điều 29–30). Giấy đã kế thừa từ kho sẽ hiện sẵn. Tải tệp PDF, tối đa 10 MB mỗi loại.`}
-        </Text>
+        {missingPriorityGroup && (
+          <TouchableOpacity onPress={openCitizenPriority} style={{ marginBottom: 12 }}>
+            <Text style={styles.linkText}>Cập nhật đối tượng trên hồ sơ công dân</Text>
+          </TouchableOpacity>
+        )}
 
-        <View style={styles.progressCard}>
-          <View style={styles.progressHeader}>
-            <Feather name="upload-cloud" size={18} color={RHSColors.blue700} />
-            <Text style={styles.progressTitle}>Tiến độ tải lên</Text>
-          </View>
-          <Text style={styles.progressValue}>
-            Đã tải {uploadedCount}/{requiredCount || '—'}
+        {(missingPriorityGroup || isSupplementMode) && (
+          <Text style={styles.description}>
+            {missingPriorityGroup
+              ? 'Không thể xác nhận bộ giấy tờ bắt buộc khi thiếu nhóm đối tượng.'
+              : `Xác nhận giấy tờ theo đối tượng${
+                  priorityGroupLabel ? ` «${priorityGroupLabel}»` : ''
+                }. Tải bổ sung phần còn thiếu.`}
           </Text>
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${requiredCount ? (uploadedCount / requiredCount) * 100 : 0}%`,
-                },
-              ]}
-            />
-          </View>
-        </View>
+        )}
 
-        {requiredItems.map(({ documentType, label, subtitle }) => {
+        {isSupplementMode && !missingPriorityGroup && (
+          <TouchableOpacity onPress={openCitizenDocuments} style={{ marginBottom: 12 }}>
+            <Text style={styles.linkText}>Quản lý giấy tờ trên hồ sơ công dân</Text>
+          </TouchableOpacity>
+        )}
+
+        {isSupplementMode ? (
+          <View style={styles.progressCard}>
+            <View style={styles.progressHeader}>
+              <Feather name="check-circle" size={18} color={RHSColors.blue700} />
+              <Text style={styles.progressTitle}>Tiến độ xác nhận</Text>
+            </View>
+            <Text style={styles.progressValue}>
+              Đã có {uploadedCount}/{requiredCount || '—'}
+            </Text>
+            <View style={styles.progressTrack}>
+              <View
+                style={[
+                  styles.progressFill,
+                  {
+                    width: `${requiredCount ? (uploadedCount / requiredCount) * 100 : 0}%`,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.sectionHeading}>Giấy tờ chứng minh</Text>
+        )}
+
+        {displayItems.map(({ documentType, label, subtitle }) => {
           const file = uploadedFiles[documentType];
           const isUploading = !!uploading[documentType];
           const isDeleting = !!deleting[documentType];
@@ -398,9 +473,13 @@ export const UploadDocumentsScreen = () => {
                         {file.fileName}
                       </Text>
                       <Text style={styles.fileSize}>{formatFileSize(file.fileSize)}</Text>
+                      {!isSupplementMode && (
+                        <Text style={styles.vaultBadge}>Giấy tờ chứng minh</Text>
+                      )}
                     </View>
                   </View>
-                  {isDeleting ? (
+                  {isSupplementMode &&
+                    (isDeleting ? (
                     <ActivityIndicator size="small" color={RHSColors.red600} />
                   ) : (
                     <TouchableOpacity
@@ -419,7 +498,7 @@ export const UploadDocumentsScreen = () => {
                     >
                       <Feather name="x" size={18} color={RHSColors.red600} />
                     </TouchableOpacity>
-                  )}
+                  ))}
                 </View>
               ) : (
                 <TouchableOpacity
@@ -436,7 +515,7 @@ export const UploadDocumentsScreen = () => {
                   ) : (
                     <View style={styles.uploadingContent}>
                       <Feather name="upload" size={24} color="#B0BEC5" />
-                      <Text style={styles.dashedZoneText}>Chạm để chọn tệp PDF</Text>
+                      <Text style={styles.dashedZoneText}>Chưa có trong kho — tải bổ sung</Text>
                       <Text style={styles.dashedZoneHint}>Chỉ PDF, tối đa 10MB</Text>
                     </View>
                   )}
@@ -469,8 +548,8 @@ export const UploadDocumentsScreen = () => {
         {!canProceed && (
           <Text style={styles.gateHint}>
             {missingPriorityGroup
-              ? 'Cần chọn nhóm đối tượng trước khi tải giấy tờ.'
-              : `Vui lòng tải đủ ${requiredCount || '—'} loại giấy tờ bắt buộc`}
+              ? 'Cần khai nhóm đối tượng trên hồ sơ công dân trước khi xác nhận giấy tờ.'
+              : `Vui lòng xác nhận đủ ${requiredCount || '—'} loại giấy tờ bắt buộc`}
           </Text>
         )}
         <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAndBack} activeOpacity={0.9}>
@@ -504,6 +583,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
     marginBottom: spacing.md,
     lineHeight: 20,
+  },
+  sectionHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: RHSColors.text,
+    marginBottom: spacing.md,
+    paddingHorizontal: 2,
   },
   incomeChoiceCard: {
     backgroundColor: '#fff',
@@ -674,6 +760,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: RHSColors.textMuted,
   },
+  vaultBadge: {
+    fontSize: 11,
+    color: RHSColors.green700,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  linkText: { color: RHSColors.blue700, fontWeight: '700', fontSize: 13 },
   deleteBtn: {
     width: 32,
     height: 32,

@@ -79,8 +79,10 @@ export const MyApplicationsScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      const parent = navigation.getParent();
+      parent?.setOptions({ tabBarStyle: undefined });
       void checkAuthAndLoad();
-    }, [checkAuthAndLoad])
+    }, [checkAuthAndLoad, navigation])
   );
 
   const hideTabBar = () => {

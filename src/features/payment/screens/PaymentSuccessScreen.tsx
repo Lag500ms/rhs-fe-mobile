@@ -62,7 +62,7 @@ export const PaymentSuccessScreen = () => {
           end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
-          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
             <View style={[styles.circle, styles.circleTop]} />
             <View style={[styles.circle, styles.circleLeft]} />
             <View style={[styles.circle, styles.circleBottom]} />

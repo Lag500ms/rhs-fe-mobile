@@ -19,7 +19,8 @@ import { getHousingStatusLabel, getMaritalStatusLabel } from '../utils/statusCon
 import { citizenProfileApi, type ApplicationPrefillDto } from '../../user/api/citizenProfileApi';
 import { getCitizenProfileReadyGaps } from '../../user/utils/ekycGate';
 import { formatVnd, getRelationshipLabel } from '../../user/types/citizenProfile';
-import type { EligibilityResult } from '../types/application';
+import { formatPriorityGroup } from '../../../lib/priorityGroup';
+import type { CreateApplicationRequest, EligibilityResult } from '../types/application';
 
 function formatDate(value?: string | null): string {
   if (!value) return '—';
@@ -28,8 +29,10 @@ function formatDate(value?: string | null): string {
   return d.toLocaleDateString('vi-VN');
 }
 
+const RESUMABLE = new Set(['DRAFT', 'NEED_MORE_DOCUMENTS']);
+
 /**
- * Bước 1/4 — Xác nhận hồ sơ công dân (kế thừa, không nhập lại).
+ * Bước 1/3 — Xác nhận hồ sơ công dân và đối tượng ưu tiên, rồi tạo nháp.
  */
 export const BasicInformationScreen = () => {
   const navigation = useNavigation<any>();
@@ -52,10 +55,15 @@ export const BasicInformationScreen = () => {
   }, [navigation]);
 
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [prefill, setPrefill] = useState<ApplicationPrefillDto | null>(null);
   const [eligibility, setEligibility] = useState<EligibilityResult | null>(null);
   const [gaps, setGaps] = useState<string[]>([]);
   const [activeBlock, setActiveBlock] = useState<string | null>(null);
+  const [priorityLabel, setPriorityLabel] = useState('');
+  const submitLock = React.useRef(false);
+
+  const profileGroup = (prefill?.priorityGroup || '').trim().toUpperCase();
 
   const openCitizenHub = useCallback(() => {
     navigation.getParent()?.getParent()?.navigate('UserProfile', {
@@ -85,6 +93,12 @@ export const BasicInformationScreen = () => {
       setPrefill(prefillData);
       setEligibility(elig);
       setGaps(getCitizenProfileReadyGaps(full));
+      setPriorityLabel(
+        full.priorityGroupLabel?.trim() ||
+          formatPriorityGroup(full.priorityGroup) ||
+          formatPriorityGroup(prefillData?.priorityGroup) ||
+          '',
+      );
     } catch (e: any) {
       appAlert('Lỗi', e?.response?.data?.message || 'Không tải được hồ sơ công dân.');
     } finally {
@@ -96,15 +110,63 @@ export const BasicInformationScreen = () => {
     void load();
   }, [load]);
 
-  const handleContinue = () => {
+  const goToUpload = (applicationId: string, applicationStatus?: string) => {
+    navigation.replace('UploadDocuments', {
+      applicationId,
+      projectName,
+      applicationStatus: applicationStatus || 'DRAFT',
+    });
+  };
+
+  const resumeExistingApplication = async (
+    existing: { applicationId: string; applicationStatus: string } | null,
+    conflictMessage?: string,
+  ) => {
+    const appId = existing?.applicationId;
+    const appStatus = String(existing?.applicationStatus || '').toUpperCase();
+
+    if (appId && RESUMABLE.has(appStatus || 'DRAFT')) {
+      goToUpload(appId, appStatus || 'DRAFT');
+      return;
+    }
+
+    appAlert(
+      'Hồ sơ đã có',
+      conflictMessage ||
+        'Bạn đã có hồ sơ cho dự án này. Mở hồ sơ hiện có để tiếp tục, không tạo mới.',
+      appId
+        ? [
+            {
+              text: 'Xem hồ sơ',
+              onPress: () =>
+                navigation.replace('ApplicationDetail', { applicationId: appId }),
+            },
+            { text: 'Đóng', style: 'cancel' },
+          ]
+        : [{ text: 'Đồng ý' }],
+    );
+  };
+
+  const handleContinue = async () => {
     if (activeBlock) {
       appAlert('Không thể tạo hồ sơ', activeBlock);
       return;
     }
     if (gaps.length > 0) {
+      appAlert('Hồ sơ chưa đủ', gaps.join('\n'), [
+        { text: 'Đóng', style: 'cancel' },
+        { text: 'Hoàn thiện hồ sơ', onPress: openCitizenHub },
+      ]);
+      return;
+    }
+    if (!prefill?.isEkycVerified && !prefill?.citizenId?.trim()) {
+      appAlert('Chưa xác minh danh tính', 'Vui lòng hoàn tất xác minh danh tính trước khi đăng ký.');
+      return;
+    }
+    if (!profileGroup) {
       appAlert(
-        'Hồ sơ chưa đủ',
-        gaps.join('\n'),
+        'Chưa khai đối tượng',
+        'Hồ sơ công dân chưa có nhóm đối tượng ưu tiên. Hãy cập nhật hồ sơ rồi đăng ký lại.',
         [
           { text: 'Đóng', style: 'cancel' },
           { text: 'Hoàn thiện hồ sơ', onPress: openCitizenHub },
@@ -112,16 +174,41 @@ export const BasicInformationScreen = () => {
       );
       return;
     }
-    if (!prefill?.isEkycVerified && !prefill?.citizenId?.trim()) {
-      appAlert('Chưa xác minh danh tính', 'Vui lòng hoàn tất xác minh danh tính trước khi đăng ký.');
-      return;
+
+    if (submitLock.current) return;
+    submitLock.current = true;
+    setSubmitting(true);
+    try {
+      const existing = await housingApplicationApi.findMineForProject(projectId);
+      if (existing) {
+        await resumeExistingApplication(existing);
+        return;
+      }
+
+      const payload: CreateApplicationRequest = {
+        projectId,
+        priorityGroup: profileGroup,
+        autoFillFromProfile: true,
+        inheritDocumentsFromVault: true,
+      };
+      const result = await housingApplicationApi.createApplication(payload);
+      goToUpload(result.applicationId, result.applicationStatus || 'DRAFT');
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const data = e?.response?.data || {};
+      if (status === 409) {
+        const existing = await housingApplicationApi.findMineForProject(projectId).catch(() => null);
+        await resumeExistingApplication(existing, data.message);
+        return;
+      }
+      appAlert('Lỗi', data.message || e?.message || 'Không tạo được hồ sơ.');
+    } finally {
+      submitLock.current = false;
+      setSubmitting(false);
     }
-    navigation.navigate('PriorityGroup', {
-      projectId,
-      projectName,
-      suggestedPriorityGroup: prefill?.priorityGroup || undefined,
-    });
   };
+
+  const continueBlocked = gaps.length > 0 || !!activeBlock || submitting || !profileGroup;
 
   if (loading) {
     return (
@@ -141,15 +228,18 @@ export const BasicInformationScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={RHSColors.blue700} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bước 1/4 — Xác nhận hồ sơ</Text>
+        <Text style={styles.headerTitle}>Bước 1/3 — Xác nhận hồ sơ</Text>
         <View style={{ width: 36 }} />
       </View>
       <ApplicationStepper current={1} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {!!projectName && (
-          <Text style={styles.project}>Dự án: {projectName}</Text>
-        )}
+        {!!projectName && <Text style={styles.project}>Dự án: {projectName}</Text>}
+
+        <Text style={styles.confirmHint}>
+          Thông tin dưới đây lấy từ hồ sơ công dân đã kê khai. Nếu cần sửa, cập nhật hồ sơ — bước này
+          chỉ để xác nhận lại trước khi nộp.
+        </Text>
 
         {!!activeBlock && (
           <View style={styles.warnBox}>
@@ -175,7 +265,7 @@ export const BasicInformationScreen = () => {
           </View>
         )}
 
-        <Section title="Định danh (đã khóa)">
+        <Section title="Định danh">
           <Row label="Họ và tên" value={prefill?.fullName} />
           <Row label="Số CCCD" value={prefill?.citizenId} />
           <Row label="Ngày sinh" value={formatDate(prefill?.dateOfBirth)} />
@@ -191,10 +281,7 @@ export const BasicInformationScreen = () => {
           <Row label="Nơi làm việc" value={prefill?.workPlace} />
           <Row label="Thu nhập tháng" value={formatVnd(prefill?.monthlyIncome)} />
           {prefill?.maritalStatus?.toUpperCase() === 'MARRIED' && (
-            <Row
-              label="Thu nhập vợ/chồng"
-              value={formatVnd(prefill?.spouseMonthlyIncome)}
-            />
+            <Row label="Thu nhập vợ/chồng" value={formatVnd(prefill?.spouseMonthlyIncome)} />
           )}
         </Section>
 
@@ -234,17 +321,23 @@ export const BasicInformationScreen = () => {
           )}
         </Section>
 
-        <Section title="Giấy tờ trong kho">
-          {(prefill?.availableVaultDocuments || []).length === 0 ? (
+        <Section title="Đối tượng ưu tiên">
+          {!profileGroup ? (
             <Text style={styles.empty}>
-              Chưa có giấy trong kho. Hệ thống sẽ yêu cầu tải lên ở bước giấy tờ theo nhóm đối tượng.
+              Hồ sơ công dân chưa có nhóm đối tượng ưu tiên. Hãy cập nhật hồ sơ rồi đăng ký lại.
             </Text>
           ) : (
-            (prefill?.availableVaultDocuments || []).map((d) => (
-              <Text key={d.documentId} style={styles.docLine}>
-                {d.documentTypeLabel || d.documentType} — {d.fileName}
-              </Text>
-            ))
+            <View style={styles.groupCard}>
+              <View style={styles.groupIcon}>
+                <Feather name="award" size={18} color={RHSColors.blue700} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.groupLabel}>Nhóm đối tượng ưu tiên</Text>
+                <Text style={styles.groupValue}>
+                  {priorityLabel || formatPriorityGroup(profileGroup)}
+                </Text>
+              </View>
+            </View>
           )}
         </Section>
 
@@ -286,15 +379,18 @@ export const BasicInformationScreen = () => {
 
       <SafeAreaView style={styles.bottomBar} edges={['bottom']}>
         <TouchableOpacity
-          style={[
-            styles.continueBtn,
-            (gaps.length > 0 || !!activeBlock) && styles.continueDisabled,
-          ]}
-          onPress={handleContinue}
-          disabled={gaps.length > 0 || !!activeBlock}
+          style={[styles.continueBtn, continueBlocked && styles.continueDisabled]}
+          onPress={() => void handleContinue()}
+          disabled={continueBlocked}
         >
-          <Text style={styles.continueText}>Tiếp tục chọn đối tượng</Text>
-          <Feather name="arrow-right" size={18} color="#fff" />
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Text style={styles.continueText}>Xác nhận hồ sơ & tạo nháp</Text>
+              <Feather name="arrow-right" size={18} color="#fff" />
+            </>
+          )}
         </TouchableOpacity>
       </SafeAreaView>
     </SafeAreaView>
@@ -330,7 +426,13 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4, marginRight: 10 },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: RHSColors.blue700 },
   content: { padding: spacing.lg, paddingBottom: 24 },
-  project: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text, marginBottom: 12 },
+  project: { ...typography.bodySmall, fontWeight: '700', color: RHSColors.text, marginBottom: 8 },
+  confirmHint: {
+    fontSize: 13,
+    color: RHSColors.textMuted,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
   warnBox: {
     flexDirection: 'row',
     gap: 8,
@@ -357,7 +459,21 @@ const styles = StyleSheet.create({
   member: { marginBottom: 8 },
   memberName: { fontSize: 14, fontWeight: '700', color: RHSColors.text },
   memberMeta: { fontSize: 12, color: RHSColors.textSecondary, marginTop: 2 },
-  docLine: { fontSize: 13, color: RHSColors.text, marginBottom: 4 },
+  groupCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  groupIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: RHSColors.blue50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  groupLabel: { fontSize: 12, color: RHSColors.textMuted, fontWeight: '600' },
+  groupValue: { fontSize: 16, fontWeight: '800', color: RHSColors.blue700, marginTop: 4 },
   eligBox: { borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.md },
   eligTitle: { fontSize: 14, fontWeight: '800', marginBottom: 6 },
   eligSummary: { fontSize: 13, color: RHSColors.text, lineHeight: 18, marginBottom: 6 },

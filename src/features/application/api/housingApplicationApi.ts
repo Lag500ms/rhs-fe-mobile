@@ -11,6 +11,21 @@ import {
 } from '../types/application';
 import { lookupApi } from './lookupApi';
 
+const DEAD_APPLICATION_STATUSES = new Set([
+  'REJECTED',
+  'CANCELED',
+  'CANCELLED',
+  'EXPIRED',
+]);
+
+function unwrapApplicationList(data: unknown): Record<string, unknown>[] {
+  if (Array.isArray(data)) return data as Record<string, unknown>[];
+  const root = (data ?? {}) as Record<string, unknown>;
+  const page = (root.data ?? root.Data ?? root) as Record<string, unknown>;
+  const items = page.items ?? page.Items;
+  return Array.isArray(items) ? (items as Record<string, unknown>[]) : [];
+}
+
 export const housingApplicationApi = {
   createApplication: async (data: CreateApplicationRequest): Promise<CreateApplicationResponse> => {
     const response = await apiClient.post<CreateApplicationResponse>(
@@ -40,7 +55,41 @@ export const housingApplicationApi = {
       '/housing-applications/my',
       { params: { pageIndex: 1, pageSize: 50 } },
     );
-    return response.data;
+    const items = unwrapApplicationList(response.data) as unknown as ApplicationSummary[];
+    const page = (response.data ?? {}) as PagedResponse<ApplicationSummary> & {
+      Items?: ApplicationSummary[];
+      PageIndex?: number;
+      PageSize?: number;
+      TotalCount?: number;
+    };
+    return {
+      items,
+      pageIndex: page.pageIndex ?? page.PageIndex ?? 1,
+      pageSize: page.pageSize ?? page.PageSize ?? items.length,
+      totalCount: page.totalCount ?? page.TotalCount ?? items.length,
+    };
+  },
+
+  /** Hồ sơ còn hiệu lực của tôi trên một dự án — dùng để tiếp tục nháp, tránh POST 409. */
+  findMineForProject: async (
+    projectId: string,
+  ): Promise<{ applicationId: string; applicationStatus: string } | null> => {
+    const mine = await housingApplicationApi.getMyApplications();
+    const pid = String(projectId || '').trim().toLowerCase();
+    const hit = (mine.items || []).find((row) => {
+      const raw = row as ApplicationSummary & { ProjectId?: string; ApplicationStatus?: string };
+      const p = String(raw.projectId ?? raw.ProjectId ?? '').trim().toLowerCase();
+      const s = String(raw.applicationStatus ?? raw.ApplicationStatus ?? '').toUpperCase();
+      return p === pid && !DEAD_APPLICATION_STATUSES.has(s);
+    });
+    if (!hit) return null;
+    const raw = hit as ApplicationSummary & { ApplicationId?: string; ApplicationStatus?: string };
+    const applicationId = String(raw.applicationId ?? raw.ApplicationId ?? '').trim();
+    if (!applicationId) return null;
+    return {
+      applicationId,
+      applicationStatus: String(raw.applicationStatus ?? raw.ApplicationStatus ?? '').toUpperCase(),
+    };
   },
 
   getApplicationDetail: async (applicationId: string): Promise<ApplicationDetail> => {

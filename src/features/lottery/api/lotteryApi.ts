@@ -49,8 +49,9 @@ function mapSchedule(raw: unknown): LotteryScheduleDetail {
       return {
         applicationId: String(p.applicationId ?? p.ApplicationId ?? ''),
         applicantId: String(p.applicantId ?? p.ApplicantId ?? ''),
-        applicantName: String(p.applicantName ?? p.ApplicantName ?? ''),
+        applicantName: String(p.applicantName ?? p.ApplicantName ?? p.fullName ?? p.FullName ?? ''),
         citizenId: String(p.citizenId ?? p.CitizenId ?? ''),
+        applicationCode: String(p.applicationCode ?? p.ApplicationCode ?? '') || undefined,
         priorityGroup: (p.priorityGroup ?? p.PriorityGroup) as string | null | undefined,
         applicationStatus: String(p.applicationStatus ?? p.ApplicationStatus ?? ''),
         submittedAt: String(p.submittedAt ?? p.SubmittedAt ?? ''),
@@ -159,6 +160,41 @@ export const lotteryApi = {
   async getLiveState(projectId: string): Promise<LotteryLiveState> {
     const res = await apiClient.get(`/projects/${projectId}/lottery/live-state`);
     return mapLiveState(res.data);
+  },
+
+  async getEligibleParticipants(
+    projectId: string,
+  ): Promise<LotteryScheduleDetail['eligibleParticipants']> {
+    const res = await apiClient.get(`/projects/${projectId}/lottery/eligible-participants`);
+    const raw = res.data;
+    const nested =
+      raw && typeof raw === 'object'
+        ? ((raw as { data?: unknown; items?: unknown; Data?: unknown; Items?: unknown }).data ??
+          (raw as { Data?: unknown }).Data ??
+          (raw as { items?: unknown }).items ??
+          (raw as { Items?: unknown }).Items ??
+          raw)
+        : raw;
+    const list = Array.isArray(nested) ? nested : [];
+    return list
+      .map((it) => {
+        const p = (it ?? {}) as Record<string, unknown>;
+        return {
+          applicationId: String(
+            p.applicationId ?? p.ApplicationId ?? p.applicantId ?? p.ApplicantId ?? '',
+          ),
+          applicantId: String(p.applicantId ?? p.ApplicantId ?? ''),
+          applicantName: String(
+            p.applicantName ?? p.ApplicantName ?? p.fullName ?? p.FullName ?? '',
+          ),
+          citizenId: String(p.citizenId ?? p.CitizenId ?? ''),
+          applicationCode: String(p.applicationCode ?? p.ApplicationCode ?? '') || undefined,
+          priorityGroup: (p.priorityGroup ?? p.PriorityGroup) as string | null | undefined,
+          applicationStatus: String(p.applicationStatus ?? p.ApplicationStatus ?? ''),
+          submittedAt: String(p.submittedAt ?? p.SubmittedAt ?? ''),
+        };
+      })
+      .filter((e) => e.applicationId || e.applicantName);
   },
 
   async getResult(projectId: string): Promise<LotteryDrawResult | null> {

@@ -267,10 +267,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
                 text: 'Xem hồ sơ của tôi',
                 onPress: () =>
                   navigation.dispatch(
-                    CommonActions.navigate({
-                      name: 'MainTabs',
-                      params: { screen: 'Applications' },
-                    }),
+                    CommonActions.navigate('MainTabs', { screen: 'Applications' }),
                   ),
               },
             ],
@@ -281,7 +278,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
         /* BE vẫn chặn khi tạo — tiếp tục */
       }
 
-      // 4. Hồ sơ công dân phải đủ nhân thân (không yêu cầu đủ kho giấy — giấy phụ thuộc đối tượng)
+      // 4. Hồ sơ công dân phải đủ nhân thân + đối tượng (giấy tờ kê trên hồ sơ, lúc nộp chỉ xác nhận)
       try {
         const full = await citizenProfileApi.getFullProfile();
         const gaps = getCitizenProfileReadyGaps(full);
@@ -310,19 +307,16 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
 
       // 5. Đủ điều kiện → bước xác nhận hồ sơ
       navigation.dispatch(
-        CommonActions.navigate({
-          name: 'MainTabs',
+        CommonActions.navigate('MainTabs', {
+          screen: 'Applications',
           params: {
-            screen: 'Applications',
+            screen: 'BasicInformation',
             params: {
-              screen: 'BasicInformation',
-              params: {
-                projectId: project.id,
-                projectName: project.projectName,
-              },
+              projectId: project.id,
+              projectName: project.projectName,
             },
           },
-        })
+        }),
       );
     } catch {
       appAlert('Lỗi', 'Không thể kiểm tra trạng thái tài khoản. Vui lòng thử lại.');

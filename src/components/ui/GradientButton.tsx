@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { RHSColors, borderRadius, spacing, typography, shadows } from '../../lib/theme';
+import { RHSColors, borderRadius, spacing, typography, shadowStyle } from '../../lib/theme';
 
 export type ButtonVariant = 'primary' | 'success' | 'danger' | 'outline' | 'ghost';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -125,7 +125,14 @@ export const GradientButton: React.FC<GradientButtonProps> = ({
       style={[
         fullWidth && styles.fullWidth,
         { borderRadius: radius },
-        !inactive && { ...shadows.md, shadowColor: GLOW[variant], shadowOpacity: 0.3 },
+        !inactive &&
+          shadowStyle({
+            color: GLOW[variant],
+            offset: { width: 0, height: 2 },
+            opacity: 0.3,
+            radius: 6,
+            elevation: 4,
+          }),
         style,
       ]}
       onPress={onPress}

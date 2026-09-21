@@ -203,6 +203,55 @@ export const PROFILE_DOC_GROUPS: {
   },
 ];
 
+/** Giấy chứng minh đối tượng (Điều 76) — khớp DocumentTypeConstants.RequiredSubjectProofByGroup */
+export const PRIORITY_SUBJECT_PROOF: Record<string, { code: string; label: string }> = {
+  MERIT_PERSON: { code: 'MERIT_PERSON_CERTIFICATE', label: 'Giấy xác nhận người có công' },
+  RURAL_POOR: { code: 'POVERTY_HOUSEHOLD_CERTIFICATE', label: 'Giấy chứng nhận hộ nghèo/cận nghèo' },
+  RURAL_NEAR_POOR: { code: 'POVERTY_HOUSEHOLD_CERTIFICATE', label: 'Giấy chứng nhận hộ nghèo/cận nghèo' },
+  URBAN_POOR: { code: 'POVERTY_HOUSEHOLD_CERTIFICATE', label: 'Giấy chứng nhận hộ nghèo/cận nghèo' },
+  URBAN_NEAR_POOR: { code: 'POVERTY_HOUSEHOLD_CERTIFICATE', label: 'Giấy chứng nhận hộ nghèo/cận nghèo' },
+  LOW_INCOME_URBAN: { code: 'LOW_INCOME_CERTIFICATE', label: 'Giấy xác nhận thu nhập thấp' },
+  WORKER: { code: 'EMPLOYMENT_CERTIFICATE', label: 'Giấy xác nhận đang làm việc' },
+  MILITARY_PERSONNEL: { code: 'MILITARY_SERVICE_CERTIFICATE', label: 'Giấy xác nhận lực lượng vũ trang/cơ yếu' },
+  CIVIL_SERVANT: { code: 'CIVIL_SERVANT_CERTIFICATE', label: 'Giấy xác nhận cán bộ/công chức/viên chức' },
+  PUBLIC_HOUSING_RETURN: { code: 'PUBLIC_HOUSING_RETURN_CERTIFICATE', label: 'Văn bản trả lại nhà ở công vụ' },
+  LAND_RECOVERY_AFFECTED: { code: 'LAND_RECOVERY_DECISION', label: 'Quyết định thu hồi đất/giải tỏa nhà ở' },
+};
+
+const PRIORITY_GROUPS_NEED_INCOME = new Set([
+  'LOW_INCOME_URBAN',
+  'WORKER',
+  'MILITARY_PERSONNEL',
+  'CIVIL_SERVANT',
+  'PUBLIC_HOUSING_RETURN',
+  'LAND_RECOVERY_AFFECTED',
+]);
+
+export function getPriorityVaultRequirements(priorityGroup?: string | null): { code: string; label: string }[] {
+  const group = priorityGroup?.trim().toUpperCase();
+  if (!group) return [];
+  const items: { code: string; label: string }[] = [
+    { code: 'HOUSING_CONDITION_PROOF', label: 'Giấy xác nhận điều kiện nhà ở' },
+  ];
+  const subject = PRIORITY_SUBJECT_PROOF[group];
+  if (subject) items.push(subject);
+  if (PRIORITY_GROUPS_NEED_INCOME.has(group)) {
+    items.push({ code: 'INCOME_CERTIFICATE', label: 'Giấy xác nhận / bảng lương / sao kê' });
+  }
+  return items;
+}
+
+function profileHasDocument(p: CitizenFullProfileDto, type: string): boolean {
+  const code = type.toUpperCase();
+  return (p.documents || []).some((d) => d.documentType.toUpperCase() === code);
+}
+
+export function citizenVaultMissingPriorityDocs(p: CitizenFullProfileDto): string[] {
+  return getPriorityVaultRequirements(p.priorityGroup)
+    .map((item) => item.code)
+    .filter((code) => !profileHasDocument(p, code));
+}
+
 export function getRelationshipLabel(value: string): string {
   return RELATIONSHIP_OPTIONS.find((o) => o.value === value)?.label || value;
 }
