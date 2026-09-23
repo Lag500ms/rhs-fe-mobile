@@ -940,6 +940,21 @@ export const ApplicationDetailScreen = () => {
                       <Text style={styles.docRowIconLabel}>PDF</Text>
                     </View>
                     <Text style={styles.docRowName} numberOfLines={1}>{doc.fileName}</Text>
+                    {!!doc.fileUrl && (
+                      <TouchableOpacity
+                        style={styles.docRowEye}
+                        onPress={() =>
+                          navigation.navigate('DocumentViewer', {
+                            fileUrl: doc.fileUrl,
+                            title: doc.fileName || 'Xem giấy tờ',
+                          })
+                        }
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Feather name="eye" size={16} color={RHSColors.blue700} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ))
               )}
@@ -1493,6 +1508,14 @@ const styles = StyleSheet.create({
   },
   docRowIconLabel: { fontSize: 6, fontWeight: '800', color: RHSColors.blue700, marginTop: -1 },
   docRowName: { ...typography.caption, color: RHSColors.text, flex: 1, fontWeight: '500' },
+  docRowEye: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: RHSColors.blue50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
   receiptCard: {
     marginBottom: spacing.lg,

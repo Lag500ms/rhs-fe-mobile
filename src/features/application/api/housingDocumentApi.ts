@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import apiClient from '../../../lib/apiClient';
 import {
+  ApplicationAuditResult,
   UploadDocumentResponse,
   VerificationResultResponse,
 } from '../types/application';
@@ -98,5 +99,29 @@ export const housingDocumentApi = {
       `/housing-applications/${applicationId}/documents/${documentId}/verification`
     );
     return response.data;
+  },
+
+  /**
+   * Người dân tự kiểm tra toàn bộ giấy tờ bằng AI trước khi nộp.
+   * POST /api/housing-applications/{applicationId}/documents/audit
+   * Trả về: đủ/thiếu giấy tờ + đúng tên + đúng loại cho từng file.
+   */
+  auditDocuments: async (
+    applicationId: string,
+  ): Promise<ApplicationAuditResult> => {
+    try {
+      const response = await apiClient.post<ApplicationAuditResult>(
+        `/housing-applications/${applicationId}/documents/audit`,
+      );
+      return response.data;
+    } catch (e: any) {
+      const msg = aspNetErrorMessage(
+        e?.response?.data,
+        e?.message || 'Không thể kiểm tra giấy tờ bằng AI. Vui lòng thử lại.',
+      );
+      const err = new Error(msg) as Error & { response?: any };
+      err.response = e?.response;
+      throw err;
+    }
   },
 };

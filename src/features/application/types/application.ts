@@ -248,3 +248,36 @@ export interface VerificationResultResponse {
   errorDetails: string | null;
   verifiedAt: string;
 }
+
+/** 1 dòng kết quả AI cho từng giấy tờ — khớp DocumentFormCheckDto ở backend. */
+export interface DocumentFormCheck {
+  documentId: string;
+  documentType: string;
+  documentTypeName: string;
+  fileUrl: string;
+  isCorrectForm: boolean;
+  isNameMatch: boolean;
+  isDocumentTypeMatch: boolean;
+  /** "MATCH" | "MISMATCH" | "ERROR" | "MISSING" */
+  formMatchStatus: string;
+  details?: string | null;
+  nameCheckDetails?: string | null;
+  documentTypeCheckDetails?: string | null;
+}
+
+/** Kết quả AI audit toàn bộ hồ sơ — khớp ApplicationAuditResultDto ở backend. */
+export interface ApplicationAuditResult {
+  applicationId: string;
+  priorityGroup: string;
+  housingStatus: string;
+  isComplete: boolean;
+  status: string;
+  statusName: string;
+  passedCount: number;
+  totalCount: number;
+  checkedDocuments: DocumentFormCheck[];
+  missingDocumentTypes: string[];
+  missingDocumentNames: string[];
+  summaryNote: string;
+  auditedAt: string;
+}

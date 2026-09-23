@@ -7,6 +7,7 @@ import { BasicInformationScreen } from '../screens/BasicInformationScreen';
 import { UploadDocumentsScreen } from '../screens/UploadDocumentsScreen';
 import { ReviewSubmitScreen } from '../screens/ReviewSubmitScreen';
 import { ContractViewerScreen } from '../screens/ContractViewerScreen';
+import { DocumentViewerScreen } from '../screens/DocumentViewerScreen';
 import { WithdrawApplicationScreen } from '../screens/WithdrawApplicationScreen';
 import { HouseholdMembersScreen } from '../screens/HouseholdMembersScreen';
 import { MyContractsScreen } from '../screens/MyContractsScreen';
@@ -43,6 +44,10 @@ export type ApplicationStackParamList = {
     pdfUrl?: string;
     title: string;
     canSign?: boolean;
+  };
+  DocumentViewer: {
+    fileUrl: string;
+    title: string;
   };
   WithdrawApplication: {
     applicationId: string;
@@ -81,6 +86,7 @@ export const ApplicationNavigator = () => {
       <Stack.Screen name="PaymentProcessing" component={PaymentProcessingScreen} />
       <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
       <Stack.Screen name="ContractViewer" component={ContractViewerScreen} />
+      <Stack.Screen name="DocumentViewer" component={DocumentViewerScreen} />
       <Stack.Screen name="WithdrawApplication" component={WithdrawApplicationScreen} />
       <Stack.Screen name="PaymentSchedule" component={PaymentScheduleScreen} />
       <Stack.Screen name="LotterySchedule" component={LotteryScheduleScreen} />

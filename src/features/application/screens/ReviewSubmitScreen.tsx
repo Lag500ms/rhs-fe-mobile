@@ -16,8 +16,15 @@ import { useNavigation, useRoute, CommonActions } from '@react-navigation/native
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { housingApplicationApi } from '../api/housingApplicationApi';
+import { housingDocumentApi } from '../api/housingDocumentApi';
 import { lookupApi } from '../api/lookupApi';
-import { ApplicationDetail, ApplicationDocument, RequiredDocumentItem } from '../types/application';
+import {
+  ApplicationAuditResult,
+  ApplicationDetail,
+  ApplicationDocument,
+  DocumentFormCheck,
+  RequiredDocumentItem,
+} from '../types/application';
 import { getHousingStatusLabel, getMaritalStatusLabel } from '../utils/statusConfig';
 import { formatPriorityGroup } from '../../../lib/priorityGroup';
 import { ApplicationStepper } from '../components/ApplicationStepper';
@@ -95,6 +102,9 @@ export const ReviewSubmitScreen = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showConflictSheet, setShowConflictSheet] = useState(false);
   const [commitment, setCommitment] = useState(false);
+  const [auditing, setAuditing] = useState(false);
+  const [auditResult, setAuditResult] = useState<ApplicationAuditResult | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -142,6 +152,21 @@ export const ReviewSubmitScreen = () => {
     !missingPriorityGroup && requiredItems.length > 0 && missingRequired.length === 0;
   const ineligible = !!detail?.eligibility && detail.eligibility.eligible === false;
   const isDisabled = !hasRequiredDocs || submitting || !commitment || ineligible;
+
+  const runAiCheck = async () => {
+    if (auditing) return;
+    setAuditing(true);
+    setAuditError(null);
+    setAuditResult(null);
+    try {
+      const result = await housingDocumentApi.auditDocuments(applicationId);
+      setAuditResult(result);
+    } catch (e: any) {
+      setAuditError(e?.message || 'Không thể kiểm tra giấy tờ. Vui lòng thử lại.');
+    } finally {
+      setAuditing(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!commitment) {
@@ -341,11 +366,124 @@ export const ReviewSubmitScreen = () => {
                     {resolveDocLabel(doc.documentType, requiredItems)}
                   </Text>
                 </View>
-                <Feather name="file" size={18} color={RHSColors.blue700} />
+                {!!doc.fileUrl && (
+                  <TouchableOpacity
+                    style={styles.docEye}
+                    onPress={() =>
+                      navigation.navigate('DocumentViewer', {
+                        fileUrl: doc.fileUrl,
+                        title: doc.fileName || 'Xem giấy tờ',
+                      })
+                    }
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Feather name="eye" size={18} color={RHSColors.blue700} />
+                  </TouchableOpacity>
+                )}
               </View>
             ))
           )}
         </View>
+
+        {/* Tự kiểm tra giấy tờ bằng AI trước khi nộp (chỉ hỗ trợ, không chặn nộp) */}
+        {!missingPriorityGroup && detail.documents.length > 0 && (
+          <View style={styles.aiCard}>
+            <View style={styles.aiHeader}>
+              <View style={styles.aiIconWrap}>
+                <Feather name="shield" size={18} color={RHSColors.blue700} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.aiTitle}>Tự kiểm tra giấy tờ bằng AI</Text>
+                <Text style={styles.aiSubtitle}>
+                  Đối chiếu họ tên, CCCD và loại giấy tờ trước khi nộp
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.aiBtn, auditing && styles.aiBtnDisabled]}
+              onPress={runAiCheck}
+              disabled={auditing}
+              activeOpacity={0.85}
+            >
+              {auditing ? (
+                <>
+                  <ActivityIndicator size="small" color={RHSColors.blue700} />
+                  <Text style={styles.aiBtnText}>Đang đọc giấy tờ…</Text>
+                </>
+              ) : (
+                <>
+                  <Feather
+                    name={auditResult ? 'refresh-cw' : 'check-circle'}
+                    size={16}
+                    color={RHSColors.blue700}
+                  />
+                  <Text style={styles.aiBtnText}>
+                    {auditResult ? 'Kiểm tra lại' : 'Kiểm tra AI trước khi nộp'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {auditing && (
+              <Text style={styles.aiHint}>
+                AI đang đọc từng giấy tờ, có thể mất vài chục giây.
+              </Text>
+            )}
+
+            {auditError && !auditing && (
+              <View style={styles.aiErrorBox}>
+                <Feather name="alert-circle" size={14} color={RHSColors.red600} />
+                <Text style={styles.aiErrorText}>{auditError}</Text>
+              </View>
+            )}
+
+            {auditResult && !auditing && (
+              <View style={styles.aiResult}>
+                <View
+                  style={[
+                    styles.aiSummary,
+                    auditResult.isComplete ? styles.aiSummaryOk : styles.aiSummaryWarn,
+                  ]}
+                >
+                  <Feather
+                    name={auditResult.isComplete ? 'check-circle' : 'alert-triangle'}
+                    size={16}
+                    color={auditResult.isComplete ? RHSColors.green600 : RHSColors.amber700}
+                  />
+                  <Text
+                    style={[
+                      styles.aiSummaryText,
+                      { color: auditResult.isComplete ? RHSColors.green700 : RHSColors.amber700 },
+                    ]}
+                  >
+                    {auditResult.isComplete
+                      ? `Tất cả ${auditResult.totalCount} giấy tờ đều đạt. Bạn có thể nộp.`
+                      : `Đạt ${auditResult.passedCount}/${auditResult.totalCount} giấy tờ. Nên kiểm lại các mục bên dưới.`}
+                  </Text>
+                </View>
+
+                {auditResult.missingDocumentNames?.length > 0 && (
+                  <Text style={styles.aiMissing}>
+                    Còn thiếu: {auditResult.missingDocumentNames.join(', ')}
+                  </Text>
+                )}
+
+                {auditResult.checkedDocuments.map((c, idx) => (
+                  <AiDocRow key={`${c.documentId}-${idx}`} check={c} />
+                ))}
+
+                {!auditResult.isComplete && (
+                  <Text style={styles.aiFootnote}>
+                    AI chỉ hỗ trợ rà soát, không thay quyết định. Bạn vẫn có thể nộp; cán bộ sẽ
+                    thẩm định lại.
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
+        )}
 
         <TouchableOpacity
           style={styles.commitmentRow}
@@ -472,6 +610,70 @@ const InfoRow = ({ icon, label, value }: { icon: string; label: string; value: s
   </View>
 );
 
+const AiBadge = ({
+  ok,
+  okText,
+  failText,
+  detail,
+}: {
+  ok: boolean;
+  okText: string;
+  failText: string;
+  detail?: string | null;
+}) => (
+  <View style={styles.aiBadgeBlock}>
+    <View style={styles.aiBadgeRow}>
+      <Feather
+        name={ok ? 'check-circle' : 'x-circle'}
+        size={13}
+        color={ok ? RHSColors.green600 : RHSColors.red600}
+      />
+      <Text style={[styles.aiBadgeText, { color: ok ? RHSColors.green600 : RHSColors.red600 }]}>
+        {ok ? okText : failText}
+      </Text>
+    </View>
+    {!ok && !!detail && <Text style={styles.aiBadgeDetail}>{detail}</Text>}
+  </View>
+);
+
+const AiDocRow = ({ check }: { check: DocumentFormCheck }) => {
+  const isMissing = check.formMatchStatus === 'MISSING';
+  const isError = check.formMatchStatus === 'ERROR';
+  return (
+    <View style={styles.aiDoc}>
+      <Text style={styles.aiDocName} numberOfLines={2}>
+        {check.documentTypeName}
+      </Text>
+      {isMissing ? (
+        <View style={styles.aiBadgeRow}>
+          <Feather name="minus-circle" size={13} color={RHSColors.grey500} />
+          <Text style={styles.aiBadgeNeutral}>Chưa nộp</Text>
+        </View>
+      ) : isError ? (
+        <View style={styles.aiBadgeRow}>
+          <Feather name="help-circle" size={13} color={RHSColors.amber700} />
+          <Text style={styles.aiBadgeWarn}>Chưa đọc được giấy tờ, hãy thử lại</Text>
+        </View>
+      ) : (
+        <>
+          <AiBadge
+            ok={check.isNameMatch}
+            okText="Đúng tên người nộp"
+            failText="Sai tên hoặc CCCD"
+            detail={check.nameCheckDetails}
+          />
+          <AiBadge
+            ok={check.isDocumentTypeMatch}
+            okText="Đúng loại giấy tờ"
+            failText="Sai loại giấy tờ"
+            detail={check.documentTypeCheckDetails}
+          />
+        </>
+      )}
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: RHSColors.surface },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.surface },
@@ -583,6 +785,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  docEye: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: RHSColors.blue50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   docIconSmallLabel: {
     fontSize: 7,
     fontWeight: '800',
@@ -618,6 +828,93 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: RHSColors.grey500,
     fontWeight: '500',
+  },
+
+  // AI self-check
+  aiCard: {
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.md,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: RHSColors.blue100,
+  },
+  aiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  aiIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: RHSColors.blue50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiTitle: { fontSize: 14, fontWeight: '700', color: RHSColors.text },
+  aiSubtitle: { fontSize: 12, color: RHSColors.textMuted, marginTop: 2, lineHeight: 16 },
+  aiBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1.5,
+    borderColor: RHSColors.blue700,
+    backgroundColor: RHSColors.blue50,
+  },
+  aiBtnDisabled: { opacity: 0.7 },
+  aiBtnText: { fontSize: 14, fontWeight: '700', color: RHSColors.blue700 },
+  aiHint: { fontSize: 11, color: RHSColors.textMuted, textAlign: 'center', marginTop: 8 },
+  aiErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: RHSColors.red50,
+    borderRadius: borderRadius.sm,
+    padding: 10,
+    marginTop: 10,
+  },
+  aiErrorText: { flex: 1, fontSize: 12, color: RHSColors.red600, fontWeight: '500' },
+  aiResult: { marginTop: 12, gap: 10 },
+  aiSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: borderRadius.sm,
+  },
+  aiSummaryOk: { backgroundColor: RHSColors.green50 },
+  aiSummaryWarn: { backgroundColor: RHSColors.amber50 },
+  aiSummaryText: { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  aiMissing: { fontSize: 12, color: RHSColors.amber700, fontWeight: '500', lineHeight: 17 },
+  aiDoc: {
+    borderTopWidth: 1,
+    borderTopColor: RHSColors.grey100,
+    paddingTop: 10,
+    gap: 6,
+  },
+  aiDocName: { fontSize: 13, fontWeight: '700', color: RHSColors.text },
+  aiBadgeBlock: { gap: 2 },
+  aiBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  aiBadgeText: { fontSize: 12, fontWeight: '600', flex: 1 },
+  aiBadgeDetail: {
+    fontSize: 11,
+    color: RHSColors.textSecondary,
+    lineHeight: 16,
+    marginLeft: 19,
+  },
+  aiBadgeNeutral: { fontSize: 12, fontWeight: '600', color: RHSColors.grey600 },
+  aiBadgeWarn: { fontSize: 12, fontWeight: '600', color: RHSColors.amber700, flex: 1 },
+  aiFootnote: {
+    fontSize: 11,
+    color: RHSColors.textMuted,
+    lineHeight: 16,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
 
   // Submit - BLUE
