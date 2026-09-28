@@ -21,6 +21,7 @@ import { citizenProfileApi } from '../api/citizenProfileApi';
 import {
   PROFILE_DOC_GROUPS,
   getPriorityVaultRequirements,
+  isSubjectProofOutsideGroup,
   type CitizenFullProfileDto,
   type UserDocumentDto,
 } from '../types/citizenProfile';
@@ -44,8 +45,14 @@ export const CitizenDocumentsScreen = () => {
     setLoading(true);
     try {
       const p = await citizenProfileApi.getFullProfile();
+      const stale = (p.documents || []).filter((document) =>
+        isSubjectProofOutsideGroup(document.documentType, p.priorityGroup),
+      );
+      if (stale.length > 0) {
+        await Promise.all(stale.map((document) => citizenProfileApi.deleteDocument(document.documentId)));
+      }
       setProfile(p);
-      setDocs(p.documents || []);
+      setDocs((p.documents || []).filter((document) => !stale.some((item) => item.documentId === document.documentId)));
       const group = p.priorityGroup?.trim();
       if (group) {
         const required = await lookupApi.getRequiredDocumentTypes(group).catch(() => []);

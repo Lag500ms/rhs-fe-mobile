@@ -218,6 +218,16 @@ export const PRIORITY_SUBJECT_PROOF: Record<string, { code: string; label: strin
   LAND_RECOVERY_AFFECTED: { code: 'LAND_RECOVERY_DECISION', label: 'Quyết định thu hồi đất/giải tỏa nhà ở' },
 };
 
+const SUBJECT_PROOF_CODES = new Set(Object.values(PRIORITY_SUBJECT_PROOF).map((item) => item.code));
+
+/** Giấy chứng minh nhóm khác (hộ nghèo, cán bộ...). Thu nhập và giấy nhà ở không nằm trong tập này. */
+export function isSubjectProofOutsideGroup(documentType: string, priorityGroup?: string | null): boolean {
+  const type = documentType.trim().toUpperCase();
+  const group = priorityGroup?.trim().toUpperCase() ?? '';
+  if (!group || !SUBJECT_PROOF_CODES.has(type)) return false;
+  return PRIORITY_SUBJECT_PROOF[group]?.code !== type;
+}
+
 const PRIORITY_GROUPS_NEED_INCOME = new Set([
   'LOW_INCOME_URBAN',
   'WORKER',

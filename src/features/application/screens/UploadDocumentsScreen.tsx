@@ -29,6 +29,7 @@ import { formatPriorityGroup } from '../../../lib/priorityGroup';
 import {
   PROFILE_DOC_GROUPS,
   PRIORITY_SUBJECT_PROOF,
+  isSubjectProofOutsideGroup,
 } from '../../user/types/citizenProfile';
 
 const IDENTITY_DOC_TYPES = new Set(['CITIZEN_ID_FRONT', 'CITIZEN_ID_BACK']);
@@ -96,6 +97,7 @@ export const UploadDocumentsScreen = () => {
   const [reviewNote, setReviewNote] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [missingPriorityGroup, setMissingPriorityGroup] = useState(false);
+  const [priorityGroup, setPriorityGroup] = useState<string | null>(null);
   const [priorityGroupLabel, setPriorityGroupLabel] = useState<string | null>(null);
 
   const applyDocumentsToState = useCallback((docs: ApplicationDocument[], types: string[]) => {
@@ -124,6 +126,7 @@ export const UploadDocumentsScreen = () => {
       setMissingPriorityGroup(true);
       setRequiredItems([]);
       setUploadedFiles({});
+      setPriorityGroup(null);
       setPriorityGroupLabel(null);
       return;
     }
@@ -136,6 +139,7 @@ export const UploadDocumentsScreen = () => {
     ]);
 
     const group = groups.find((g) => g.code === detail.priorityGroup);
+    setPriorityGroup(detail.priorityGroup);
     setPriorityGroupLabel(
       formatPriorityGroup(group?.label) || formatPriorityGroup(detail.priorityGroup),
     );
@@ -174,7 +178,8 @@ export const UploadDocumentsScreen = () => {
     (t) =>
       !!uploadedFiles[t] &&
       !requiredItems.some((r) => r.documentType === t) &&
-      !IDENTITY_DOC_TYPES.has(t.toUpperCase()),
+      !IDENTITY_DOC_TYPES.has(t.toUpperCase()) &&
+      !isSubjectProofOutsideGroup(t, priorityGroup),
   );
 
   const displayItems: RequiredDocumentItem[] = isSupplementMode

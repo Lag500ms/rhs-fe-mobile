@@ -16,6 +16,8 @@ import { ScreenHeader } from '../../../components/ScreenHeader';
 import { RHSColors, borderRadius, shadows, spacing, typography } from '../../../lib/theme';
 import { housingApplicationApi } from '../api/housingApplicationApi';
 import { ApplicationDetail, ApplicationDocument } from '../types/application';
+import { citizenProfileApi } from '../../user/api/citizenProfileApi';
+import { isSubjectProofOutsideGroup } from '../../user/types/citizenProfile';
 import { getStatusConfig } from '../utils/statusConfig';
 import { formatDate, formatDateTime } from '../utils/format';
 import { ApplicationTimeline } from '../components/ApplicationTimeline';
@@ -342,6 +344,12 @@ export const ApplicationDetailScreen = () => {
     }
     setReapplying(true);
     try {
+      const vault = await citizenProfileApi.getDocuments();
+      await Promise.all(
+        vault
+          .filter((document) => isSubjectProofOutsideGroup(document.documentType, detail.priorityGroup))
+          .map((document) => citizenProfileApi.deleteDocument(document.documentId)),
+      );
       const result = await housingApplicationApi.createApplication({
         projectId: detail.projectId,
         priorityGroup: detail.priorityGroup,
@@ -930,10 +938,10 @@ export const ApplicationDetailScreen = () => {
             </DetailSection>
 
             <DetailSection title="Giấy tờ đính kèm">
-              {detail.documents.length === 0 ? (
+              {detail.documents.filter((doc) => !isSubjectProofOutsideGroup(doc.documentType, detail.priorityGroup)).length === 0 ? (
                 <Text style={styles.noDocText}>Không có giấy tờ</Text>
               ) : (
-                detail.documents.map((doc: ApplicationDocument) => (
+                detail.documents.filter((doc) => !isSubjectProofOutsideGroup(doc.documentType, detail.priorityGroup)).map((doc: ApplicationDocument) => (
                   <View key={doc.documentId} style={styles.docRow}>
                     <View style={styles.docRowIcon}>
                       <Feather name="file" size={14} color={RHSColors.blue700} />

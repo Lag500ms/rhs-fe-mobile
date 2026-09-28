@@ -16,6 +16,7 @@ import { useNavigation, useRoute, CommonActions } from '@react-navigation/native
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, typography } from '../../../lib/theme';
 import { housingApplicationApi } from '../api/housingApplicationApi';
+import { housingDocumentApi } from '../api/housingDocumentApi';
 import { lookupApi } from '../api/lookupApi';
 import {
   ApplicationDetail,
@@ -25,7 +26,7 @@ import {
 import { getHousingStatusLabel, getMaritalStatusLabel } from '../utils/statusConfig';
 import { formatPriorityGroup } from '../../../lib/priorityGroup';
 import { ApplicationStepper } from '../components/ApplicationStepper';
-import { formatVnd } from '../../user/types/citizenProfile';
+import { formatVnd, isSubjectProofOutsideGroup } from '../../user/types/citizenProfile';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -154,6 +155,12 @@ export const ReviewSubmitScreen = () => {
     }
     setSubmitting(true);
     try {
+      const stale = (detail?.documents ?? []).filter((doc) =>
+        isSubjectProofOutsideGroup(doc.documentType, detail?.priorityGroup),
+      );
+      await Promise.all(
+        stale.map((doc) => housingDocumentApi.deleteDocument(applicationId, doc.documentId)),
+      );
       await housingApplicationApi.submitApplication(applicationId);
       setShowSuccess(true);
     } catch (e: any) {
@@ -325,13 +332,13 @@ export const ReviewSubmitScreen = () => {
                 Thiếu nhóm đối tượng — chưa xác định được giấy tờ bắt buộc (2 hoặc 3 tệp).
               </Text>
             </View>
-          ) : detail.documents.length === 0 ? (
+          ) : detail.documents.filter((doc) => !isSubjectProofOutsideGroup(doc.documentType, detail.priorityGroup)).length === 0 ? (
             <View style={styles.noDocs}>
               <Feather name="alert-triangle" size={16} color={RHSColors.amber600} />
               <Text style={styles.noDocsText}>Chưa có giấy tờ nào được tải lên</Text>
             </View>
           ) : (
-            detail.documents.map((doc: ApplicationDocument) => (
+            detail.documents.filter((doc) => !isSubjectProofOutsideGroup(doc.documentType, detail.priorityGroup)).map((doc: ApplicationDocument) => (
               <View key={doc.documentId} style={styles.docItem}>
                 <View style={styles.docIconSmall}>
                   <Feather name="file" size={16} color={RHSColors.blue700} />

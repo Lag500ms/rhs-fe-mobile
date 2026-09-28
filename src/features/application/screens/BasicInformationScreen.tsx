@@ -17,6 +17,7 @@ import { housingApplicationApi } from '../api/housingApplicationApi';
 import { ApplicationStepper } from '../components/ApplicationStepper';
 import { getHousingStatusLabel, getMaritalStatusLabel } from '../utils/statusConfig';
 import { citizenProfileApi, type ApplicationPrefillDto } from '../../user/api/citizenProfileApi';
+import { isSubjectProofOutsideGroup } from '../../user/types/citizenProfile';
 import { getCitizenProfileReadyGaps } from '../../user/utils/ekycGate';
 import { formatVnd, getRelationshipLabel } from '../../user/types/citizenProfile';
 import { formatPriorityGroup } from '../../../lib/priorityGroup';
@@ -185,6 +186,12 @@ export const BasicInformationScreen = () => {
         return;
       }
 
+      const vault = await citizenProfileApi.getDocuments();
+      await Promise.all(
+        vault
+          .filter((document) => isSubjectProofOutsideGroup(document.documentType, profileGroup))
+          .map((document) => citizenProfileApi.deleteDocument(document.documentId)),
+      );
       const payload: CreateApplicationRequest = {
         projectId,
         priorityGroup: profileGroup,

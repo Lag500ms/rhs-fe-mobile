@@ -18,6 +18,7 @@ import { lookupApi } from '../../application/api/lookupApi';
 import type { CitizenFullProfileDto } from '../types/citizenProfile';
 import type { PriorityGroupItem } from '../../application/types/application';
 import { formatPriorityGroup } from '../../../lib/priorityGroup';
+import { isSubjectProofOutsideGroup } from '../types/citizenProfile';
 
 function requiredDocCount(group: PriorityGroupItem | undefined): number {
   if (!group) return 0;
@@ -69,6 +70,12 @@ export const CitizenPriorityGroupScreen = () => {
     setSaving(true);
     try {
       const updated = await citizenProfileApi.updateCitizenProfile({ priorityGroup });
+      const vault = await citizenProfileApi.getDocuments();
+      await Promise.all(
+        vault
+          .filter((document) => isSubjectProofOutsideGroup(document.documentType, priorityGroup))
+          .map((document) => citizenProfileApi.deleteDocument(document.documentId)),
+      );
       setProfile(updated);
       appAlert(
         'Thành công',
