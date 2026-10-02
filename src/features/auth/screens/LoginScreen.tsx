@@ -277,7 +277,7 @@ export const LoginScreen = () => {
                   {biometricLoading ? (
                     <ActivityIndicator color={RHSColors.blue700} size={22} />
                   ) : (
-                    <Image source={require('../../../../assets/fingerprint.png')} style={styles.biometricIcon} />
+                    <Image source={require('../../../../assets/fingerprint.png')} style={styles.biometricIcon} resizeMode="contain" />
                   )}
                 </TouchableOpacity>
               )}
@@ -401,7 +401,6 @@ const styles = StyleSheet.create({
   biometricIcon: {
     width: 28,
     height: 28,
-    resizeMode: 'contain',
   },
   // -----------------------------
 

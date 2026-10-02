@@ -4,6 +4,7 @@ import { userApi } from '../api/userApi';
 import type { UserProfileDto } from '../types/user';
 import {
   citizenVaultMissingPriorityDocs,
+  excludeIdentityDocumentTypes,
   type CitizenFullProfileDto,
 } from '../types/citizenProfile';
 
@@ -126,7 +127,7 @@ export function getCitizenProfileCompleteness(p?: CitizenFullProfileDto | null):
   const priority = !!p.priorityGroup?.trim();
   const documents =
     priority &&
-    (p.missingDocumentTypes?.length ?? 0) === 0 &&
+    excludeIdentityDocumentTypes(p.missingDocumentTypes).length === 0 &&
     citizenVaultMissingPriorityDocs(p).length === 0 &&
     personal;
 

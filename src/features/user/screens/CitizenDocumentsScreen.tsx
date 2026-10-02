@@ -20,8 +20,11 @@ import { appAlert, appErrorAlert } from '../../../lib/appDialog';
 import { citizenProfileApi } from '../api/citizenProfileApi';
 import {
   PROFILE_DOC_GROUPS,
+  ALWAYS_REQUIRED_VAULT_DOCS,
   getPriorityVaultRequirements,
+  isIdentityDocumentType,
   isSubjectProofOutsideGroup,
+  excludeIdentityDocumentTypes,
   type CitizenFullProfileDto,
   type UserDocumentDto,
 } from '../types/citizenProfile';
@@ -80,18 +83,25 @@ export const CitizenDocumentsScreen = () => {
   }, [docs]);
 
   const required = new Set(
-    (profile?.requiredDocumentTypes || []).map((t) => t.toUpperCase()),
+    excludeIdentityDocumentTypes(profile?.requiredDocumentTypes).map((t) => t.toUpperCase()),
   );
   const missing = new Set(
-    (profile?.missingDocumentTypes || []).map((t) => t.toUpperCase()),
+    excludeIdentityDocumentTypes(profile?.missingDocumentTypes).map((t) => t.toUpperCase()),
   );
   priorityRequired.forEach((item) => {
     const code = item.documentType.toUpperCase();
+    if (isIdentityDocumentType(code)) return;
+    required.add(code);
+    if (!byType.has(code)) missing.add(code);
+  });
+  ALWAYS_REQUIRED_VAULT_DOCS.forEach((item) => {
+    const code = item.code.toUpperCase();
     required.add(code);
     if (!byType.has(code)) missing.add(code);
   });
   getPriorityVaultRequirements(profile?.priorityGroup).forEach((item) => {
     const code = item.code.toUpperCase();
+    if (isIdentityDocumentType(code)) return;
     required.add(code);
     if (!byType.has(code)) missing.add(code);
   });
@@ -122,12 +132,14 @@ export const CitizenDocumentsScreen = () => {
       label: item.label || item.documentType,
     })), ...fallback].forEach((item) => {
       const code = item.code.toUpperCase();
+      if (isIdentityDocumentType(code)) return;
       if (!KNOWN_DOC_CODES.has(code) && !extras.has(code)) {
         extras.set(code, { code: item.code, label: item.label || item.code });
       }
     });
     (profile?.requiredDocumentTypes || []).forEach((raw) => {
       const code = raw.toUpperCase();
+      if (isIdentityDocumentType(code)) return;
       if (!KNOWN_DOC_CODES.has(code) && !extras.has(code)) {
         extras.set(code, { code: raw, label: raw });
       }
@@ -267,11 +279,11 @@ export const CitizenDocumentsScreen = () => {
             </View>
           )}
 
-          {(profile?.missingDocumentTypes?.length ?? 0) > 0 && (
+          {missing.size > 0 && (
             <View style={styles.warnBox}>
               <Feather name="alert-triangle" size={16} color={RHSColors.amber700} />
               <Text style={styles.warnText}>
-                Còn thiếu {profile!.missingDocumentTypes.length} giấy tờ bắt buộc theo hồ sơ
+                Còn thiếu {missing.size} giấy tờ bắt buộc theo hồ sơ
                 hiện tại. Lúc nộp hồ sơ dự án chỉ xác nhận lại giấy đã có trong kho.
               </Text>
             </View>
@@ -281,9 +293,10 @@ export const CitizenDocumentsScreen = () => {
             <View key={group.key} style={styles.group}>
               <Text style={styles.groupTitle}>{group.title}</Text>
               {group.types.map((t) => {
-                const doc = byType.get(t.code);
-                const isRequired = required.has(t.code);
-                const isMissing = missing.has(t.code);
+                const code = t.code.toUpperCase();
+                const doc = byType.get(code);
+                const isRequired = required.has(code);
+                const isMissing = missing.has(code);
                 const busy = uploadingType === t.code;
 
                 return (

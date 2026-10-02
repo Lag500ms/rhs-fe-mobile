@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, spacing, typography, shadows } from '../../../lib/theme';
@@ -54,6 +54,7 @@ const emptyForm = () => ({
 });
 
 export const CitizenHouseholdScreen = () => {
+  const navigation = useNavigation<any>();
   const [profile, setProfile] = useState<CitizenFullProfileDto | null>(null);
   const [members, setMembers] = useState<UserHouseholdMemberDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -283,6 +284,34 @@ export const CitizenHouseholdScreen = () => {
               <Text style={styles.headMeta}>CCCD: {profile?.citizenId || '—'}</Text>
             </View>
 
+            {(() => {
+              const residence = (profile?.documents || []).find(
+                (d) => d.documentType.toUpperCase() === 'RESIDENCE_CONFIRMATION',
+              );
+              return (
+                <TouchableOpacity
+                  style={styles.residenceCard}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.navigate('CitizenDocuments')}
+                >
+                  <Feather
+                    name={residence ? 'check-circle' : 'home'}
+                    size={18}
+                    color={residence ? RHSColors.green700 : RHSColors.blue700}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.residenceTitle}>Giấy tờ hộ gia đình</Text>
+                    <Text style={styles.residenceHint}>
+                      {residence
+                        ? `${residence.fileName} · đã có trong kho`
+                        : 'Bắt buộc tải hộ khẩu hoặc giấy xác nhận thông tin cư trú.'}
+                    </Text>
+                  </View>
+                  <Text style={styles.residenceLink}>{residence ? 'Xem' : 'Tải'}</Text>
+                </TouchableOpacity>
+              );
+            })()}
+
             {members.length === 0 ? (
               <Text style={styles.empty}>Chưa có thành viên. Thêm cha mẹ, vợ/chồng, con cái…</Text>
             ) : (
@@ -437,6 +466,9 @@ export const CitizenHouseholdScreen = () => {
                       </TouchableOpacity>
                     ))}
                   </View>
+                  <Text style={styles.depHint}>
+                    Bắt buộc giấy chứng minh người phụ thuộc và giấy xác nhận thông tin cư trú/hộ khẩu trong Kho giấy tờ.
+                  </Text>
                 </>
               ) : (
                 <>
@@ -576,6 +608,21 @@ const styles = StyleSheet.create({
   headTitle: { fontSize: 12, fontWeight: '700', color: RHSColors.blue700 },
   headName: { fontSize: 16, fontWeight: '800', color: RHSColors.text, marginTop: 4 },
   headMeta: { fontSize: 12, color: RHSColors.textSecondary, marginTop: 2 },
+  residenceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: RHSColors.white,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: RHSColors.blue100,
+    ...shadows.sm,
+  },
+  residenceTitle: { fontSize: 14, fontWeight: '800', color: RHSColors.text },
+  residenceHint: { fontSize: 12, color: RHSColors.textSecondary, marginTop: 2, lineHeight: 16 },
+  residenceLink: { fontSize: 13, fontWeight: '800', color: RHSColors.blue700 },
   empty: { textAlign: 'center', color: RHSColors.textMuted, marginTop: 24 },
   memberCard: {
     flexDirection: 'row',
@@ -653,6 +700,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: RHSColors.blue50, borderColor: RHSColors.blue700 },
   chipText: { fontSize: 12, color: RHSColors.textSecondary, fontWeight: '600' },
   chipTextActive: { color: RHSColors.blue700 },
+  depHint: { fontSize: 12, color: RHSColors.amber700, marginTop: 8, lineHeight: 16, fontWeight: '600' },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14 },
   checkLabel: { fontSize: 14, color: RHSColors.text, flex: 1 },
   saveBtn: {

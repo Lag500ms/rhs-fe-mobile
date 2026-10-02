@@ -330,7 +330,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
   }, []);
 
   const renderCarouselItem = ({ item }: { item: { id: string; imageUrl: string; displayOrder: number } }) => (
-    <Image source={{ uri: item.imageUrl }} style={styles.carouselImage} />
+    <Image source={{ uri: item.imageUrl }} style={styles.carouselImage} resizeMode="cover" />
   );
 
   // Blue marker for map
@@ -694,7 +694,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
                   onPress={() => navigation.push('HousingProjectDetail', { project: sp })}
                 >
                   {thumb ? (
-                    <Image source={{ uri: thumb }} style={styles.suggestedThumb} />
+                    <Image source={{ uri: thumb }} style={styles.suggestedThumb} resizeMode="cover" />
                   ) : (
                     <View style={styles.suggestedThumbPlace}>
                       <Feather name="home" size={22} color={RHSColors.grey400} />
@@ -747,7 +747,7 @@ const styles = StyleSheet.create({
 
   // Full-width carousel 300px
   carouselWrap: { width: '100%', height: 300, position: 'relative' },
-  carouselImage: { width: SCREEN_WIDTH, height: 300, resizeMode: 'cover' },
+  carouselImage: { width: SCREEN_WIDTH, height: 300 },
   thumbPlace: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: RHSColors.grey100 },
   dotsWrap: { position: 'absolute', bottom: 14, alignSelf: 'center', flexDirection: 'row' },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)', marginHorizontal: 4 },
@@ -841,7 +841,7 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
   },
-  suggestedThumb: { width: 62, height: 62, borderRadius: 8, resizeMode: 'cover' },
+  suggestedThumb: { width: 62, height: 62, borderRadius: 8 },
   suggestedThumbPlace: {
     width: 62,
     height: 62,

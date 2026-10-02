@@ -164,17 +164,30 @@ export const DEPENDENT_REASON_OPTIONS: { value: DependentReason; label: string }
   { value: 'OTHER', label: 'Khác' },
 ];
 
+/** CCCD lấy từ eKYC, không tải lên kho giấy tờ. */
+export const IDENTITY_DOC_TYPE_SET = new Set(['CITIZEN_ID_FRONT', 'CITIZEN_ID_BACK']);
+
+export function isIdentityDocumentType(code?: string | null): boolean {
+  return IDENTITY_DOC_TYPE_SET.has((code || '').trim().toUpperCase());
+}
+
+export function excludeIdentityDocumentTypes(types?: string[] | null): string[] {
+  return (types || []).filter((t) => !isIdentityDocumentType(t));
+}
+
 export const PROFILE_DOC_GROUPS: {
   key: string;
   title: string;
   types: { code: string; label: string }[];
 }[] = [
   {
-    key: 'identity',
-    title: 'Định danh',
+    key: 'residence',
+    title: 'Cư trú / hộ khẩu',
     types: [
-      { code: 'CITIZEN_ID_FRONT', label: 'CCCD - Mặt trước' },
-      { code: 'CITIZEN_ID_BACK', label: 'CCCD - Mặt sau' },
+      {
+        code: 'RESIDENCE_CONFIRMATION',
+        label: 'Hộ khẩu / Giấy xác nhận thông tin cư trú',
+      },
     ],
   },
   {
@@ -237,6 +250,13 @@ const PRIORITY_GROUPS_NEED_INCOME = new Set([
   'LAND_RECOVERY_AFFECTED',
 ]);
 
+export const ALWAYS_REQUIRED_VAULT_DOCS: { code: string; label: string }[] = [
+  {
+    code: 'RESIDENCE_CONFIRMATION',
+    label: 'Hộ khẩu / Giấy xác nhận thông tin cư trú',
+  },
+];
+
 export function getPriorityVaultRequirements(priorityGroup?: string | null): { code: string; label: string }[] {
   const group = priorityGroup?.trim().toUpperCase();
   if (!group) return [];
@@ -257,9 +277,11 @@ function profileHasDocument(p: CitizenFullProfileDto, type: string): boolean {
 }
 
 export function citizenVaultMissingPriorityDocs(p: CitizenFullProfileDto): string[] {
-  return getPriorityVaultRequirements(p.priorityGroup)
-    .map((item) => item.code)
-    .filter((code) => !profileHasDocument(p, code));
+  const codes = [
+    ...ALWAYS_REQUIRED_VAULT_DOCS.map((item) => item.code),
+    ...getPriorityVaultRequirements(p.priorityGroup).map((item) => item.code),
+  ];
+  return [...new Set(codes)].filter((code) => !profileHasDocument(p, code));
 }
 
 export function getRelationshipLabel(value: string): string {

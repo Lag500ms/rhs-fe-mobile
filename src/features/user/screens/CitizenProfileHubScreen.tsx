@@ -16,7 +16,7 @@ import { RHSColors, borderRadius, spacing, typography, shadows } from '../../../
 import { appAlert, appErrorAlert } from '../../../lib/appDialog';
 import { citizenProfileApi } from '../api/citizenProfileApi';
 import type { CitizenFullProfileDto } from '../types/citizenProfile';
-import { formatVnd, citizenVaultMissingPriorityDocs } from '../types/citizenProfile';
+import { formatVnd, citizenVaultMissingPriorityDocs, excludeIdentityDocumentTypes } from '../types/citizenProfile';
 import { formatPriorityGroup } from '../../../lib/priorityGroup';
 import {
   getCitizenProfileCompleteness,
@@ -52,7 +52,7 @@ export const CitizenProfileHubScreen = () => {
   const verified = isEkycVerified(profile);
   const missingDocCount = profile
     ? new Set([
-        ...(profile.missingDocumentTypes || []),
+        ...excludeIdentityDocumentTypes(profile.missingDocumentTypes),
         ...citizenVaultMissingPriorityDocs(profile),
       ]).size
     : 0;

@@ -29,10 +29,9 @@ import { formatPriorityGroup } from '../../../lib/priorityGroup';
 import {
   PROFILE_DOC_GROUPS,
   PRIORITY_SUBJECT_PROOF,
+  IDENTITY_DOC_TYPE_SET,
   isSubjectProofOutsideGroup,
 } from '../../user/types/citizenProfile';
-
-const IDENTITY_DOC_TYPES = new Set(['CITIZEN_ID_FRONT', 'CITIZEN_ID_BACK']);
 
 function documentTypeLabel(code: string, requiredItems: RequiredDocumentItem[]): string {
   const fromRequired = requiredItems.find((r) => r.documentType === code)?.label;
@@ -106,7 +105,7 @@ export const UploadDocumentsScreen = () => {
       next[t] = null;
     });
     docs.forEach((doc) => {
-      if (IDENTITY_DOC_TYPES.has(doc.documentType.toUpperCase())) return;
+      if (IDENTITY_DOC_TYPE_SET.has(doc.documentType.toUpperCase())) return;
       next[doc.documentType] = {
         documentId: doc.documentId,
         fileName: doc.fileName,
@@ -178,7 +177,7 @@ export const UploadDocumentsScreen = () => {
     (t) =>
       !!uploadedFiles[t] &&
       !requiredItems.some((r) => r.documentType === t) &&
-      !IDENTITY_DOC_TYPES.has(t.toUpperCase()) &&
+      !IDENTITY_DOC_TYPE_SET.has(t.toUpperCase()) &&
       !isSubjectProofOutsideGroup(t, priorityGroup),
   );
 

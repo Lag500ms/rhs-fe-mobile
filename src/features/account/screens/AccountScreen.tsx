@@ -313,7 +313,7 @@ const MenuItem = ({
   >
     <View style={styles.menuIconWrap}>
       {iconSource ? (
-        <Image source={iconSource} style={styles.menuIconImage} />
+        <Image source={iconSource} style={styles.menuIconImage} resizeMode="contain" />
       ) : (
         <Feather name={icon as any} size={18} color={RHSColors.blue700} />
       )}
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  menuIconImage: { width: 18, height: 18, resizeMode: 'contain' },
+  menuIconImage: { width: 18, height: 18 },
   menuLabel: { flex: 1, fontSize: 15, color: RHSColors.text, fontWeight: '500' },
   versionText: { fontSize: 13, color: RHSColors.textMuted, fontWeight: '500' },
 
