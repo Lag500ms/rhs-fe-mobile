@@ -17,7 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, spacing, typography, shadows } from '../../../lib/theme';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert } from '../../../lib/appDialog';
 import { citizenProfileApi } from '../api/citizenProfileApi';
 import {
   DEPENDENT_REASON_OPTIONS,
@@ -30,7 +30,14 @@ import {
   type UserHouseholdMemberDto,
   type UserHouseholdMemberRequestDto,
 } from '../types/citizenProfile';
-import { isValidCitizenId, maritalAllowsSpouse, normalizeCitizenId, sanitizeMoneyInput } from '../../../lib/fieldRules';
+import {
+  isFutureDateOnly,
+  isValidCitizenId,
+  maritalAllowsSpouse,
+  normalizeCitizenId,
+  parseDateOnly,
+  sanitizeMoneyInput,
+} from '../../../lib/fieldRules';
 
 const emptyForm = () => ({
   fullName: '',
@@ -62,7 +69,7 @@ export const CitizenHouseholdScreen = () => {
       setProfile(p);
       setMembers(p.householdMembers || []);
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || 'Không tải được hộ gia đình.');
+      appErrorAlert('Lỗi', e, 'Không tải được hộ gia đình.');
     } finally {
       setLoading(false);
     }
@@ -152,13 +159,18 @@ export const CitizenHouseholdScreen = () => {
       }
     }
 
-    const age = calcAge(form.dateOfBirth || null);
-    if (form.dateOfBirth) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(form.dateOfBirth.trim())) {
+    if (form.dateOfBirth.trim()) {
+      if (!parseDateOnly(form.dateOfBirth)) {
         appAlert('Không hợp lệ', 'Ngày sinh phải theo định dạng năm-tháng-ngày, ví dụ 2010-05-20.');
         return;
       }
+      if (isFutureDateOnly(form.dateOfBirth)) {
+        appAlert('Không hợp lệ', 'Ngày sinh không được ở tương lai.');
+        return;
+      }
     }
+
+    const age = calcAge(form.dateOfBirth || null);
     if (age != null && age >= 14 && !cid) {
       appAlert('Thiếu thông tin', 'Thành viên từ 14 tuổi trở lên bắt buộc có số CCCD.');
       return;
@@ -169,6 +181,14 @@ export const CitizenHouseholdScreen = () => {
 
     if (isDependent && !form.dependentReason) {
       appAlert('Thiếu thông tin', 'Người phụ thuộc cần chọn lý do.');
+      return;
+    }
+    if (form.note.length > 500) {
+      appAlert('Không hợp lệ', 'Ghi chú không được quá 500 ký tự.');
+      return;
+    }
+    if (form.occupation.length > 200) {
+      appAlert('Không hợp lệ', 'Nghề nghiệp không được quá 200 ký tự.');
       return;
     }
 
@@ -206,7 +226,7 @@ export const CitizenHouseholdScreen = () => {
       setModalVisible(false);
       await load();
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || 'Không lưu được thành viên.');
+      appErrorAlert('Lỗi', e, 'Không lưu được thành viên.');
     } finally {
       setSaving(false);
     }
@@ -223,7 +243,7 @@ export const CitizenHouseholdScreen = () => {
             await citizenProfileApi.deleteHouseholdMember(m.memberId);
             await load();
           } catch (e: any) {
-            appAlert('Lỗi', e?.response?.data?.message || 'Không xóa được.');
+            appErrorAlert('Lỗi', e, 'Không xóa được.');
           }
         },
       },

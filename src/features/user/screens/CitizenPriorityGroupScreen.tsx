@@ -12,7 +12,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, spacing, typography, shadows } from '../../../lib/theme';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert } from '../../../lib/appDialog';
 import { citizenProfileApi } from '../api/citizenProfileApi';
 import { lookupApi } from '../../application/api/lookupApi';
 import type { CitizenFullProfileDto } from '../types/citizenProfile';
@@ -49,7 +49,7 @@ export const CitizenPriorityGroupScreen = () => {
         setPriorityGroup(saved);
       }
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || 'Không tải được nhóm đối tượng.');
+      appErrorAlert('Lỗi', e, 'Không tải được nhóm đối tượng.');
     } finally {
       setLoading(false);
     }
@@ -89,7 +89,7 @@ export const CitizenPriorityGroupScreen = () => {
         ],
       );
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || 'Không lưu được nhóm đối tượng.');
+      appErrorAlert('Lỗi', e, 'Không lưu được nhóm đối tượng.');
     } finally {
       setSaving(false);
     }

@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -59,10 +59,10 @@ export const DeleteAccountScreen = () => {
                   { text: 'Đồng ý', onPress: () => navigation.navigate('Auth') },
                 ]);
               } else {
-                appAlert('Lỗi', result.message || 'Xóa tài khoản thất bại');
+                appAlert('Lỗi', toUserErrorMessage(result.message, 'Xóa tài khoản thất bại'));
               }
             } catch (error: any) {
-              appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+              appErrorAlert('Lỗi', error, 'Không xóa được tài khoản. Vui lòng thử lại.');
             } finally {
               setLoading(false);
             }

@@ -6,7 +6,7 @@ import {
   FlatList,
   RefreshControl
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appErrorAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -67,7 +67,7 @@ export const MyContractsScreen = () => {
         apps.filter((a) => CONTRACT_STATUSES.has(String(a.applicationStatus || '').toUpperCase())),
       );
     } catch (err: any) {
-      appAlert('Lỗi', err?.response?.data?.message || err?.message || 'Không tải được hợp đồng.');
+      appErrorAlert('Lỗi', err, 'Không tải được hợp đồng.');
     } finally {
       setLoading(false);
       setRefreshing(false);

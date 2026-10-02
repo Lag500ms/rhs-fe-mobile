@@ -8,7 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -72,10 +72,7 @@ export const WithdrawApplicationScreen = () => {
       })
       .catch((e: any) => {
         if (!cancelled) {
-          appAlert(
-            'Lỗi',
-            e?.response?.data?.message || e?.message || 'Không tính được bảng hoàn tiền.',
-          );
+          appErrorAlert('Lỗi', e, 'Không tính được bảng hoàn tiền.');
         }
       })
       .finally(() => {
@@ -115,13 +112,13 @@ export const WithdrawApplicationScreen = () => {
         );
       }
     } catch (e: any) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.message ||
-        (isContract
+      appErrorAlert(
+        'Lỗi',
+        e,
+        isContract
           ? 'Không gửi được đơn xin ngừng thanh toán.'
-          : 'Không thể hủy hồ sơ. Vui lòng thử lại.');
-      appAlert('Lỗi', msg);
+          : 'Không thể hủy hồ sơ. Vui lòng thử lại.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -239,7 +236,7 @@ export const WithdrawApplicationScreen = () => {
               placeholderTextColor={RHSColors.textMuted}
               keyboardType="number-pad"
               value={bankAccountNumber}
-              onChangeText={setBankAccountNumber}
+              onChangeText={(t) => setBankAccountNumber(t.replace(/\D/g, '').slice(0, 20))}
             />
             <TextInput
               style={styles.singleInput}

@@ -11,7 +11,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -19,6 +19,7 @@ import { RHSColors, spacing, borderRadius, typography } from '../../../lib/theme
 import { authApi } from '../api/authApi';
 import { setTokens, getRememberedEmail, saveRememberedEmail } from '../../../lib/tokenStorage';
 import { isBiometricEnabled, authenticateWithBiometrics, getStoredBiometricData, updateStoredRefreshToken, disableBiometric, clearBiometricIfEmailMismatched } from '../../../lib/biometricService';
+import { isValidEmail } from '../../../lib/fieldRules';
 
 export const LoginScreen = () => {
   const navigation = useNavigation<any>();
@@ -99,12 +100,12 @@ export const LoginScreen = () => {
     })();
   }, []);
 
-  const isFormValid = email.trim().length > 0 && password.length > 0;
+  const isFormValid = isValidEmail(email) && password.length > 0;
 
   const validate = (): boolean => {
     const errs: { email?: string; password?: string } = {};
     if (!email.trim()) errs.email = 'Vui lòng nhập email';
-    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = 'Email không đúng định dạng';
+    else if (!isValidEmail(email)) errs.email = 'Email không đúng định dạng';
     if (!password) errs.password = 'Vui lòng nhập mật khẩu';
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -146,7 +147,10 @@ export const LoginScreen = () => {
       } else {
         setErrors({
           email: ' ',
-          password: result.message || 'Email hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.',
+          password: toUserErrorMessage(
+            result.message,
+            'Email hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.',
+          ),
         });
       }
     } catch (error: any) {

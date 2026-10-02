@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
+import { toUserErrorMessage } from '../../../lib/userError';
 import { RHSColors, spacing, borderRadius, typography } from '../../../lib/theme';
 import { lotteryApi } from '../api/lotteryApi';
 import {
@@ -62,7 +63,7 @@ export const LotteryScheduleScreen = () => {
       const data = await lotteryApi.getSchedule(projectId);
       setSchedule(data);
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Không tải được lịch bốc thăm.');
+      setError(toUserErrorMessage(err, 'Không tải được lịch bốc thăm.'));
       setSchedule(null);
     } finally {
       setLoading(false);

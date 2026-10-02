@@ -1,3 +1,7 @@
+import { toUserErrorMessage } from './userError';
+
+export { toUserErrorMessage };
+
 export type AppDialogButton = {
   text: string;
   onPress?: () => void;
@@ -37,6 +41,16 @@ export function appAlert(
     showing = true;
     emit();
   }
+}
+
+/** Alert lỗi API: luôn hiện copy người dùng, không lộ message kỹ thuật. */
+export function appErrorAlert(
+  title: string,
+  error: unknown,
+  fallback?: string,
+  buttons?: AppDialogButton[],
+) {
+  appAlert(title, toUserErrorMessage(error, fallback), buttons);
 }
 
 export function dismissAppDialog() {

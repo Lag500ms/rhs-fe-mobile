@@ -18,6 +18,7 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
 import { RHSLogo } from '../../../lib/Logo';
+import { toUserErrorMessage } from '../../../lib/userError';
 import { housingApi } from '../api/housingApi';
 import { HousingProjectResponse } from '../types/housing';
 import { HCM_PROVINCE, HCM_PROVINCE_SHORT, fetchHcmWards } from '../utils/hcmLocations';
@@ -176,7 +177,7 @@ export const HomeScreen = () => {
       setPageIndex(result.pageIndex);
       setTotalPages(result.totalPages);
     } catch (err: any) {
-      setError(err.message || 'Không thể tải danh sách nhà');
+      setError(toUserErrorMessage(err, 'Không thể tải danh sách nhà'));
     } finally {
       setLoading(false);
       setLoadingMore(false);

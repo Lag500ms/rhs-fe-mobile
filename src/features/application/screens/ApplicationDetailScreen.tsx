@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -109,8 +109,9 @@ export const ApplicationDetailScreen = () => {
       const data = await housingApplicationApi.getApplicationDetail(applicationId);
       setDetail(data);
     } catch (e: any) {
-      const msg = e?.response?.data?.message || 'Không thể tải chi tiết hồ sơ.';
-      appAlert('Lỗi', msg, [{ text: 'Đồng ý', onPress: () => navigation.goBack() }]);
+      appErrorAlert('Lỗi', e, 'Không thể tải chi tiết hồ sơ.', [
+        { text: 'Đồng ý', onPress: () => navigation.goBack() },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -217,11 +218,10 @@ export const ApplicationDetailScreen = () => {
           phaseLabel: PHASE1_LABEL,
         });
       } else {
-        appAlert('Lỗi', result.message || 'Không thể tạo URL thanh toán');
+        appAlert('Lỗi', toUserErrorMessage(result.message, 'Không thể tạo URL thanh toán'));
       }
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Không thể tạo thanh toán';
-      appAlert('Lỗi', msg);
+      appErrorAlert('Lỗi', e, 'Không thể tạo thanh toán');
     } finally {
       setProcessingPayment(false);
     }
@@ -361,8 +361,7 @@ export const ApplicationDetailScreen = () => {
         projectName: detail.projectName,
       });
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Không thể tạo lại hồ sơ.';
-      appAlert('Lỗi', msg);
+      appErrorAlert('Lỗi', e, 'Không thể tạo lại hồ sơ.');
     } finally {
       setReapplying(false);
     }

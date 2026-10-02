@@ -86,7 +86,7 @@ export const LotteryLiveHall: React.FC<Props> = ({
         <Badge label={formatClock(now)} tone="neutral" icon="clock" />
         <Badge label={phaseLabel} tone={sessionTone(phase)} dot={isLive} />
         <Badge
-          label={hubOk ? 'Trực tuyến' : restMode ? 'REST' : hubLabel}
+          label={hubOk ? 'Trực tuyến' : restMode ? 'Dự phòng' : hubLabel}
           tone={hubOk ? 'success' : 'warning'}
         />
       </View>

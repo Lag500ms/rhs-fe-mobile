@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +18,7 @@ import { RHSColors, shadows } from '../../../lib/theme';
 
 import { CustomInput } from '../../auth/components/CustomInput';
 import { authApi } from '../../auth/api/authApi';
+import { MIN_PASSWORD_LENGTH, newPasswordError } from '../../../lib/fieldRules';
 
 export const ChangePasswordScreen = () => {
   const navigation = useNavigation<any>();
@@ -28,15 +29,19 @@ export const ChangePasswordScreen = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [hasInteracted, setHasInteracted] = useState<{ [key: string]: boolean }>({});
 
-  const isSubmitEnabled = currentPassword.length > 0 && newPassword.length >= 6 && confirmPassword.length >= 6;
+  const isSubmitEnabled =
+    currentPassword.length > 0 &&
+    newPassword.length >= MIN_PASSWORD_LENGTH &&
+    confirmPassword.length >= MIN_PASSWORD_LENGTH;
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
     if (!currentPassword) newErrors.currentPassword = 'Mật khẩu hiện tại là bắt buộc';
-    if (!newPassword) {
-      newErrors.newPassword = 'Mật khẩu mới là bắt buộc';
-    } else if (newPassword.length < 6) {
-      newErrors.newPassword = 'Mật khẩu phải có ít nhất 6 ký tự';
+    const pwdErr = newPasswordError(newPassword);
+    if (pwdErr) {
+      newErrors.newPassword = pwdErr === 'Vui lòng nhập mật khẩu' ? 'Mật khẩu mới là bắt buộc' : pwdErr;
+    } else if (newPassword === currentPassword) {
+      newErrors.newPassword = 'Mật khẩu mới phải khác mật khẩu hiện tại';
     }
     if (!confirmPassword) {
       newErrors.confirmPassword = 'Xác nhận mật khẩu là bắt buộc';
@@ -60,10 +65,10 @@ export const ChangePasswordScreen = () => {
           { text: 'Đồng ý', onPress: () => navigation.goBack() },
         ]);
       } else {
-        appAlert('Lỗi', result.message || 'Đổi mật khẩu thất bại');
+        appAlert('Lỗi', toUserErrorMessage(result.message, 'Đổi mật khẩu thất bại'));
       }
     } catch (error: any) {
-      appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      appErrorAlert('Lỗi', error, 'Không đổi được mật khẩu. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -108,7 +113,7 @@ export const ChangePasswordScreen = () => {
             />
             <CustomInput
               iconName="lock"
-              placeholder="Mật khẩu mới"
+              placeholder="Mật khẩu mới (tối thiểu 8 ký tự)"
               secureTextEntry
               value={newPassword}
               onChangeText={(text) => {

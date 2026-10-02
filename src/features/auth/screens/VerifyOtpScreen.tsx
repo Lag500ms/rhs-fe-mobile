@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -70,10 +70,10 @@ export const VerifyOtpScreen = () => {
           },
         ]);
       } else {
-        setError(result.message || 'Xác thực thất bại');
+        setError(toUserErrorMessage(result.message, 'Xác thực thất bại'));
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
+      setError(toUserErrorMessage(err, 'Có lỗi xảy ra. Vui lòng thử lại.'));
     } finally {
       setLoading(false);
     }
@@ -90,10 +90,10 @@ export const VerifyOtpScreen = () => {
         setOtpCode('');
         setCountdown(RESEND_COUNTDOWN);
       } else {
-        setError(result.message || 'Gửi lại mã thất bại');
+        setError(toUserErrorMessage(result.message, 'Gửi lại mã thất bại'));
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Có lỗi xảy ra');
+      setError(toUserErrorMessage(err, 'Không gửi lại được mã. Vui lòng thử lại.'));
     } finally {
       setResending(false);
     }

@@ -15,7 +15,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, spacing, typography, shadows } from '../../../lib/theme';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert } from '../../../lib/appDialog';
 import { citizenProfileApi } from '../api/citizenProfileApi';
 import {
   HOUSING_OPTIONS,
@@ -87,7 +87,7 @@ export const CitizenPersonalInfoScreen = () => {
       const p = await citizenProfileApi.getFullProfile();
       hydrate(p);
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || 'Không tải được hồ sơ.');
+      appErrorAlert('Lỗi', e, 'Không tải được hồ sơ.');
     } finally {
       setLoading(false);
     }
@@ -269,7 +269,7 @@ export const CitizenPersonalInfoScreen = () => {
         { text: 'Đồng ý', onPress: () => navigation.goBack() },
       ]);
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || 'Không lưu được hồ sơ.');
+      appErrorAlert('Lỗi', e, 'Không lưu được hồ sơ.');
     } finally {
       setSaving(false);
     }

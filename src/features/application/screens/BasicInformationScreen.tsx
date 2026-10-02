@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -84,8 +84,10 @@ export const BasicInformationScreen = () => {
 
       if (active?.hasActiveApplication) {
         setActiveBlock(
-          active.message ||
+          toUserErrorMessage(
+            active.message,
             'Bạn đang có hồ sơ khác đang xử lý. Mỗi người chỉ được một hồ sơ hoạt động tại một thời điểm.',
+          ),
         );
       } else {
         setActiveBlock(null);
@@ -101,7 +103,7 @@ export const BasicInformationScreen = () => {
           '',
       );
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || 'Không tải được hồ sơ công dân.');
+      appErrorAlert('Lỗi', e, 'Không tải được hồ sơ công dân.');
     } finally {
       setLoading(false);
     }
@@ -205,10 +207,16 @@ export const BasicInformationScreen = () => {
       const data = e?.response?.data || {};
       if (status === 409) {
         const existing = await housingApplicationApi.findMineForProject(projectId).catch(() => null);
-        await resumeExistingApplication(existing, data.message);
+        await resumeExistingApplication(
+          existing,
+          toUserErrorMessage(
+            data.message,
+            'Bạn đã có hồ sơ cho dự án này. Mở hồ sơ hiện có để tiếp tục, không tạo mới.',
+          ),
+        );
         return;
       }
-      appAlert('Lỗi', data.message || e?.message || 'Không tạo được hồ sơ.');
+      appErrorAlert('Lỗi', e, 'Không tạo được hồ sơ.');
     } finally {
       submitLock.current = false;
       setSubmitting(false);

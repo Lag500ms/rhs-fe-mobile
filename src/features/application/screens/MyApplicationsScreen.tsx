@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appErrorAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -48,8 +48,7 @@ export const MyApplicationsScreen = () => {
       const result = await housingApplicationApi.getMyApplications();
       setApplications(result.items || []);
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Không thể tải danh sách hồ sơ.';
-      appAlert('Lỗi', msg);
+      appErrorAlert('Lỗi', e, 'Không thể tải danh sách hồ sơ.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -71,9 +70,7 @@ export const MyApplicationsScreen = () => {
     try {
       await fetchData(false);
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Không thể tải danh sách hồ sơ.';
-      appAlert('Lỗi', msg);
-      setLoading(false);
+      appErrorAlert('Lỗi', e, 'Không thể tải danh sách hồ sơ.');
     }
   }, [fetchData]);
 

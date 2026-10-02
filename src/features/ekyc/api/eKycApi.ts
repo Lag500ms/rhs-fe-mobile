@@ -1,20 +1,6 @@
 import apiClient from '../../../lib/apiClient';
-import { userApi } from '../../user/api/userApi';
 import { OcrResult, FaceMatchResult } from '../types/ekyc';
-import { extractWardFromAddress } from '../utils/ward';
-
-/** Trích xuất message chi tiết từ lỗi 400 của backend */
-function extractErrorMessage(e: any, fallback: string): string {
-  const data = e?.response?.data;
-  if (!data) return fallback;
-  const msg = data.message || data.detail || data.title || fallback;
-  const field = data.field;
-  const code = data.errorCode;
-  const parts: string[] = [msg];
-  if (code) parts.push(`(Mã: ${code})`);
-  if (field) parts.push(`[Field: ${field}]`);
-  return parts.join(' ');
-}
+import { toUserErrorMessage } from '../../../lib/userError';
 
 const getMimeType = (uri: string): string => {
   const ext = uri.split('.').pop()?.toLowerCase().split('?')[0];
@@ -45,13 +31,8 @@ export const eKycApi = {
       type,
     } as any);
 
-    try {
-      const response = await apiClient.post('/EKyc/ocr', formData);
-      return response.data.data;
-    } catch (e: any) {
-      const msg = extractErrorMessage(e, 'Lỗi không xác định từ OCR API');
-      throw new Error(msg);
-    }
+    const response = await apiClient.post('/EKyc/ocr', formData);
+    return response.data.data;
   },
 
   /**
@@ -68,17 +49,8 @@ export const eKycApi = {
     formData.append('faceImage', { uri: faceImageUri, name: faceFilename, type: faceType } as any);
     formData.append('idCardImage', { uri: idCardImageUri, name: idFilename, type: idType } as any);
 
-    try {
-      const response = await apiClient.post('/EKyc/face-match', formData);
-      return response.data.data;
-    } catch (e: any) {
-      const status = e?.response?.status;
-      const msg = extractErrorMessage(e, 'Lỗi không xác định từ FaceMatch API');
-      if (status === 400) {
-        throw new Error(`[400] Dữ liệu gửi lên không hợp lệ:\n${msg}\n\nKiểm tra:\n• Dung lượng ảnh (tối đa có thể 5-10MB)\n• Định dạng file (phải là .jpg/.jpeg/.png)\n• Ảnh không được rỗng\n• Cả 2 ảnh (selfie + CCCD) đều phải có`);
-      }
-      throw new Error(msg);
-    }
+    const response = await apiClient.post('/EKyc/face-match', formData);
+    return response.data.data;
   },
 
   /**
@@ -91,11 +63,19 @@ export const eKycApi = {
       const response = await apiClient.get('/EKyc/check-citizen-id', {
         params: { citizenId },
       });
-      return { available: true, message: response?.data?.message || 'CCCD hợp lệ' };
+      return {
+        available: true,
+        message: toUserErrorMessage(response?.data?.message, 'CCCD hợp lệ'),
+      };
     } catch (e: any) {
       if (e?.response?.status === 409) {
-        const msg = e?.response?.data?.message || 'Số CCCD này đã được xác thực bởi tài khoản khác.';
-        return { available: false, message: msg };
+        return {
+          available: false,
+          message: toUserErrorMessage(
+            e,
+            'Số CCCD này đã được xác thực bởi tài khoản khác.',
+          ),
+        };
       }
       throw new Error('Không thể kiểm tra CCCD. Vui lòng thử lại.');
     }

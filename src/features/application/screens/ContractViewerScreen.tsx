@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -159,11 +159,7 @@ export const ContractViewerScreen = () => {
 
       setError('Không có hợp đồng hoặc thiếu mã hồ sơ để tải.');
     } catch (e: any) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.message ||
-        'Không thể tải file PDF. Vui lòng thử lại.';
-      setError(msg);
+      setError(toUserErrorMessage(e, 'Không thể tải file PDF. Vui lòng thử lại.'));
     } finally {
       setLoading(false);
     }
@@ -191,7 +187,7 @@ export const ContractViewerScreen = () => {
         appAlert('Tải xuống thành công', `File đã lưu tại: ${localUri}`);
       }
     } catch (e: any) {
-      appAlert('Tải xuống thất bại', e?.message || 'Không thể lưu file');
+      appAlert('Tải xuống thất bại', toUserErrorMessage(e, 'Không thể lưu file'));
     } finally {
       setDownloadProgress(false);
     }
@@ -207,7 +203,7 @@ export const ContractViewerScreen = () => {
         });
       }
     } catch (e: any) {
-      appAlert('Thông báo', e?.message || 'Không mở được file. Hãy dùng nút Tải xuống.');
+      appAlert('Thông báo', toUserErrorMessage(e, 'Không mở được file. Hãy dùng nút Tải xuống.'));
     }
   }, [localUri]);
 
@@ -232,10 +228,10 @@ export const ContractViewerScreen = () => {
                   'Đã ký hợp đồng mua bán nhà ở xã hội. Đợt 1 đã mở trên lịch thanh toán.',
                 );
               } else {
-                appAlert('Không ký được', result.message || 'Vui lòng thử lại.');
+                appAlert('Không ký được', toUserErrorMessage(result.message, 'Vui lòng thử lại.'));
               }
             } catch (e: any) {
-              appAlert('Lỗi', e?.response?.data?.message || e?.message || 'Không ký được hợp đồng.');
+              appErrorAlert('Lỗi', e, 'Không ký được hợp đồng.');
             } finally {
               setSigning(false);
             }
@@ -315,7 +311,7 @@ export const ContractViewerScreen = () => {
           onLoad={() => setLoading(false)}
           onError={(syntheticEvent) => {
             const { description } = syntheticEvent.nativeEvent;
-            setError(description || 'Không thể hiển thị file PDF');
+            setError(toUserErrorMessage(description, 'Không thể hiển thị file PDF'));
             setLoading(false);
           }}
           javaScriptEnabled
@@ -333,7 +329,7 @@ export const ContractViewerScreen = () => {
           onLoad={() => setLoading(false)}
           onError={(syntheticEvent) => {
             const { description } = syntheticEvent.nativeEvent;
-            setError(description || 'Không thể hiển thị file PDF');
+            setError(toUserErrorMessage(description, 'Không thể hiển thị file PDF'));
             setLoading(false);
           }}
           allowFileAccess

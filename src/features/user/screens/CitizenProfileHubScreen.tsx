@@ -13,7 +13,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, spacing, typography, shadows } from '../../../lib/theme';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert } from '../../../lib/appDialog';
 import { citizenProfileApi } from '../api/citizenProfileApi';
 import type { CitizenFullProfileDto } from '../types/citizenProfile';
 import { formatVnd, citizenVaultMissingPriorityDocs } from '../types/citizenProfile';
@@ -36,7 +36,7 @@ export const CitizenProfileHubScreen = () => {
       const data = await citizenProfileApi.getFullProfile();
       setProfile(data);
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || 'Không tải được hồ sơ công dân.');
+      appErrorAlert('Lỗi', e, 'Không tải được hồ sơ công dân.');
     } finally {
       setLoading(false);
     }

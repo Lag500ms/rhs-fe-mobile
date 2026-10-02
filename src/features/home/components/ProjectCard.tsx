@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert } from '../../../lib/appDialog';
 import { Feather } from '@expo/vector-icons';
 import { RHSColors, borderRadius, shadows, typography, spacing } from '../../../lib/theme';
 import { HousingProjectResponse } from '../types/housing';
@@ -59,10 +59,7 @@ export const ProjectCard: React.FC<Props> = ({ project, onPress, showWishlist = 
       }
     } catch (e: any) {
       setWishlisted(!next); // rollback
-      appAlert(
-        'Lỗi',
-        e?.response?.data?.message || 'Không thể cập nhật danh sách quan tâm.',
-      );
+      appErrorAlert('Lỗi', e, 'Không thể cập nhật danh sách quan tâm.');
     } finally {
       setHeartLoading(false);
     }

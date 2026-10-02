@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Modal,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -93,7 +93,7 @@ export const HouseholdMembersScreen = () => {
         setMaritalStatus(null);
       }
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || e?.message || 'Không tải được danh sách thành viên.');
+      appErrorAlert('Lỗi', e, 'Không tải được danh sách thành viên.');
     } finally {
       setLoading(false);
     }
@@ -241,7 +241,7 @@ export const HouseholdMembersScreen = () => {
       resetForm();
       await loadMembers();
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || e?.message || 'Không lưu được thành viên.');
+      appErrorAlert('Lỗi', e, 'Không lưu được thành viên.');
     } finally {
       setSaving(false);
     }
@@ -258,7 +258,7 @@ export const HouseholdMembersScreen = () => {
             await householdMemberApi.removeMember(applicationId, member.memberId);
             await loadMembers();
           } catch (e: any) {
-            appAlert('Lỗi', e?.response?.data?.message || e?.message || 'Không xóa được.');
+            appErrorAlert('Lỗi', e, 'Không xóa được.');
           }
         },
       },

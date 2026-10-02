@@ -8,7 +8,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -72,7 +72,7 @@ export const EKycScreen = () => {
 
       setStep('facematch');
     } catch (e: any) {
-      appAlert('Lỗi đọc giấy tờ', e?.message ?? 'Vui lòng thử lại.');
+      appErrorAlert('Lỗi đọc giấy tờ', e, 'Không đọc được giấy tờ. Vui lòng chụp lại.');
     } finally {
       setBusy(false);
     }
@@ -116,7 +116,7 @@ export const EKycScreen = () => {
       await AsyncStorage.setItem(VERIFIED_KEY, 'true');
       setStep('complete');
     } catch (e: any) {
-      appAlert('Lỗi xác minh', e?.message ?? 'Vui lòng thử lại.');
+      appErrorAlert('Lỗi xác minh', e, 'Không xác minh được. Vui lòng thử lại.');
     } finally {
       setBusy(false);
     }

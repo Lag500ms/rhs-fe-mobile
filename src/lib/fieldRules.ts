@@ -65,6 +65,36 @@ export function maritalAllowsSpouse(status?: string | null): boolean {
   return (status || '').toUpperCase() === 'MARRIED';
 }
 
+export const MIN_PASSWORD_LENGTH = 8;
+export const MAX_PASSWORD_LENGTH = 100;
+export const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
+/** Số di động VN 10 chữ số, bắt đầu bằng 0. */
+export const VN_MOBILE_PATTERN = /^0\d{9}$/;
+
+export function isValidEmail(value?: string | null): boolean {
+  return EMAIL_PATTERN.test((value || '').trim());
+}
+
+export function sanitizePhoneInput(value: string): string {
+  return String(value).replace(/\D/g, '').slice(0, 10);
+}
+
+export function isValidVnMobile(value?: string | null): boolean {
+  return VN_MOBILE_PATTERN.test((value || '').trim());
+}
+
+/** Lỗi mật khẩu mới, hoặc null nếu hợp lệ. */
+export function newPasswordError(password: string): string | null {
+  if (!password) return 'Vui lòng nhập mật khẩu';
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return `Mật khẩu tối thiểu ${MIN_PASSWORD_LENGTH} ký tự`;
+  }
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    return `Mật khẩu không được quá ${MAX_PASSWORD_LENGTH} ký tự`;
+  }
+  return null;
+}
+
 /** Trần thu nhập điều kiện: độc thân 15 triệu; vợ chồng cộng 30 triệu. */
 export const MAX_SINGLE_INCOME = 15_000_000;
 export const MAX_COUPLE_INCOME = 30_000_000;

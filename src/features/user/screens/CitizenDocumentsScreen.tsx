@@ -16,7 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { BrandBar } from '../../../components/BrandBar';
 import { RHSColors, borderRadius, spacing, typography, shadows } from '../../../lib/theme';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert } from '../../../lib/appDialog';
 import { citizenProfileApi } from '../api/citizenProfileApi';
 import {
   PROFILE_DOC_GROUPS,
@@ -61,7 +61,7 @@ export const CitizenDocumentsScreen = () => {
         setPriorityRequired([]);
       }
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || 'Không tải được kho giấy tờ.');
+      appErrorAlert('Lỗi', e, 'Không tải được kho giấy tờ.');
     } finally {
       setLoading(false);
     }
@@ -214,7 +214,7 @@ export const CitizenDocumentsScreen = () => {
       await load();
       appAlert('Thành công', 'Đã tải giấy tờ vào kho hồ sơ.');
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || 'Không tải được giấy tờ.');
+      appErrorAlert('Lỗi', e, 'Không tải được giấy tờ.');
     } finally {
       setUploadingType(null);
     }
@@ -231,7 +231,7 @@ export const CitizenDocumentsScreen = () => {
             await citizenProfileApi.deleteDocument(doc.documentId);
             await load();
           } catch (e: any) {
-            appAlert('Lỗi', e?.response?.data?.message || 'Không xóa được.');
+            appErrorAlert('Lỗi', e, 'Không xóa được.');
           }
         },
       },

@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -120,12 +120,22 @@ export const IssueReportScreen = () => {
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
+    const t = title.trim();
+    const d = description.trim();
+    if (!t) {
       appAlert('Lỗi', 'Vui lòng nhập tiêu đề.');
       return;
     }
-    if (!description.trim()) {
+    if (t.length < 5) {
+      appAlert('Thiếu thông tin', 'Tiêu đề tối thiểu 5 ký tự.');
+      return;
+    }
+    if (!d) {
       appAlert('Lỗi', 'Vui lòng nhập mô tả chi tiết.');
+      return;
+    }
+    if (d.length < 10) {
+      appAlert('Thiếu thông tin', 'Mô tả tối thiểu 10 ký tự.');
       return;
     }
 
@@ -141,11 +151,7 @@ export const IssueReportScreen = () => {
       resetForm();
       void loadReports(1);
     } catch (error: any) {
-      const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        'Không thể gửi báo cáo. Vui lòng thử lại.';
-      appAlert('Lỗi', message);
+      appErrorAlert('Lỗi', error, 'Không thể gửi báo cáo. Vui lòng thử lại.');
     } finally {
       setSubmitting(false);
     }
@@ -276,7 +282,7 @@ export const IssueReportScreen = () => {
             style={styles.input}
             value={title}
             onChangeText={setTitle}
-            placeholder="Nhập tiêu đề ngắn gọn..."
+            placeholder="VD: Không tải được danh sách dự án"
             placeholderTextColor={RHSColors.textMuted}
             maxLength={255}
           />

@@ -11,6 +11,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
+import { toUserErrorMessage } from '../../../lib/userError';
 import {
   Badge,
   Card,
@@ -83,7 +84,7 @@ export const LotteryResultScreen = () => {
       setWaitlist(wl);
       if (!data) setError('Chưa có kết quả bốc thăm cho dự án này.');
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Không tải được kết quả.');
+      setError(toUserErrorMessage(err, 'Không tải được kết quả.'));
     } finally {
       setLoading(false);
     }

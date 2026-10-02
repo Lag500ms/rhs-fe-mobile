@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
@@ -165,7 +165,7 @@ export const UploadDocumentsScreen = () => {
           setMissingPriorityGroup(true);
           setRequiredItems([]);
         } else {
-          const msg = e?.response?.data?.message || 'Không thể tải danh sách giấy tờ bắt buộc.';
+          const msg = toUserErrorMessage(e, 'Không thể tải danh sách giấy tờ bắt buộc.');
           appAlert('Lỗi', msg);
         }
       } finally {
@@ -249,14 +249,13 @@ export const UploadDocumentsScreen = () => {
       }));
     } catch (e: any) {
       const status = e?.response?.status;
-      const msg = e?.response?.data?.message || e?.message || 'Không thể tải lên giấy tờ.';
       if (status === 502) {
         appAlert(
           'Không lưu được file',
-          'Máy chủ chưa nhận được giấy tờ (lỗi 502). Hồ sơ nháp vẫn còn — hãy thử tải lại file. Đừng tạo hồ sơ mới.',
+          'Máy chủ chưa nhận được giấy tờ. Hồ sơ nháp vẫn còn — hãy thử tải lại file. Đừng tạo hồ sơ mới.',
         );
       } else {
-        appAlert('Lỗi tải lên', msg);
+        appErrorAlert('Lỗi tải lên', e, 'Không thể tải lên giấy tờ.');
       }
     } finally {
       setUploading((prev) => ({ ...prev, [docKey]: false }));
@@ -272,8 +271,7 @@ export const UploadDocumentsScreen = () => {
       await housingDocumentApi.deleteDocument(applicationId, file.documentId);
       setUploadedFiles((prev) => ({ ...prev, [docKey]: null }));
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Không thể xóa giấy tờ.';
-      appAlert('Lỗi', msg);
+      appErrorAlert('Lỗi', e, 'Không thể xóa giấy tờ.');
     } finally {
       setDeleting((prev) => ({ ...prev, [docKey]: false }));
     }

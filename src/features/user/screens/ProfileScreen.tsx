@@ -9,7 +9,7 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
@@ -51,10 +51,10 @@ export const ProfileScreen = () => {
       if (result.success && result.user) {
         setProfile(result.user);
       } else {
-        appAlert('Lỗi', result.message || 'Không thể tải thông tin người dùng');
+        appAlert('Lỗi', toUserErrorMessage(result.message, 'Không thể tải thông tin người dùng'));
       }
     } catch (error: any) {
-      appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      appErrorAlert('Lỗi', error, 'Không thể tải thông tin người dùng');
     } finally {
       setLoading(false);
     }
@@ -136,14 +136,10 @@ export const ProfileScreen = () => {
         appAlert('Thành công', 'Tải ảnh đại diện thành công');
         checkAuthAndLoad();
       } else {
-        appAlert('Lỗi', result.message || 'Tải ảnh thất bại');
+        appAlert('Lỗi', toUserErrorMessage(result.message, 'Tải ảnh thất bại'));
       }
     } catch (error: any) {
-      const status = error.response?.status;
-      const serverMsg = error.response?.data?.message || error.response?.data?.title;
-      const detailMsg = error.message;
-      const finalMsg = serverMsg || detailMsg || 'Không thể kết nối đến máy chủ';
-      appAlert(`Lỗi${status ? ` (${status})` : ''}`, finalMsg);
+      appErrorAlert('Lỗi', error, 'Không tải được ảnh đại diện. Vui lòng thử lại.');
     } finally {
       setUploading(false);
     }

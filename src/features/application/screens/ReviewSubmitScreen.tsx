@@ -9,7 +9,7 @@ import {
   Modal,
   Dimensions,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
@@ -131,8 +131,7 @@ export const ReviewSubmitScreen = () => {
           setRequiredItems([]);
           return;
         }
-        const msg = e?.response?.data?.message || 'Không thể tải thông tin hồ sơ.';
-        appAlert('Lỗi', msg);
+        appErrorAlert('Lỗi', e, 'Không thể tải thông tin hồ sơ.');
         navigation.goBack();
       } finally {
         setLoading(false);
@@ -166,7 +165,7 @@ export const ReviewSubmitScreen = () => {
     } catch (e: any) {
       setSubmitting(false);
       const status = e?.response?.status;
-      const msg = e?.response?.data?.message || e?.message || 'Không thể nộp hồ sơ.';
+      const msg = toUserErrorMessage(e, 'Không thể nộp hồ sơ.');
 
       if (status === 409) {
         // Conflict - duplicate CCCD

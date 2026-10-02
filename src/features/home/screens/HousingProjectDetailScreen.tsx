@@ -12,7 +12,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
@@ -204,7 +204,7 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
         setIsWishlisted(true);
       }
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || 'Không thể cập nhật danh sách yêu thích.');
+      appErrorAlert('Lỗi', e, 'Không thể cập nhật danh sách yêu thích.');
     } finally {
       setWishlistLoading(false);
     }
@@ -259,8 +259,10 @@ export const HousingProjectDetailScreen = ({ route }: Props) => {
         if (check.hasActiveApplication) {
           appAlert(
             'Đã có hồ sơ đang xử lý',
-            check.message ||
+            toUserErrorMessage(
+              check.message,
               'Bạn đang có hồ sơ khác ở trạng thái đã nộp hoặc đã được duyệt. Mỗi người chỉ được một hồ sơ hoạt động tại một thời điểm.',
+            ),
             [
               { text: 'Đóng', style: 'cancel' },
               {

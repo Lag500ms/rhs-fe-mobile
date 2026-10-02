@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '../../../components/ScreenHeader';
+import { toUserErrorMessage } from '../../../lib/userError';
 import { RHSColors, borderRadius, spacing, typography } from '../../../lib/theme';
 import {
   announcementsApi,
@@ -59,7 +60,7 @@ export const AnnouncementsScreen = () => {
       });
       setItems(data.items);
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || 'Không tải được thông báo.');
+      setError(toUserErrorMessage(e, 'Không tải được thông báo.'));
       setItems([]);
     } finally {
       setLoading(false);
@@ -74,7 +75,7 @@ export const AnnouncementsScreen = () => {
       const data = await announcementsApi.getById(id);
       setDetail(data);
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || 'Không tải được chi tiết.');
+      setError(toUserErrorMessage(e, 'Không tải được chi tiết.'));
     } finally {
       setDetailLoading(false);
     }

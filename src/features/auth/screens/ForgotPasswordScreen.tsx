@@ -8,7 +8,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -16,6 +16,7 @@ import { RHSColors } from '../../../lib/theme';
 
 import { CustomInput } from '../components/CustomInput';
 import { authApi } from '../api/authApi';
+import { isValidEmail } from '../../../lib/fieldRules';
 
 export const ForgotPasswordScreen = () => {
   const navigation = useNavigation<any>();
@@ -24,14 +25,15 @@ export const ForgotPasswordScreen = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [hasInteracted, setHasInteracted] = useState(false);
 
-  const isSubmitEnabled = email.length > 0;
+  const isSubmitEnabled = isValidEmail(email);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
+    const trimmed = email.trim();
 
-    if (!email) {
+    if (!trimmed) {
       newErrors.email = 'Email là bắt buộc';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!isValidEmail(trimmed)) {
       newErrors.email = 'Email không hợp lệ';
     }
 
@@ -48,17 +50,18 @@ export const ForgotPasswordScreen = () => {
 
     setLoading(true);
     try {
-      const result = await authApi.forgotPassword({ email });
+      const trimmed = email.trim();
+      const result = await authApi.forgotPassword({ email: trimmed });
 
       if (result.success) {
         appAlert('Thành công', 'Mã xác thực đã được gửi đến email của bạn', [
-          { text: 'Đồng ý', onPress: () => navigation.navigate('ResetPassword', { email }) },
+          { text: 'Đồng ý', onPress: () => navigation.navigate('ResetPassword', { email: trimmed }) },
         ]);
       } else {
-        appAlert('Lỗi', result.message || 'Gửi yêu cầu thất bại');
+        appAlert('Lỗi', toUserErrorMessage(result.message, 'Gửi yêu cầu thất bại'));
       }
     } catch (error: any) {
-      appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      appErrorAlert('Lỗi', error, 'Không gửi được yêu cầu. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import apiClient from '../../../lib/apiClient';
+import { toUserErrorMessage } from '../../../lib/userError';
 import {
   ApplicationAuditResult,
   UploadDocumentResponse,
@@ -10,20 +11,6 @@ function pdfFileName(fileName?: string, fileUri?: string): string {
   let name = (fileName || fileUri?.split('/').pop()?.split('?')[0] || 'document.pdf').trim();
   if (!/\.pdf$/i.test(name)) name = `${name}.pdf`;
   return name;
-}
-
-function aspNetErrorMessage(data: any, fallback: string): string {
-  if (!data) return fallback;
-  if (typeof data.message === 'string' && data.message.trim()) return data.message;
-  if (typeof data.title === 'string' && data.title.trim()) return data.title;
-  const errors = data.errors;
-  if (errors && typeof errors === 'object') {
-    const parts = Object.values(errors)
-      .flat()
-      .filter((x): x is string => typeof x === 'string');
-    if (parts.length) return parts.join('\n');
-  }
-  return fallback;
 }
 
 export const housingDocumentApi = {
@@ -77,10 +64,7 @@ export const housingDocumentApi = {
       );
       return response.data;
     } catch (e: any) {
-      const msg = aspNetErrorMessage(
-        e?.response?.data,
-        e?.message || 'Không thể tải lên giấy tờ.',
-      );
+      const msg = toUserErrorMessage(e, 'Không thể tải lên giấy tờ.');
       const err = new Error(msg) as Error & { response?: any };
       err.response = e?.response;
       throw err;
@@ -115,10 +99,7 @@ export const housingDocumentApi = {
       );
       return response.data;
     } catch (e: any) {
-      const msg = aspNetErrorMessage(
-        e?.response?.data,
-        e?.message || 'Không thể kiểm tra giấy tờ bằng AI. Vui lòng thử lại.',
-      );
+      const msg = toUserErrorMessage(e, 'Không thể kiểm tra giấy tờ. Vui lòng thử lại.');
       const err = new Error(msg) as Error & { response?: any };
       err.response = e?.response;
       throw err;

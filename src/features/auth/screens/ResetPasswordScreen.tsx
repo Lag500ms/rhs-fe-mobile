@@ -8,7 +8,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -18,6 +18,7 @@ import { CustomInput } from '../components/CustomInput';
 import { OtpInput } from '../../../components/OtpInput';
 import { authApi } from '../api/authApi';
 import { AuthStackParamList } from '../AuthNavigator';
+import { MIN_PASSWORD_LENGTH, newPasswordError } from '../../../lib/fieldRules';
 
 type ResetPasswordRouteProp = RouteProp<AuthStackParamList, 'ResetPassword'>;
 
@@ -45,7 +46,10 @@ export const ResetPasswordScreen = () => {
     return () => clearInterval(timer);
   }, [countdown]);
 
-  const isSubmitEnabled = otpCode.length === 6 && newPassword.length >= 6 && confirmPassword.length >= 6;
+  const isSubmitEnabled =
+    otpCode.length === 6 &&
+    newPassword.length >= MIN_PASSWORD_LENGTH &&
+    confirmPassword.length >= MIN_PASSWORD_LENGTH;
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -54,10 +58,9 @@ export const ResetPasswordScreen = () => {
       newErrors.otpCode = 'Vui lòng nhập đầy đủ mã xác thực 6 chữ số';
     }
 
-    if (!newPassword) {
-      newErrors.newPassword = 'Mật khẩu mới là bắt buộc';
-    } else if (newPassword.length < 6) {
-      newErrors.newPassword = 'Mật khẩu phải có ít nhất 6 ký tự';
+    const pwdErr = newPasswordError(newPassword);
+    if (pwdErr) {
+      newErrors.newPassword = pwdErr === 'Vui lòng nhập mật khẩu' ? 'Mật khẩu mới là bắt buộc' : pwdErr;
     }
 
     if (!confirmPassword) {
@@ -91,10 +94,10 @@ export const ResetPasswordScreen = () => {
           { text: 'Đồng ý', onPress: () => navigation.navigate('Login') },
         ]);
       } else {
-        appAlert('Lỗi', result.message || 'Đặt lại mật khẩu thất bại');
+        appAlert('Lỗi', toUserErrorMessage(result.message, 'Đặt lại mật khẩu thất bại'));
       }
     } catch (error: any) {
-      appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      appErrorAlert('Lỗi', error, 'Không đặt lại được mật khẩu. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -110,10 +113,10 @@ export const ResetPasswordScreen = () => {
         setCountdown(RESEND_COUNTDOWN);
         appAlert('Thành công', 'Mã xác thực mới đã được gửi đến email của bạn');
       } else {
-        appAlert('Lỗi', result.message || 'Gửi lại mã thất bại');
+        appAlert('Lỗi', toUserErrorMessage(result.message, 'Gửi lại mã thất bại'));
       }
     } catch (error: any) {
-      appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      appErrorAlert('Lỗi', error, 'Không gửi lại được mã. Vui lòng thử lại.');
     } finally {
       setResending(false);
     }
@@ -173,7 +176,7 @@ export const ResetPasswordScreen = () => {
 
           <CustomInput
             iconName="lock"
-            placeholder="Mật khẩu mới"
+            placeholder="Mật khẩu mới (tối thiểu 8 ký tự)"
             secureTextEntry
             value={newPassword}
             onChangeText={(text) => {

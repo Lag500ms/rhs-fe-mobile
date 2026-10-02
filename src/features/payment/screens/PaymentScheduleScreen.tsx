@@ -11,7 +11,7 @@ import {
   Platform,
   UIManager,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -159,7 +159,7 @@ export const PaymentScheduleScreen = () => {
       if (status === 404) {
         setSummary(null);
       } else {
-        appAlert('Lỗi', e?.response?.data?.message || e?.message || 'Không tải được lịch thanh toán.');
+        appErrorAlert('Lỗi', e, 'Không tải được lịch thanh toán.');
       }
     } finally {
       setLoading(false);
@@ -231,10 +231,10 @@ export const PaymentScheduleScreen = () => {
           phaseLabel: phaseTitleLong(phase),
         });
       } else {
-        appAlert('Lỗi', result.message || 'Không tạo được URL thanh toán.');
+        appAlert('Lỗi', toUserErrorMessage(result.message, 'Không tạo được URL thanh toán.'));
       }
     } catch (e: any) {
-      appAlert('Lỗi', e?.response?.data?.message || e?.message || 'Không thanh toán được khoản này.');
+      appErrorAlert('Lỗi', e, 'Không thanh toán được khoản này.');
     } finally {
       setPayingId(null);
     }

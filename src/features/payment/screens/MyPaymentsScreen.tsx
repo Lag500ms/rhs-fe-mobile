@@ -6,7 +6,7 @@ import {
   FlatList,
   RefreshControl
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appErrorAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -68,10 +68,7 @@ export const MyPaymentsScreen = () => {
       const result = await paymentApi.getMyPayments();
       setPayments(Array.isArray(result?.data) ? result.data : []);
     } catch (err: any) {
-      appAlert(
-        'Lỗi',
-        err?.response?.data?.message || err?.message || 'Không tải được lịch sử thanh toán.',
-      );
+      appErrorAlert('Lỗi', err, 'Không tải được lịch sử thanh toán.');
     } finally {
       setLoading(false);
       setRefreshing(false);

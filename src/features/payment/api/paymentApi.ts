@@ -1,4 +1,5 @@
 import apiClient from '../../../lib/apiClient';
+import { toUserErrorMessage } from '../../../lib/userError';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
   CreatePaymentRequest,
@@ -135,7 +136,9 @@ export const paymentApi = {
       `/Payment/installments/${applicationId}`,
     );
     if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.message || 'Không lấy được lịch thanh toán.');
+      throw new Error(
+        toUserErrorMessage(response.data.message, 'Không lấy được lịch thanh toán.'),
+      );
     }
     return response.data.data;
   },
@@ -162,7 +165,9 @@ export const paymentApi = {
       message?: string;
     }>(`/Payment/applications/${applicationId}/cancellation-preview`);
     if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.message || 'Không tính được bảng hoàn tiền.');
+      throw new Error(
+        toUserErrorMessage(response.data.message, 'Không tính được bảng hoàn tiền.'),
+      );
     }
     return response.data.data;
   },
@@ -181,7 +186,9 @@ export const paymentApi = {
       message?: string;
     }>(`/Payment/applications/${applicationId}/request-cancellation`, payload);
     if (!response.data.success) {
-      throw new Error(response.data.message || 'Không nộp được đơn xin ngừng thanh toán.');
+      throw new Error(
+        toUserErrorMessage(response.data.message, 'Không nộp được đơn xin ngừng thanh toán.'),
+      );
     }
     return (
       response.data.data || {

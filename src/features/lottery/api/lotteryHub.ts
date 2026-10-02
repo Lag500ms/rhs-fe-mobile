@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { API_BASE_URL } from '../../../lib/apiConfig';
 import { getToken } from '../../../lib/tokenStorage';
 import type { LiveDrawResult, LotteryLiveState } from '../types/lottery';
 import { mapLiveDraw, mapLiveState } from './lotteryApi';
@@ -16,9 +17,7 @@ type HubConnection = {
 };
 
 function hubBaseUrl(): string {
-  const api = process.env.EXPO_PUBLIC_API_BASE_URL ?? '';
-  // EXPO_PUBLIC_API_BASE_URL thường kết thúc bằng /api → hub ở gốc host
-  return api.replace(/\/api\/?$/i, '');
+  return API_BASE_URL.replace(/\/api\/?$/i, '');
 }
 
 function isWsDropNoise(message?: string): boolean {
@@ -49,7 +48,7 @@ export async function connectLotteryLobby(
     signalR = await import('@microsoft/signalr');
   } catch {
     handlers.onError?.(
-      'Chưa cài @microsoft/signalr — dùng chế độ REST. Chạy: npm i @microsoft/signalr',
+      'Không kết nối được sảnh trực tuyến. Đang dùng chế độ dự phòng.',
     );
     return null;
   }
@@ -111,25 +110,24 @@ export async function connectLotteryLobby(
     handlers.onStatus?.('Đang kết nối lại sảnh...');
   });
   connection.onreconnected(() => {
-    void join().catch((err) =>
-      handlers.onError?.(err?.message ?? 'Không rejoin được sảnh'),
+    void join().catch(() =>
+      handlers.onError?.('Không vào lại được sảnh. Đang dùng chế độ dự phòng.'),
     );
   });
   connection.onclose((err) => {
     if (!err) return;
     if (isWsDropNoise(err.message)) {
-      handlers.onError?.('Mất kết nối realtime — chuyển chế độ REST');
+      handlers.onError?.('Mất kết nối sảnh. Đang dùng chế độ dự phòng.');
       return;
     }
-    handlers.onError?.(err.message);
+    handlers.onError?.('Mất kết nối sảnh. Đang dùng chế độ dự phòng.');
   });
 
   try {
     await connection.start();
     await join();
     return connection;
-  } catch (err: any) {
-    const msg = String(err?.message ?? '');
+  } catch {
     if (transport !== longPolling) {
       try {
         await connection.stop();
@@ -138,9 +136,7 @@ export async function connectLotteryLobby(
       }
       return connectLotteryLobbyLongPolling(signalR, url, projectId, joinCode, handlers);
     }
-    handlers.onError?.(
-      isWsDropNoise(msg) ? 'Không kết nối realtime — dùng chế độ REST' : msg || 'Không kết nối được sảnh bốc thăm',
-    );
+    handlers.onError?.('Không kết nối được sảnh trực tuyến. Đang dùng chế độ dự phòng.');
     try {
       await connection.stop();
     } catch {
@@ -201,18 +197,17 @@ async function connectLotteryLobbyLongPolling(
     await connection.invoke('JoinProjectLobby', projectId, joinCode ?? null);
   };
   connection.onreconnected(() => {
-    void join().catch((err) => handlers.onError?.(err?.message ?? 'Không rejoin được sảnh'));
+    void join().catch(() =>
+      handlers.onError?.('Không vào lại được sảnh. Đang dùng chế độ dự phòng.'),
+    );
   });
 
   try {
     await connection.start();
     await join();
     return connection;
-  } catch (err: any) {
-    const msg = String(err?.message ?? '');
-    handlers.onError?.(
-      isWsDropNoise(msg) ? 'Không kết nối realtime — dùng chế độ REST' : msg || 'Không kết nối được sảnh bốc thăm',
-    );
+  } catch {
+    handlers.onError?.('Không kết nối được sảnh trực tuyến. Đang dùng chế độ dự phòng.');
     try {
       await connection.stop();
     } catch {

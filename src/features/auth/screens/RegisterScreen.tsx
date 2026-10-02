@@ -10,13 +10,21 @@ import {
   ActivityIndicator,
   ScrollView
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { RHSColors, spacing, borderRadius, typography } from '../../../lib/theme';
 import { authApi } from '../api/authApi';
 import { RegisterDto } from '../types/auth';
+import { toUserErrorMessage } from '../../../lib/userError';
+import {
+  MIN_PASSWORD_LENGTH,
+  isValidEmail,
+  isValidVnMobile,
+  newPasswordError,
+  sanitizePhoneInput,
+} from '../../../lib/fieldRules';
 
 export const RegisterScreen = () => {
   const navigation = useNavigation<any>();
@@ -28,16 +36,26 @@ export const RegisterScreen = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  const isFormValid = email.trim().length > 0 && password.length >= 6 && fullName.trim().length > 0;
+  const isFormValid =
+    isValidEmail(email) &&
+    password.length >= MIN_PASSWORD_LENGTH &&
+    fullName.trim().length >= 2 &&
+    fullName.trim().length <= 100 &&
+    (!phoneNumber || isValidVnMobile(phoneNumber));
 
   const validate = (): boolean => {
     const errs: { [key: string]: string } = {};
+    const name = fullName.trim();
+    if (!name) errs.fullName = 'Vui lòng nhập họ tên';
+    else if (name.length < 2) errs.fullName = 'Họ tên tối thiểu 2 ký tự';
+    else if (name.length > 100) errs.fullName = 'Họ tên không được quá 100 ký tự';
     if (!email.trim()) errs.email = 'Vui lòng nhập email';
-    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = 'Email không đúng định dạng';
-    if (!fullName.trim()) errs.fullName = 'Vui lòng nhập họ tên';
-    if (!password) errs.password = 'Vui lòng nhập mật khẩu';
-    else if (password.length < 6) errs.password = 'Mật khẩu tối thiểu 6 ký tự';
-    if (phoneNumber && !/^0\d{9}$/.test(phoneNumber)) errs.phoneNumber = 'Số điện thoại không hợp lệ (VD: 0912345678)';
+    else if (!isValidEmail(email)) errs.email = 'Email không đúng định dạng';
+    const pwdErr = newPasswordError(password);
+    if (pwdErr) errs.password = pwdErr;
+    if (phoneNumber && !isValidVnMobile(phoneNumber)) {
+      errs.phoneNumber = 'Số điện thoại không hợp lệ (VD: 0912345678)';
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -61,18 +79,14 @@ export const RegisterScreen = () => {
       if (result.success) {
         appAlert(
           'Đăng ký thành công!',
-          'Vui lòng kiểm tra email để nhận mã xác thực.',
+          toUserErrorMessage(result.message, 'Vui lòng kiểm tra email để nhận mã xác thực.'),
           [{ text: 'Nhập mã', onPress: () => navigation.navigate('VerifyOtp', { email: email.trim() }) }]
         );
       } else {
-        appAlert('Đăng ký thất bại', result.message || 'Vui lòng thử lại sau.');
+        appAlert('Đăng ký thất bại', toUserErrorMessage(result.message, 'Vui lòng thử lại sau.'));
       }
     } catch (error: any) {
-      const status = error.response?.status;
-      const serverMsg = error.response?.data?.message || error.response?.data?.title;
-      const networkMsg = error.message;
-      const msg = serverMsg || (status ? `Lỗi kết nối (${status})` : networkMsg) || 'Không thể kết nối đến máy chủ';
-      appAlert('Đăng ký thất bại', msg);
+      appErrorAlert('Đăng ký thất bại', error, 'Không thể kết nối đến máy chủ. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -108,6 +122,7 @@ export const RegisterScreen = () => {
                   onChangeText={(t) => { setFullName(t); clearError('fullName'); }}
                   placeholder="Nhập họ và tên"
                   placeholderTextColor={RHSColors.textMuted}
+                  maxLength={100}
                 />
               </View>
               {errors.fullName ? <Text style={styles.errorText}>{errors.fullName}</Text> : null}
@@ -140,9 +155,10 @@ export const RegisterScreen = () => {
                   style={styles.textInputInner}
                   value={password}
                   onChangeText={(t) => { setPassword(t); clearError('password'); }}
-                  placeholder="Tối thiểu 6 ký tự"
+                  placeholder="Tối thiểu 8 ký tự"
                   secureTextEntry={!showPassword}
                   placeholderTextColor={RHSColors.textMuted}
+                  maxLength={100}
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={RHSColors.textMuted} />
@@ -159,7 +175,7 @@ export const RegisterScreen = () => {
                 <TextInput
                   style={styles.textInputInner}
                   value={phoneNumber}
-                  onChangeText={(t) => { setPhoneNumber(t); clearError('phoneNumber'); }}
+                  onChangeText={(t) => { setPhoneNumber(sanitizePhoneInput(t)); clearError('phoneNumber'); }}
                   placeholder="0912345678 (không bắt buộc)"
                   keyboardType="phone-pad"
                   placeholderTextColor={RHSColors.textMuted}

@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -109,15 +109,11 @@ export const DocumentViewerScreen = () => {
       const fileUri = `${dir}doc_${Date.now()}.pdf`;
       const result = await FileSystem.downloadAsync(fileUrl, fileUri);
       if (result.status && result.status >= 400) {
-        throw new Error(`Máy chủ trả về lỗi ${result.status} khi tải giấy tờ.`);
+        throw new Error('Không thể tải giấy tờ. Vui lòng thử lại.');
       }
       await prepareViewer(result.uri);
     } catch (e: any) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.message ||
-        'Không thể tải giấy tờ. Vui lòng thử lại.';
-      setError(msg);
+      setError(toUserErrorMessage(e, 'Không thể tải giấy tờ. Vui lòng thử lại.'));
     } finally {
       setLoading(false);
     }
@@ -143,7 +139,7 @@ export const DocumentViewerScreen = () => {
         appAlert('Tải xuống thành công', `File đã lưu tại: ${localUri}`);
       }
     } catch (e: any) {
-      appAlert('Tải xuống thất bại', e?.message || 'Không thể lưu file.');
+      appAlert('Tải xuống thất bại', toUserErrorMessage(e, 'Không thể lưu file.'));
     } finally {
       setDownloadProgress(false);
     }
@@ -187,7 +183,7 @@ export const DocumentViewerScreen = () => {
           onLoad={() => setLoading(false)}
           onError={(syntheticEvent) => {
             const { description } = syntheticEvent.nativeEvent;
-            setError(description || 'Không thể hiển thị file PDF.');
+            setError(toUserErrorMessage(description, 'Không thể hiển thị file PDF.'));
             setLoading(false);
           }}
           javaScriptEnabled

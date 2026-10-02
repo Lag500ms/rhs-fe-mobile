@@ -14,6 +14,8 @@ import {
   type LotteryScheduleDetail,
 } from '../types/lottery';
 
+import { toUserErrorMessage } from '../../../lib/userError';
+
 function logLineFromDraw(r: LiveDrawResult): string {
   const code = r.applicationCode || r.applicationId.slice(0, 8).toUpperCase();
   const result = LOTTERY_RESULT_LABEL[r.result] ?? r.result;
@@ -95,7 +97,7 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
       }
       return data;
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Không tải được lịch.');
+      setError(toUserErrorMessage(err, 'Không tải được lịch.'));
       return null;
     }
   }, [projectId]);
@@ -109,7 +111,7 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
     } catch (err: any) {
       const status = err?.response?.status;
       if (status === 400 || status === 404) return;
-      setError(err?.response?.data?.message || err?.message || 'Không tải được sảnh.');
+      setError(toUserErrorMessage(err, 'Không tải được sảnh.'));
     }
   }, [projectId, applyLive]);
 
@@ -134,7 +136,7 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
       try {
         const verified = await lotteryApi.verifyOtp(projectId, trimmed);
         if (!verified.success) {
-          throw new Error(verified.message || 'Mã xác thực không hợp lệ');
+          throw new Error(toUserErrorMessage(verified.message, 'Mã xác thực không hợp lệ'));
         }
         rememberLotteryJoinCode(projectId, trimmed);
         if (verified.sessionStatus) setSessionStatus(verified.sessionStatus);
@@ -172,7 +174,9 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
               if (cancelledRef.current) return;
               setHubOk(false);
               setUseRestMode(true);
-              setHubStatus(msg.includes('signalr') ? 'Chế độ REST' : msg);
+              setHubStatus(
+                toUserErrorMessage(msg, 'Mất kết nối sảnh. Đang dùng chế độ dự phòng.'),
+              );
             },
           },
           trimmed,
@@ -188,7 +192,7 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
         setUseRestMode(rest);
         setJoined(true);
         setHubOk(!!conn);
-        setHubStatus(conn ? 'Đã vào sảnh (trực tuyến)' : 'Chế độ REST (không SignalR)');
+        setHubStatus(conn ? 'Đã vào sảnh (trực tuyến)' : 'Đang xem sảnh ở chế độ dự phòng');
         await loadLive();
         await loadSchedule();
         try {
@@ -199,11 +203,7 @@ export function useLotteryLiveSession(projectId: string, applicationId?: string)
         }
         return true;
       } catch (err: any) {
-        const msg =
-          err?.response?.data?.message ||
-          err?.response?.data?.Message ||
-          err?.message ||
-          'Không vào được sảnh';
+        const msg = toUserErrorMessage(err, 'Không vào được sảnh');
         setHubStatus(msg);
         setError(msg);
         return false;

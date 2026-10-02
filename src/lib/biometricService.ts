@@ -1,6 +1,7 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { storageDelete, storageGet, storageSet } from './secureStorage';
+import { toUserErrorMessage } from './userError';
 
 const BIOMETRIC_ENABLED_KEY = 'isBiometricEnabled';
 const SECURE_REFRESH_TOKEN_KEY = 'secureRefreshToken';
@@ -109,7 +110,7 @@ export async function enableBiometric(
 
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err?.message || 'Không thể bật sinh trắc học.' };
+    return { success: false, error: toUserErrorMessage(err, 'Không thể bật sinh trắc học.') };
   }
 }
 

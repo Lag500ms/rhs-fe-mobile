@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { appAlert } from '../../../lib/appDialog';
+import { appAlert, appErrorAlert, toUserErrorMessage } from '../../../lib/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,6 +19,7 @@ import { RHSColors, shadows } from '../../../lib/theme';
 import { CustomInput } from '../../auth/components/CustomInput';
 import { userApi } from '../api/userApi';
 import { UpdateProfileDto, UserProfileDto } from '../types/user';
+import { isValidVnMobile, sanitizePhoneInput } from '../../../lib/fieldRules';
 
 export const EditProfileScreen = () => {
   const navigation = useNavigation<any>();
@@ -36,15 +37,20 @@ export const EditProfileScreen = () => {
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
-    if (!phoneNumber.trim()) {
+    const phone = sanitizePhoneInput(phoneNumber);
+    if (!phone) {
       appAlert('Lỗi', 'Vui lòng nhập số điện thoại');
+      return;
+    }
+    if (!isValidVnMobile(phone)) {
+      appAlert('Sai định dạng', 'Số điện thoại phải 10 số và bắt đầu bằng 0.');
       return;
     }
     setLoading(true);
     try {
       const updateData: UpdateProfileDto = {
         fullName,
-        phoneNumber: phoneNumber || undefined,
+        phoneNumber: phone,
         address: address || undefined,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth).toISOString() : undefined,
       };
@@ -54,10 +60,10 @@ export const EditProfileScreen = () => {
           { text: 'Đồng ý', onPress: () => navigation.goBack() },
         ]);
       } else {
-        appAlert('Lỗi', result.message || 'Cập nhật thất bại');
+        appAlert('Lỗi', toUserErrorMessage(result.message, 'Cập nhật thất bại'));
       }
     } catch (error: any) {
-      appAlert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra');
+      appErrorAlert('Lỗi', error, 'Không cập nhật được thông tin. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -126,7 +132,7 @@ export const EditProfileScreen = () => {
               iconName="phone"
               placeholder="Số điện thoại *"
               value={phoneNumber}
-              onChangeText={setPhoneNumber}
+              onChangeText={(t) => setPhoneNumber(sanitizePhoneInput(t))}
               keyboardType="phone-pad"
             />
 
